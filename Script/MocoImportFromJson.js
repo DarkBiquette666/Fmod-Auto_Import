@@ -343,7 +343,6 @@ function importEventsFromJson(data) {
                             var singleSound = studio.project.create("SingleSound");
                             // Link audioFile via property
                             singleSound.audioFile = asset;
-                            singleSound.length = asset.length;
                             // Assign MultiSound as owner
                             singleSound.owner = multiSound;
                             soundsAdded++;
