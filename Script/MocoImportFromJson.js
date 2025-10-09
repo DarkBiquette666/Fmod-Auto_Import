@@ -309,9 +309,10 @@ function importEventsFromJson(data) {
                     var multiSound = groupTrack.addSound(newEvent.timeline, "MultiSound", 0, firstAsset.length);
                     result.debugLog.push("MultiSound created: " + (multiSound ? "YES" : "NO"));
 
-                    // Add MultiSound to GroupTrack's modules relationship
+                    // Add MultiSound to both GroupTrack and Timeline modules relationships
                     groupTrack.relationships.modules.add(multiSound);
-                    result.debugLog.push("MultiSound added to GroupTrack modules");
+                    newEvent.timeline.relationships.modules.add(multiSound);
+                    result.debugLog.push("MultiSound added to GroupTrack and Timeline modules");
 
                     // Create SingleSounds and add to MultiSound via relationships
                     var soundsAdded = 0;
@@ -355,9 +356,10 @@ function importEventsFromJson(data) {
                         singleSound.relationships.audioFile.add(asset);
                         singleSound.length = asset.length;
 
-                        // Add SingleSound to GroupTrack's modules relationship
+                        // Add SingleSound to both GroupTrack and Timeline modules relationships
                         groupTrack.relationships.modules.add(singleSound);
-                        result.debugLog.push("SingleSound created and added to GroupTrack modules");
+                        newEvent.timeline.relationships.modules.add(singleSound);
+                        result.debugLog.push("SingleSound created and added to GroupTrack and Timeline modules");
                     }
                 }
 
