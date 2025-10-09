@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+
+# FMOD
+*.user
+.cache/
+Build/
+*.fspro.lock
+
+# Temp files
+*.backup
+*.broken
+*.codex_backup
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

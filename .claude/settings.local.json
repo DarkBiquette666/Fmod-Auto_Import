@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(git clone:*)",
+      "Bash(node:*)",
+      "Bash(python:*)",
+      "Bash(findstr:*)",
+      "Bash(del _show_asset_tree_dialog_method.txt)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Read(//tmp/**)",
+      "Bash(awk:*)",
+      "Bash(del \"C:\\Users\\antho\\AppData\\Local\\FMOD Studio\\Scripts\\_MocoAutoImport_Execute.js\")",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

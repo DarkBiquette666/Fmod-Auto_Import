@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="BankFolder" id="{c4609fab-f04d-412c-890e-53da0f32cb5d}">
+		<property name="name">
+			<value>CatGeneric</value>
+		</property>
+	</object>
+</objects>

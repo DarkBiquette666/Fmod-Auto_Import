@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="BankFolder" id="{0bf6e184-f33b-4bc9-8f04-bb2d2de9f179}">
+		<property name="name">
+			<value>zerzer</value>
+		</property>
+	</object>
+</objects>
