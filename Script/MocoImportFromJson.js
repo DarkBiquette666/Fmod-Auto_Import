@@ -344,10 +344,10 @@ function importEventsFromJson(data) {
                             // Link audioFile via property
                             singleSound.audioFile = asset;
                             singleSound.length = asset.length;
-                            // Add SingleSound to MultiSound's sounds collection
-                            multiSound.relationships.sounds.add(singleSound);
+                            // Assign MultiSound as owner
+                            singleSound.owner = multiSound;
                             soundsAdded++;
-                            result.debugLog.push("    SingleSound added to MultiSound");
+                            result.debugLog.push("    SingleSound added to MultiSound via owner property");
                         }
                     }
 
