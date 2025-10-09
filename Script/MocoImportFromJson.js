@@ -283,10 +283,6 @@ function importEventsFromJson(data) {
                     throw new Error("Failed to create group track");
                 }
 
-                // Explicitly add the track to the event's groupTracks relationship
-                newEvent.relationships.groupTracks.add(groupTrack);
-                result.debugLog.push("GroupTrack added to event relationships");
-
                 result.debugLog.push(dumpObjectStructure(groupTrack, "GroupTrack Structure", 1));
 
                 // Give the track a name (appears as "Audio 1" in UI)
