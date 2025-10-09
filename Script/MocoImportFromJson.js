@@ -275,13 +275,17 @@ function importEventsFromJson(data) {
 
             // Import and assign audio files
             if (entry.audioFilePaths && entry.audioFilePaths.length > 0) {
-                // Add group track to event
+                // Add audio track to event using addGroupTrack which creates an AudioTrack subclass
                 var groupTrack = newEvent.addGroupTrack();
-                result.debugLog.push("GroupTrack created: " + (groupTrack ? "YES" : "NO"));
+                result.debugLog.push("GroupTrack created via addGroupTrack: " + (groupTrack ? "YES" : "NO"));
 
                 if (!groupTrack) {
                     throw new Error("Failed to create group track");
                 }
+
+                // Explicitly add the track to the event's groupTracks relationship
+                newEvent.relationships.groupTracks.add(groupTrack);
+                result.debugLog.push("GroupTrack added to event relationships");
 
                 result.debugLog.push(dumpObjectStructure(groupTrack, "GroupTrack Structure", 1));
 
