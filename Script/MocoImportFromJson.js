@@ -295,16 +295,27 @@ function importEventsFromJson(data) {
                 if (entry.isMulti && entry.audioFilePaths.length > 1) {
                     result.debugLog.push("Creating MultiSound with " + entry.audioFilePaths.length + " files");
 
-                    // Create MultiSound manually without importing audio yet
-                    var multiSound = studio.project.create("MultiSound");
-                    result.debugLog.push("MultiSound created: " + (multiSound ? "YES" : "NO"));
+                    // Import first audio file to get length
+                    var firstAudioPath = normalizePath(entry.audioFilePaths[0]);
+                    result.debugLog.push("Importing first asset from: " + firstAudioPath);
+                    var firstAsset = studio.project.importAudioFile(firstAudioPath);
 
-                    // Add MultiSound to both GroupTrack and Timeline modules relationships
-                    groupTrack.relationships.modules.add(multiSound);
-                    newEvent.timeline.relationships.modules.add(multiSound);
-                    result.debugLog.push("MultiSound added to GroupTrack and Timeline modules");
+                    if (!firstAsset) {
+                        throw new Error("Failed to import first audio file");
+                    }
+                    result.debugLog.push("First asset imported: " + firstAsset.assetPath);
 
-                    // Import audio files and create SingleSounds
+                    // Create MultiSound on timeline using addSound
+                    // This creates a properly positioned sound module
+                    var multiSound = groupTrack.addSound(newEvent.timeline, "MultiSound", 0, firstAsset.length);
+                    result.debugLog.push("MultiSound created via addSound: " + (multiSound ? "YES" : "NO"));
+
+                    if (!multiSound) {
+                        throw new Error("Failed to create MultiSound");
+                    }
+
+                    // Clear the default sound that addSound might have created
+                    // and add all audio files as SingleSounds
                     var soundsAdded = 0;
                     var maxLength = 0;
                     for (var j = 0; j < entry.audioFilePaths.length; j++) {
@@ -315,7 +326,7 @@ function importEventsFromJson(data) {
                         result.debugLog.push("    Import: " + (asset ? "OK" : "FAILED"));
 
                         if (asset) {
-                            result.debugLog.push("    Asset assetPath: " + (asset.assetPath || "NONE"));
+                            result.debugLog.push("    Asset assetPath: " + asset.assetPath);
 
                             // Track longest audio file for MultiSound length
                             if (asset.length > maxLength) {
@@ -324,7 +335,7 @@ function importEventsFromJson(data) {
 
                             // Create SingleSound
                             var singleSound = studio.project.create("SingleSound");
-                            // Link audioFile via relationship (as shown in XML)
+                            // Link audioFile via relationship
                             singleSound.relationships.audioFile.add(asset);
                             // Add SingleSound to MultiSound's sounds collection
                             multiSound.relationships.sounds.add(singleSound);
@@ -346,17 +357,12 @@ function importEventsFromJson(data) {
                     result.debugLog.push("Asset imported: " + (asset ? "YES" : "NO"));
 
                     if (asset) {
-                        result.debugLog.push("Asset assetPath: " + (asset.assetPath || "NONE"));
+                        result.debugLog.push("Asset assetPath: " + asset.assetPath);
 
-                        // Create SingleSound manually
-                        var singleSound = studio.project.create("SingleSound");
+                        // Create SingleSound on timeline using addSound
+                        var singleSound = groupTrack.addSound(newEvent.timeline, "SingleSound", 0, asset.length);
                         singleSound.relationships.audioFile.add(asset);
-                        singleSound.length = asset.length;
-
-                        // Add SingleSound to both GroupTrack and Timeline modules relationships
-                        groupTrack.relationships.modules.add(singleSound);
-                        newEvent.timeline.relationships.modules.add(singleSound);
-                        result.debugLog.push("SingleSound created and added to GroupTrack and Timeline modules");
+                        result.debugLog.push("SingleSound created via addSound and linked to audio");
                     }
                 }
 
