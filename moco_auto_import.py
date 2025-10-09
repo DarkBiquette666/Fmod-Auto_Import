@@ -2574,6 +2574,10 @@ class MocoAutoImportGUI:
                     source = Path(source_path)
                     dest = dest_folder / source.name
 
+                    # Delete existing file if present to avoid conflicts
+                    if dest.exists():
+                        dest.unlink()
+
                     # Copy file
                     shutil.copy2(source, dest)
                     copied_paths.append(str(dest.as_posix()))
