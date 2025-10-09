@@ -284,6 +284,12 @@ function importEventsFromJson(data) {
 
                 result.debugLog.push(dumpObjectStructure(groupTrack, "GroupTrack Structure", 1));
 
+                // Give the track a name (appears as "Audio 1" in UI)
+                if (groupTrack.mixerGroup) {
+                    groupTrack.mixerGroup.name = "Audio 1";
+                    result.debugLog.push("GroupTrack name set: Audio 1");
+                }
+
                 // Assign bus to group track's mixer group
                 if (bus && groupTrack.mixerGroup) {
                     groupTrack.mixerGroup.output = bus;
