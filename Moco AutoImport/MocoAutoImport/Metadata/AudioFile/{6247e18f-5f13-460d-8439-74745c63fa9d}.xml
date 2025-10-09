@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<objects serializationModel="Studio.02.02.00">
-	<object class="AudioFile" id="{6247e18f-5f13-460d-8439-74745c63fa9d}">
-		<property name="assetPath">
-			<value>Characters/Cat Generic/Cat_Generic_Despawn_03.wav</value>
-		</property>
-	</object>
-</objects>
