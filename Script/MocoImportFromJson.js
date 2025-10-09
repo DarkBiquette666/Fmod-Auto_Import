@@ -257,6 +257,7 @@ function importEventsFromJson(data) {
             var newEvent = studio.project.create("Event");
             newEvent.name = entry.newEventName;
             newEvent.folder = destFolder;
+            newEvent.outputFormat = 0;  // Required property for valid events
             result.debugLog.push("Event created: " + newEvent.name);
 
             // Assign event to bank

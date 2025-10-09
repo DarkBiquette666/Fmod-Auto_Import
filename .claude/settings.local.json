@@ -20,7 +20,9 @@
       "Bash(git remote set-url:*)",
       "Bash(git push:*)",
       "Bash(git revert:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(wc:*)",
+      "Bash(diff:*)"
     ],
     "deny": [],
     "ask": []
