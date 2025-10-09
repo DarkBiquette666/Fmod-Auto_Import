@@ -341,8 +341,9 @@ function importEventsFromJson(data) {
 
                             // Create SingleSound
                             var singleSound = studio.project.create("SingleSound");
-                            // Link audioFile via relationship
-                            singleSound.relationships.audioFile.add(asset);
+                            // Link audioFile via property
+                            singleSound.audioFile = asset;
+                            singleSound.length = asset.length;
                             // Add SingleSound to MultiSound's sounds collection
                             multiSound.relationships.sounds.add(singleSound);
                             soundsAdded++;
@@ -367,7 +368,8 @@ function importEventsFromJson(data) {
 
                         // Create SingleSound on timeline using addSound
                         var singleSound = groupTrack.addSound(newEvent.timeline, "SingleSound", 0, asset.length);
-                        singleSound.relationships.audioFile.add(asset);
+                        singleSound.audioFile = asset;  // Use property, not relationship
+                        singleSound.length = asset.length;
                         result.debugLog.push("SingleSound created via addSound and linked to audio");
                     }
                 }
