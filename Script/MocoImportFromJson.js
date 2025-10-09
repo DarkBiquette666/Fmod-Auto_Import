@@ -295,18 +295,8 @@ function importEventsFromJson(data) {
                 if (entry.isMulti && entry.audioFilePaths.length > 1) {
                     result.debugLog.push("Creating MultiSound with " + entry.audioFilePaths.length + " files");
 
-                    // Multiple audio files -> MultiSound with SingleSounds
-                    var firstAudioPath = normalizePath(entry.audioFilePaths[0]);
-                    result.debugLog.push("Importing first asset from: " + firstAudioPath);
-
-                    var firstAsset = studio.project.importAudioFile(firstAudioPath);
-                    result.debugLog.push("First asset imported: " + (firstAsset ? "YES" : "NO"));
-
-                    if (firstAsset) {
-                        result.debugLog.push("First asset assetPath: " + (firstAsset.assetPath || "NONE"));
-                    }
-
-                    var multiSound = groupTrack.addSound(newEvent.timeline, "MultiSound", 0, firstAsset.length);
+                    // Create MultiSound manually without importing audio yet
+                    var multiSound = studio.project.create("MultiSound");
                     result.debugLog.push("MultiSound created: " + (multiSound ? "YES" : "NO"));
 
                     // Add MultiSound to both GroupTrack and Timeline modules relationships
@@ -314,8 +304,9 @@ function importEventsFromJson(data) {
                     newEvent.timeline.relationships.modules.add(multiSound);
                     result.debugLog.push("MultiSound added to GroupTrack and Timeline modules");
 
-                    // Create SingleSounds and add to MultiSound via relationships
+                    // Import audio files and create SingleSounds
                     var soundsAdded = 0;
+                    var maxLength = 0;
                     for (var j = 0; j < entry.audioFilePaths.length; j++) {
                         var audioPath = normalizePath(entry.audioFilePaths[j]);
                         result.debugLog.push("  Importing audio " + (j + 1) + ": " + audioPath);
@@ -325,6 +316,11 @@ function importEventsFromJson(data) {
 
                         if (asset) {
                             result.debugLog.push("    Asset assetPath: " + (asset.assetPath || "NONE"));
+
+                            // Track longest audio file for MultiSound length
+                            if (asset.length > maxLength) {
+                                maxLength = asset.length;
+                            }
 
                             // Create SingleSound
                             var singleSound = studio.project.create("SingleSound");
@@ -337,8 +333,8 @@ function importEventsFromJson(data) {
                         }
                     }
 
-                    multiSound.length = firstAsset.length;
-                    result.debugLog.push("MultiSound final sounds count: " + soundsAdded);
+                    multiSound.length = maxLength;
+                    result.debugLog.push("MultiSound final sounds count: " + soundsAdded + ", length: " + maxLength);
                 } else if (entry.audioFilePaths && entry.audioFilePaths.length === 1) {
                     result.debugLog.push("Creating SingleSound");
 
@@ -352,7 +348,8 @@ function importEventsFromJson(data) {
                     if (asset) {
                         result.debugLog.push("Asset assetPath: " + (asset.assetPath || "NONE"));
 
-                        var singleSound = groupTrack.addSound(newEvent.timeline, "SingleSound", 0, asset.length);
+                        // Create SingleSound manually
+                        var singleSound = studio.project.create("SingleSound");
                         singleSound.relationships.audioFile.add(asset);
                         singleSound.length = asset.length;
 

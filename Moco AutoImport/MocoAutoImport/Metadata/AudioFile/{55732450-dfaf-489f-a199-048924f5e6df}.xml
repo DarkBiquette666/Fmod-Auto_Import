@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<objects serializationModel="Studio.02.02.00">
-	<object class="AudioFile" id="{55732450-dfaf-489f-a199-048924f5e6df}">
-		<property name="assetPath">
-			<value>Characters/Cat Generic/Cat_Generic_Run_VO_14.wav</value>
-		</property>
-	</object>
-</objects>
