@@ -302,28 +302,8 @@ function importEventsFromJson(data) {
                 if (entry.isMulti && entry.audioFilePaths.length > 1) {
                     result.debugLog.push("Creating MultiSound with " + entry.audioFilePaths.length + " files");
 
-                    // Import first audio file to get length
-                    var firstAudioPath = normalizePath(entry.audioFilePaths[0]);
-                    result.debugLog.push("Importing first asset from: " + firstAudioPath);
-                    var firstAsset = studio.project.importAudioFile(firstAudioPath);
-
-                    if (!firstAsset) {
-                        throw new Error("Failed to import first audio file");
-                    }
-                    result.debugLog.push("First asset imported: " + firstAsset.assetPath);
-
-                    // Create MultiSound on timeline using addSound
-                    // This creates a properly positioned sound module
-                    var multiSound = groupTrack.addSound(newEvent.timeline, "MultiSound", 0, firstAsset.length);
-                    result.debugLog.push("MultiSound created via addSound: " + (multiSound ? "YES" : "NO"));
-
-                    if (!multiSound) {
-                        throw new Error("Failed to create MultiSound");
-                    }
-
-                    // Clear the default sound that addSound might have created
-                    // and add all audio files as SingleSounds
-                    var soundsAdded = 0;
+                    // First pass: import all audio files and find max length
+                    var assets = [];
                     var maxLength = 0;
                     for (var j = 0; j < entry.audioFilePaths.length; j++) {
                         var audioPath = normalizePath(entry.audioFilePaths[j]);
@@ -334,24 +314,42 @@ function importEventsFromJson(data) {
 
                         if (asset) {
                             result.debugLog.push("    Asset assetPath: " + asset.assetPath);
+                            assets.push(asset);
 
                             // Track longest audio file for MultiSound length
                             if (asset.length > maxLength) {
                                 maxLength = asset.length;
                             }
-
-                            // Create SingleSound
-                            var singleSound = studio.project.create("SingleSound");
-                            // Link audioFile via property
-                            singleSound.audioFile = asset;
-                            // Assign MultiSound as owner
-                            singleSound.owner = multiSound;
-                            soundsAdded++;
-                            result.debugLog.push("    SingleSound added to MultiSound via owner property");
                         }
                     }
 
-                    multiSound.length = maxLength;
+                    if (assets.length === 0) {
+                        throw new Error("No audio files were imported successfully");
+                    }
+
+                    result.debugLog.push("Max audio length: " + maxLength);
+
+                    // Create MultiSound on timeline with correct length from the start
+                    var multiSound = groupTrack.addSound(newEvent.timeline, "MultiSound", 0, maxLength);
+                    result.debugLog.push("MultiSound created via addSound: " + (multiSound ? "YES" : "NO"));
+
+                    if (!multiSound) {
+                        throw new Error("Failed to create MultiSound");
+                    }
+
+                    // Add all audio files as SingleSounds
+                    var soundsAdded = 0;
+                    for (var k = 0; k < assets.length; k++) {
+                        // Create SingleSound
+                        var singleSound = studio.project.create("SingleSound");
+                        // Link audioFile via property
+                        singleSound.audioFile = assets[k];
+                        // Assign MultiSound as owner
+                        singleSound.owner = multiSound;
+                        soundsAdded++;
+                        result.debugLog.push("    SingleSound " + (k + 1) + " added to MultiSound via owner property");
+                    }
+
                     result.debugLog.push("MultiSound final sounds count: " + soundsAdded + ", length: " + maxLength);
                 } else if (entry.audioFilePaths && entry.audioFilePaths.length === 1) {
                     result.debugLog.push("Creating SingleSound");

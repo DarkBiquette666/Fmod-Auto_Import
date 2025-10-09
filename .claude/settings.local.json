@@ -22,7 +22,8 @@
       "Bash(git revert:*)",
       "Bash(xargs:*)",
       "Bash(wc:*)",
-      "Bash(diff:*)"
+      "Bash(diff:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
