@@ -275,26 +275,30 @@ function importEventsFromJson(data) {
 
             // Import and assign audio files
             if (entry.audioFilePaths && entry.audioFilePaths.length > 0) {
-                // Add audio track to event using addGroupTrack which creates an AudioTrack subclass
-                var groupTrack = newEvent.addGroupTrack();
-                result.debugLog.push("GroupTrack created via addGroupTrack: " + (groupTrack ? "YES" : "NO"));
+                // Try manual GroupTrack creation instead of addGroupTrack
+                var groupTrack = studio.project.create("GroupTrack");
+                result.debugLog.push("GroupTrack created manually: " + (groupTrack ? "YES" : "NO"));
 
                 if (!groupTrack) {
                     throw new Error("Failed to create group track");
                 }
 
+                // Create and assign mixer group
+                var mixerGroup = studio.project.create("EventMixerGroup");
+                mixerGroup.name = "Audio 1";
+                groupTrack.mixerGroup = mixerGroup;
+                result.debugLog.push("EventMixerGroup created and assigned to GroupTrack");
+
+                // Add groupTrack to event
+                newEvent.relationships.groupTracks.add(groupTrack);
+                result.debugLog.push("GroupTrack added to event relationships");
+
                 result.debugLog.push(dumpObjectStructure(groupTrack, "GroupTrack Structure", 1));
 
-                // Give the track a name (appears as "Audio 1" in UI)
-                if (groupTrack.mixerGroup) {
-                    groupTrack.mixerGroup.name = "Audio 1";
-                    result.debugLog.push("GroupTrack name set: Audio 1");
-                }
-
-                // Assign bus to group track's mixer group
-                if (bus && groupTrack.mixerGroup) {
-                    groupTrack.mixerGroup.output = bus;
-                    result.debugLog.push("Bus assigned to GroupTrack: " + bus.name);
+                // Assign bus to mixer group
+                if (bus) {
+                    mixerGroup.output = bus;
+                    result.debugLog.push("Bus assigned to MixerGroup: " + bus.name);
                 }
 
                 // Import audio files and create sounds
@@ -329,13 +333,22 @@ function importEventsFromJson(data) {
 
                     result.debugLog.push("Max audio length: " + maxLength);
 
-                    // Create MultiSound on timeline with correct length from the start
-                    var multiSound = groupTrack.addSound(newEvent.timeline, "MultiSound", 0, maxLength);
-                    result.debugLog.push("MultiSound created via addSound: " + (multiSound ? "YES" : "NO"));
+                    // Create MultiSound manually
+                    var multiSound = studio.project.create("MultiSound");
+                    multiSound.length = maxLength;
+                    result.debugLog.push("MultiSound created manually: " + (multiSound ? "YES" : "NO"));
 
                     if (!multiSound) {
                         throw new Error("Failed to create MultiSound");
                     }
+
+                    // Add MultiSound to GroupTrack modules
+                    groupTrack.relationships.modules.add(multiSound);
+                    result.debugLog.push("MultiSound added to GroupTrack modules");
+
+                    // Add MultiSound to Timeline modules
+                    newEvent.timeline.relationships.modules.add(multiSound);
+                    result.debugLog.push("MultiSound added to Timeline modules");
 
                     // Add all audio files as SingleSounds
                     var soundsAdded = 0;
@@ -364,11 +377,19 @@ function importEventsFromJson(data) {
                     if (asset) {
                         result.debugLog.push("Asset assetPath: " + asset.assetPath);
 
-                        // Create SingleSound on timeline using addSound
-                        var singleSound = groupTrack.addSound(newEvent.timeline, "SingleSound", 0, asset.length);
-                        singleSound.audioFile = asset;  // Use property, not relationship
+                        // Create SingleSound manually
+                        var singleSound = studio.project.create("SingleSound");
+                        singleSound.audioFile = asset;
                         singleSound.length = asset.length;
-                        result.debugLog.push("SingleSound created via addSound and linked to audio");
+                        result.debugLog.push("SingleSound created manually");
+
+                        // Add SingleSound to GroupTrack modules
+                        groupTrack.relationships.modules.add(singleSound);
+                        result.debugLog.push("SingleSound added to GroupTrack modules");
+
+                        // Add SingleSound to Timeline modules
+                        newEvent.timeline.relationships.modules.add(singleSound);
+                        result.debugLog.push("SingleSound added to Timeline modules and linked to audio");
                     }
                 }
 
