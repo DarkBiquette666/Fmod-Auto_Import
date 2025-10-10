@@ -429,11 +429,19 @@ function importEventsFromJson(data) {
 // Entry point
 function run() {
     if (!studio.arguments || studio.arguments.length === 0) {
-        studio.system.message("ERROR: No JSON path provided to MocoImportFromJson.js");
+        // No JSON path provided - script loaded at startup, nothing to import
         return;
     }
 
     var jsonPath = normalizePath(studio.arguments[0]);
+
+    // Check if the JSON file exists before attempting to read it
+    var file = studio.system.getFile(jsonPath);
+    if (!file.exists()) {
+        // JSON doesn't exist (probably already processed) - silent return
+        return;
+    }
+
     var payload = null;
 
     try {
@@ -483,6 +491,21 @@ function run() {
     if (result.messages.length > 0) {
         studio.system.message("Messages: " + result.messages.join("; "));
     }
+
+    // Delete the JSON file after successful import to prevent re-import on next reload
+    if (result.imported > 0 || result.failed > 0) {
+        try {
+            var file = studio.system.getFile(jsonPath);
+            if (file.exists()) {
+                file.deleteFile();
+                studio.system.message("Import JSON deleted: " + jsonPath);
+            }
+        } catch (deleteError) {
+            studio.system.message("Warning: Could not delete import JSON: " + deleteError.toString());
+        }
+    }
 }
 
+// Only run if explicitly called (not on auto-load)
+// The script should be executed manually by Python via command line
 run();

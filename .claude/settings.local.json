@@ -29,7 +29,9 @@
       "Bash(do echo \"=== $f ===\")",
       "Bash(grep:*)",
       "Bash(done)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(move:*)",
+      "Read(//c/Users/antho/AppData/Local/FMOD Studio/Scripts/**)"
     ],
     "deny": [],
     "ask": []

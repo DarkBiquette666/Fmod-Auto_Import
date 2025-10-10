@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="AudioFile" id="{86971ed7-f1e5-464a-825b-41e66d54a9ec}">
+		<property name="assetPath">
+			<value>Characters/Mechaflora/Mechaflora_Weak_Ranged_Run_01.wav</value>
+		</property>
+	</object>
+</objects>
