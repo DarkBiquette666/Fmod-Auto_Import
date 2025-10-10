@@ -10,6 +10,9 @@
 		<relationship name="panner">
 			<destination>{d3fc0d5f-ddf4-4347-9232-f56831a6ed49}</destination>
 		</relationship>
+		<relationship name="output">
+			<destination>{616563eb-61b3-4024-a57a-6b9d3b7cbc8f}</destination>
+		</relationship>
 	</object>
 	<object class="MixerBusEffectChain" id="{f4876b4e-4e8e-4a9a-ad74-418f6eb20ab1}">
 		<relationship name="effects">

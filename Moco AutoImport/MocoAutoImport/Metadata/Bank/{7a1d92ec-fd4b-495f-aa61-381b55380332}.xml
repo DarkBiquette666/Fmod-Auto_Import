@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="Bank" id="{7a1d92ec-fd4b-495f-aa61-381b55380332}">
+		<property name="name">
+			<value>Mechaflora</value>
+		</property>
+		<relationship name="folder">
+			<destination>{b069c8c2-8311-4d10-81eb-0d16506e5478}</destination>
+		</relationship>
+	</object>
+</objects>

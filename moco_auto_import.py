@@ -210,6 +210,12 @@ class FMODProject:
 
         return buses
 
+    def _get_master_bus_id(self) -> Optional[str]:
+        """Get the master bus ID"""
+        for bus_id, bus_info in self.buses.items():
+            if bus_info['parent'] is None:  # Master bus has no parent
+                return bus_id
+        return None
 
     def _load_asset_folders(self) -> Dict[str, Dict]:
         """Load all asset folders from the Asset directory"""
@@ -359,6 +365,11 @@ class FMODProject:
         dest_panner.text = panner_id
 
         # Add output (parent relationship)
+        # If no parent specified, route to Master Bus
+        if not parent_id:
+            # Get master bus from Mixer.xml
+            parent_id = self._get_master_bus_id()
+
         if parent_id:
             rel_output = ET.SubElement(obj, 'relationship', name='output')
             dest_output = ET.SubElement(rel_output, 'destination')
