@@ -374,11 +374,6 @@ function importEventsFromJson(data) {
                 result.debugLog.push(dumpObjectStructure(newEvent, "Final Event Structure", 1));
             }
 
-            // Try to force FMOD to validate/refresh the event
-            if (newEvent.isValid) {
-                result.debugLog.push("Event isValid: " + newEvent.isValid());
-            }
-
             result.imported += 1;
             result.debugLog.push("SUCCESS: Event imported");
 
