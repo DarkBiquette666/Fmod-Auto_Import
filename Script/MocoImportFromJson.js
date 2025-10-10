@@ -235,13 +235,13 @@ function importEventsFromJson(data) {
     result.debugLog.push("Project: " + data.projectPath);
     result.debugLog.push("Assets folder: " + assetsPath);
 
-    // Force FMOD to rescan assets folder for new files/folders
+    // Force FMOD to build/refresh to detect new asset folders
     try {
-        result.debugLog.push("Refreshing asset folder...");
-        studio.project.workspace.refreshAssetFolder();
-        result.debugLog.push("Asset folder refreshed successfully");
-    } catch (refreshError) {
-        result.debugLog.push("Warning: Could not refresh asset folder: " + refreshError.toString());
+        result.debugLog.push("Building project to detect new assets...");
+        studio.project.build();
+        result.debugLog.push("Project build completed");
+    } catch (buildError) {
+        result.debugLog.push("Warning: Could not build project: " + buildError.toString());
     }
 
     result.debugLog.push("Bank: " + (bank ? bank.name : "NONE"));
