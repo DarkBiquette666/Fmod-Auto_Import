@@ -291,10 +291,10 @@ function importEventsFromJson(data) {
                     result.debugLog.push("GroupTrack name set: Audio 1");
                 }
 
-                // Assign bus to group track's mixer group
-                if (bus && groupTrack.mixerGroup) {
-                    groupTrack.mixerGroup.output = bus;
-                    result.debugLog.push("Bus assigned to GroupTrack: " + bus.name);
+                // Assign event output to bus (not the track's mixer group!)
+                if (bus && newEvent.mixerInput) {
+                    newEvent.mixerInput.output = bus;
+                    result.debugLog.push("Event output assigned to bus: " + bus.name);
                 }
 
                 // Import audio files and create sounds
