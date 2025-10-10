@@ -392,6 +392,17 @@ function importEventsFromJson(data) {
     result.debugLog.push("\n=== IMPORT SESSION END ===");
     result.debugLog.push("Imported: " + result.imported + " | Failed: " + result.failed);
 
+    // Force FMOD to validate/rebuild to make tracks visible in UI
+    if (result.imported > 0) {
+        try {
+            result.debugLog.push("Triggering project build to refresh UI...");
+            studio.project.build();
+            result.debugLog.push("Project build triggered successfully");
+        } catch (buildError) {
+            result.debugLog.push("Warning: Could not trigger build: " + buildError.toString());
+        }
+    }
+
     // Save project
     try {
         studio.project.save();
