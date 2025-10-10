@@ -22,7 +22,7 @@ function writeTextFile(path, text) {
 }
 
 // Find event folder by path string (e.g., "Events/Characters/Cat")
-function findEventFolderByPath(pathStr) {
+function findEventFolderByPath(pathStr, createIfMissing) {
     var master = studio.project.workspace.masterEventFolder;
     if (!pathStr || !pathStr.length) {
         return master;
@@ -47,7 +47,15 @@ function findEventFolderByPath(pathStr) {
         }
 
         if (!found) {
-            return null;
+            if (createIfMissing) {
+                // Create the missing folder
+                var newFolder = studio.project.create("EventFolder");
+                newFolder.name = parts[i];
+                newFolder.folder = current;
+                current = newFolder;
+            } else {
+                return null;
+            }
         }
     }
 
@@ -235,13 +243,13 @@ function importEventsFromJson(data) {
         result.debugLog.push("\n--- Event " + (i + 1) + "/" + events.length + ": " + entry.newEventName + " ---");
 
         try {
-            // Find destination folder
+            // Find or create destination folder
             var destFolderPath = entry.destFolderPath || data.defaultDestFolderPath || "";
-            var destFolder = findEventFolderByPath(destFolderPath);
+            var destFolder = findEventFolderByPath(destFolderPath, true);
             if (!destFolder) {
-                throw new Error("Destination folder not found: " + destFolderPath);
+                throw new Error("Failed to create destination folder: " + destFolderPath);
             }
-            result.debugLog.push("Dest folder: " + destFolderPath + " - FOUND");
+            result.debugLog.push("Dest folder: " + destFolderPath + " - OK");
 
             // Find template event
             var templateEvent = null;

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <objects serializationModel="Studio.02.02.00">
-	<object class="EncodableAsset" id="{41ae5be1-4aa8-4f4f-b18f-2ca7898bea63}">
+	<object class="EncodableAsset" id="{882ea4c0-91d4-4641-9aed-8e5393983ff4}">
 		<property name="assetPath">
-			<value>Characters/Cat Generic/</value>
+			<value>Characters/Mechaflora_Weak_Ranged/</value>
 		</property>
 		<relationship name="masterAssetFolder">
 			<destination>{cb173a8f-4773-40ed-962f-f182e250243d}</destination>
