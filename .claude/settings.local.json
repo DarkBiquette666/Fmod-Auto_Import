@@ -23,7 +23,8 @@
       "Bash(xargs:*)",
       "Bash(wc:*)",
       "Bash(diff:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

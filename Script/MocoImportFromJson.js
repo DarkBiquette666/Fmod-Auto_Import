@@ -234,6 +234,16 @@ function importEventsFromJson(data) {
     result.debugLog.push("=== IMPORT SESSION START ===");
     result.debugLog.push("Project: " + data.projectPath);
     result.debugLog.push("Assets folder: " + assetsPath);
+
+    // Force FMOD to rescan assets folder for new files/folders
+    try {
+        result.debugLog.push("Refreshing asset folder...");
+        studio.project.workspace.refreshAssetFolder();
+        result.debugLog.push("Asset folder refreshed successfully");
+    } catch (refreshError) {
+        result.debugLog.push("Warning: Could not refresh asset folder: " + refreshError.toString());
+    }
+
     result.debugLog.push("Bank: " + (bank ? bank.name : "NONE"));
     result.debugLog.push("Bus: " + (bus ? bus.name : "NONE"));
     result.debugLog.push("Events to import: " + events.length);
