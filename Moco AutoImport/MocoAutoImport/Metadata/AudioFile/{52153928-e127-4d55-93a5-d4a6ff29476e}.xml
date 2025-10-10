@@ -4,5 +4,8 @@
 		<property name="assetPath">
 			<value>Characters/Cat Generic/Cat_Generic_Run_VO_13.wav</value>
 		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{cb173a8f-4773-40ed-962f-f182e250243d}</destination>
+		</relationship>
 	</object>
 </objects>
