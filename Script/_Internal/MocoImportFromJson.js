@@ -234,16 +234,6 @@ function importEventsFromJson(data) {
     result.debugLog.push("=== IMPORT SESSION START ===");
     result.debugLog.push("Project: " + data.projectPath);
     result.debugLog.push("Assets folder: " + assetsPath);
-
-    // Force FMOD to build/refresh to detect new asset folders
-    try {
-        result.debugLog.push("Building project to detect new assets...");
-        studio.project.build();
-        result.debugLog.push("Project build completed");
-    } catch (buildError) {
-        result.debugLog.push("Warning: Could not build project: " + buildError.toString());
-    }
-
     result.debugLog.push("Bank: " + (bank ? bank.name : "NONE"));
     result.debugLog.push("Bus: " + (bus ? bus.name : "NONE"));
     result.debugLog.push("Events to import: " + events.length);
@@ -405,17 +395,6 @@ function importEventsFromJson(data) {
     result.debugLog.push("\n=== IMPORT SESSION END ===");
     result.debugLog.push("Imported: " + result.imported + " | Failed: " + result.failed);
 
-    // Force FMOD to validate/rebuild to make tracks visible in UI
-    if (result.imported > 0) {
-        try {
-            result.debugLog.push("Triggering project build to refresh UI...");
-            studio.project.build();
-            result.debugLog.push("Project build triggered successfully");
-        } catch (buildError) {
-            result.debugLog.push("Warning: Could not trigger build: " + buildError.toString());
-        }
-    }
-
     // Save project
     try {
         studio.project.save();
@@ -506,6 +485,109 @@ function run() {
     }
 }
 
-// Only run if explicitly called (not on auto-load)
-// The script should be executed manually by Python via command line
+// Find the import JSON file in the project directory
+function findImportJson() {
+    var projectPath = studio.project.filePath;
+    if (!projectPath) {
+        studio.system.message("No project opened");
+        return null;
+    }
+
+    var projectDir = projectPath.substring(0, projectPath.lastIndexOf('/'));
+    var jsonPath = projectDir + "/moco_import.json";
+
+    var file = studio.system.getFile(jsonPath);
+    if (file.exists()) {
+        return jsonPath;
+    }
+
+    return null;
+}
+
+// Entry point - called from command line with JSON path as argument
+function run() {
+    // Check if MOCO_JSON_PATH is defined (set by wrapper script)
+    var jsonPath = null;
+    if (typeof MOCO_JSON_PATH !== 'undefined') {
+        jsonPath = normalizePath(MOCO_JSON_PATH);
+    } else if (studio.arguments && studio.arguments.length > 0) {
+        jsonPath = normalizePath(studio.arguments[0]);
+    }
+
+    if (!jsonPath) {
+        console.log("ERROR: No JSON path provided");
+        return;
+    }
+
+    // Check if file exists
+    var file = studio.system.getFile(jsonPath);
+    if (!file.exists()) {
+        console.log("ERROR: Import JSON not found: " + jsonPath);
+        return;
+    }
+
+    var payload = null;
+
+    try {
+        payload = JSON.parse(readTextFile(jsonPath));
+    } catch (error) {
+        console.log("ERROR: Failed to read import JSON: " + error.toString());
+        return;
+    }
+
+    console.log("Starting import from: " + jsonPath);
+    var result = importEventsFromJson(payload);
+
+    // Add skipped events to messages
+    if (payload.skippedEvents && payload.skippedEvents.length) {
+        for (var i = 0; i < payload.skippedEvents.length; i++) {
+            var skipped = payload.skippedEvents[i];
+            result.messages.push('Skipped: ' + skipped[0] + ' - ' + skipped[1]);
+        }
+    }
+
+    // Write result file
+    if (payload.resultPath) {
+        try {
+            writeTextFile(
+                normalizePath(payload.resultPath),
+                JSON.stringify(result, null, 2)
+            );
+            console.log("Result written to: " + payload.resultPath);
+        } catch (error) {
+            console.log("ERROR: Failed to write result file: " + error.toString());
+        }
+    }
+
+    // Write debug log to separate file
+    if (payload.resultPath) {
+        try {
+            var debugPath = normalizePath(payload.resultPath).replace(".json", "_debug.txt");
+            writeTextFile(debugPath, result.debugLog.join("\n"));
+            console.log("Debug log written to: " + debugPath);
+        } catch (error) {
+            console.log("ERROR: Failed to write debug file: " + error.toString());
+        }
+    }
+
+    // Print summary
+    console.log("Moco Import Complete: " + result.imported + " imported, " + result.failed + " failed");
+
+    if (result.messages.length > 0) {
+        console.log("Messages: " + result.messages.join("; "));
+    }
+
+    // Delete the JSON file after import to prevent accidental re-import
+    try {
+        var file = studio.system.getFile(jsonPath);
+        if (file.exists()) {
+            file.deleteFile();
+            console.log("Import JSON deleted: " + jsonPath);
+        }
+    } catch (deleteError) {
+        console.log("Warning: Could not delete import JSON: " + deleteError.toString());
+    }
+}
+
+// Execute immediately when loaded
 run();

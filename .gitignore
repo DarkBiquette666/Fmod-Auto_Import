@@ -17,6 +17,10 @@ Build/
 *.backup
 *.broken
 *.codex_backup
+moco_import*.json
+_temp_import_wrapper.js
+import_result*.json
+import_result*_debug.txt
 
 # IDE
 .vscode/

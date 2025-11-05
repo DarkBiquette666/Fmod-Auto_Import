@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="AudioFile" id="{66db5e42-4621-462c-811f-30e5c3249044}">
+		<property name="assetPath">
+			<value>Characters/Mecha Weak Ranged/Mechaflora_Weak_Ranged_Idle_A_08.wav</value>
+		</property>
+		<property name="frequencyInKHz">
+			<value>48</value>
+		</property>
+		<property name="channelCount">
+			<value>1</value>
+		</property>
+		<property name="length">
+			<value>0.0065208333333333333</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{cb173a8f-4773-40ed-962f-f182e250243d}</destination>
+		</relationship>
+	</object>
+</objects>
