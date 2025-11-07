@@ -1035,7 +1035,7 @@ class MocoAutoImportGUI:
         orphan_media_frame = ttk.Frame(orphans_frame)
         orphan_media_frame.grid(row=0, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(5, 0))
 
-        ttk.Label(orphan_media_frame, text="Orphan Media Files (not assigned to events)").grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
+        ttk.Label(orphan_media_frame, text="Orphan Media Files (Drag to assign, or Right-click)").grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
 
         self.orphan_media_list = tk.Listbox(orphan_media_frame, height=8, selectmode=tk.EXTENDED)
         self.orphan_media_list.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -1049,13 +1049,25 @@ class MocoAutoImportGUI:
         self.orphan_media_list.bind('<Button-3>', self._show_orphan_media_context_menu)
 
         # Drag & Drop support for orphan media
-        self.orphan_media_list.bind('<ButtonPress-1>', self._on_drag_start)
+        # Use ButtonPress-1 to capture initial position, then detect drag in Motion
+        self.orphan_media_list.bind('<ButtonPress-1>', self._on_listbox_press)
         self.orphan_media_list.bind('<B1-Motion>', self._on_drag_motion)
-        self.preview_tree.bind('<ButtonRelease-1>', self._on_drop)
-        self.orphan_events_list.bind('<ButtonRelease-1>', self._on_drop_orphan_event)
+        self.orphan_media_list.bind('<ButtonRelease-1>', self._on_listbox_release)
+
+        # Drop targets
+        self.preview_tree.bind('<Enter>', lambda e: self._set_drop_target('preview'))
+        self.orphan_events_list.bind('<Enter>', lambda e: self._set_drop_target('orphan'))
 
         # Store drag data
-        self._drag_data = {'items': [], 'x': 0, 'y': 0}
+        self._drag_data = {
+            'items': [],
+            'indices': [],
+            'start_x': 0,
+            'start_y': 0,
+            'dragging': False,
+            'drop_target': None
+        }
+        self._drag_threshold = 5  # pixels to move before starting drag
 
         orphan_media_frame.columnconfigure(0, weight=1)
         orphan_media_frame.rowconfigure(1, weight=1)
@@ -2553,33 +2565,104 @@ class MocoAutoImportGUI:
                     self.orphan_events_list.delete(i)
                     break
 
-    def _on_drag_start(self, event):
-        """Start dragging orphan media files"""
-        # Get selected items
-        selected_indices = self.orphan_media_list.curselection()
-        if not selected_indices:
-            return
+    def _set_drop_target(self, target):
+        """Set the current drop target"""
+        if self._drag_data['dragging']:
+            self._drag_data['drop_target'] = target
 
-        # Store selected media files
-        self._drag_data['items'] = [self.orphan_media_list.get(idx) for idx in selected_indices]
-        self._drag_data['indices'] = list(selected_indices)
-        self._drag_data['x'] = event.x
-        self._drag_data['y'] = event.y
+    def _on_listbox_press(self, event):
+        """Handle initial press on listbox - store position and selection"""
+        # Store initial position
+        self._drag_data['start_x'] = event.x
+        self._drag_data['start_y'] = event.y
+        self._drag_data['dragging'] = False
+
+        # Allow normal selection behavior
+        # Tkinter will handle the selection automatically
 
     def _on_drag_motion(self, event):
-        """Handle drag motion (optional visual feedback)"""
-        # Could add visual feedback here if needed
-        pass
+        """Handle drag motion - start drag if moved beyond threshold"""
+        if self._drag_data['dragging']:
+            # Already dragging, update drop target based on cursor position
+            return
 
-    def _on_drop(self, event):
+        # Check if moved beyond threshold
+        dx = abs(event.x - self._drag_data['start_x'])
+        dy = abs(event.y - self._drag_data['start_y'])
+
+        if dx > self._drag_threshold or dy > self._drag_threshold:
+            # Start dragging
+            selected_indices = self.orphan_media_list.curselection()
+            if not selected_indices:
+                return
+
+            # Store selected media files
+            self._drag_data['items'] = [self.orphan_media_list.get(idx) for idx in selected_indices]
+            self._drag_data['indices'] = list(selected_indices)
+            self._drag_data['dragging'] = True
+
+            # Change cursor to indicate dragging
+            self.orphan_media_list.config(cursor='hand2')
+
+    def _on_listbox_release(self, event):
+        """Handle release - perform drop if dragging, otherwise allow normal selection"""
+        if not self._drag_data['dragging']:
+            # Not dragging, allow normal selection behavior
+            return
+
+        # Restore cursor
+        self.orphan_media_list.config(cursor='')
+
+        # Determine drop location based on cursor position
+        # Convert event coordinates to screen coordinates
+        x_root = event.x_root
+        y_root = event.y_root
+
+        # Check if over preview tree
+        try:
+            preview_x = self.preview_tree.winfo_rootx()
+            preview_y = self.preview_tree.winfo_rooty()
+            preview_width = self.preview_tree.winfo_width()
+            preview_height = self.preview_tree.winfo_height()
+
+            if (preview_x <= x_root <= preview_x + preview_width and
+                preview_y <= y_root <= preview_y + preview_height):
+                # Drop on preview tree
+                # Convert to widget-relative coordinates
+                widget_y = y_root - preview_y
+                self._drop_on_preview(widget_y)
+                return
+        except:
+            pass
+
+        # Check if over orphan events list
+        try:
+            orphan_x = self.orphan_events_list.winfo_rootx()
+            orphan_y = self.orphan_events_list.winfo_rooty()
+            orphan_width = self.orphan_events_list.winfo_width()
+            orphan_height = self.orphan_events_list.winfo_height()
+
+            if (orphan_x <= x_root <= orphan_x + orphan_width and
+                orphan_y <= y_root <= orphan_y + orphan_height):
+                # Drop on orphan events
+                widget_y = y_root - orphan_y
+                self._drop_on_orphan_event(widget_y)
+                return
+        except:
+            pass
+
+        # Not over a valid drop target, cancel drag
+        self._clear_drag_data()
+
+    def _drop_on_preview(self, widget_y):
         """Drop orphan media onto preview tree event"""
         if not self._drag_data['items']:
             return
 
         # Identify the item under the cursor
-        item = self.preview_tree.identify_row(event.y)
+        item = self.preview_tree.identify_row(widget_y)
         if not item:
-            self._drag_data['items'] = []
+            self._clear_drag_data()
             return
 
         # Get the top-level parent (event item)
@@ -2606,22 +2689,20 @@ class MocoAutoImportGUI:
                     self.orphan_events_list.delete(i)
                     break
 
-        # Clear drag data
-        self._drag_data['items'] = []
+        self._clear_drag_data()
 
-    def _on_drop_orphan_event(self, event):
+    def _drop_on_orphan_event(self, widget_y):
         """Drop orphan media onto orphan event"""
         if not self._drag_data['items']:
             return
 
         # Get the event under cursor
-        widget = event.widget
-        index = widget.nearest(event.y)
+        index = self.orphan_events_list.nearest(widget_y)
         if index < 0:
-            self._drag_data['items'] = []
+            self._clear_drag_data()
             return
 
-        event_name = widget.get(index)
+        event_name = self.orphan_events_list.get(index)
 
         # Get bank and bus from current selection
         bank_name = self.bank_var.get()
@@ -2656,8 +2737,14 @@ class MocoAutoImportGUI:
                     self.orphan_events_list.delete(i)
                     break
 
-        # Clear drag data
+        self._clear_drag_data()
+
+    def _clear_drag_data(self):
+        """Clear drag data after drop or cancel"""
         self._drag_data['items'] = []
+        self._drag_data['indices'] = []
+        self._drag_data['dragging'] = False
+        self._drag_data['drop_target'] = None
 
     def import_assets(self):
         """Import assets using FMOD JavaScript API via auto-execute script"""
