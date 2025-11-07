@@ -1322,10 +1322,12 @@ class MocoAutoImportGUI:
         result = [None]
 
         def refresh_list():
-            """Refresh the listbox"""
+            """Refresh the listbox sorted A-Z"""
             listbox.delete(0, tk.END)
             if items:
-                for item_data in items.values():
+                # Sort items by name A-Z
+                sorted_items = sorted(items.values(), key=lambda x: x['name'].lower())
+                for item_data in sorted_items:
                     listbox.insert(tk.END, item_data['name'])
             else:
                 listbox.insert(tk.END, "(No items found)")
@@ -1711,12 +1713,16 @@ class MocoAutoImportGUI:
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         tree['yscrollcommand'] = scrollbar.set
 
-        # Build tree hierarchy
+        # Build tree hierarchy sorted A-Z
         def build_tree(parent_item, parent_folder_id):
-            for folder_id, folder_data in self.project.event_folders.items():
-                if folder_data['parent'] == parent_folder_id:
-                    item = tree.insert(parent_item, 'end', text=folder_data['name'], values=(folder_id,))
-                    build_tree(item, folder_id)
+            # Get all child folders and sort them by name A-Z
+            child_folders = [(folder_id, folder_data) for folder_id, folder_data in self.project.event_folders.items()
+                           if folder_data['parent'] == parent_folder_id]
+            child_folders.sort(key=lambda x: x[1]['name'].lower())
+
+            for folder_id, folder_data in child_folders:
+                item = tree.insert(parent_item, 'end', text=folder_data['name'], values=(folder_id,))
+                build_tree(item, folder_id)
 
         # Start with master folder
         master_id = self.project.workspace['masterEventFolder']
@@ -1967,8 +1973,8 @@ class MocoAutoImportGUI:
             # Create a mapping from path to tree item
             item_map = {'': root_item}
 
-            # Sort paths to ensure parents are processed before children
-            sorted_paths = sorted(path_tree.keys())
+            # Sort paths to ensure parents are processed before children (case-insensitive A-Z)
+            sorted_paths = sorted(path_tree.keys(), key=lambda x: x.lower())
 
             for path in sorted_paths:
                 asset_id, full_path = path_tree[path]
@@ -2424,15 +2430,17 @@ class MocoAutoImportGUI:
                                                  values=('', ''))
                         assigned_media.add(file_info['filename'])
 
-            # Find orphan events (template events without matching media)
-            for expected_name in expected_events.keys():
-                if expected_name not in matched_events:
-                    self.orphan_events_list.insert(tk.END, expected_name)
+            # Find orphan events (template events without matching media) - sorted A-Z
+            orphan_events = [name for name in expected_events.keys() if name not in matched_events]
+            orphan_events.sort()
+            for expected_name in orphan_events:
+                self.orphan_events_list.insert(tk.END, expected_name)
 
-            # Find orphan media files (media not assigned to any expected event)
-            for audio_file in audio_files:
-                if audio_file['filename'] not in assigned_media:
-                    self.orphan_media_list.insert(tk.END, audio_file['filename'])
+            # Find orphan media files (media not assigned to any expected event) - sorted A-Z
+            orphan_media = [audio_file['filename'] for audio_file in audio_files if audio_file['filename'] not in assigned_media]
+            orphan_media.sort()
+            for media_file in orphan_media:
+                self.orphan_media_list.insert(tk.END, media_file)
 
             orphan_media_count = self.orphan_media_list.size()
             orphan_events_count = self.orphan_events_list.size()
@@ -2463,10 +2471,11 @@ class MocoAutoImportGUI:
         # Clear previous menu items
         self.orphan_media_menu.delete(0, tk.END)
 
-        # Get all orphan events
+        # Get all orphan events and sort them A-Z
         orphan_events = []
         for i in range(self.orphan_events_list.size()):
             orphan_events.append(self.orphan_events_list.get(i))
+        orphan_events.sort()
 
         if not orphan_events:
             self.orphan_media_menu.add_command(label="(No orphan events available)", state=tk.DISABLED)
@@ -2474,7 +2483,7 @@ class MocoAutoImportGUI:
             self.orphan_media_menu.add_command(label="Assign to event:", state=tk.DISABLED)
             self.orphan_media_menu.add_separator()
 
-            # Add menu item for each orphan event
+            # Add menu item for each orphan event (sorted A-Z)
             for orphan_event in orphan_events:
                 self.orphan_media_menu.add_command(
                     label=orphan_event,
@@ -2525,11 +2534,8 @@ class MocoAutoImportGUI:
         for idx in reversed(selected_indices):
             self.orphan_media_list.delete(idx)
 
-        # Remove event from orphan events list if it exists
-        for i in range(self.orphan_events_list.size()):
-            if self.orphan_events_list.get(i) == event_name:
-                self.orphan_events_list.delete(i)
-                break
+        # Keep event in orphan events list for additional assignments
+        # (User may want to assign multiple files to the same event)
 
     def import_assets(self):
         """Import assets using FMOD JavaScript API via auto-execute script"""
