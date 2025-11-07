@@ -1048,6 +1048,15 @@ class MocoAutoImportGUI:
         self.orphan_media_menu = tk.Menu(self.root, tearoff=0)
         self.orphan_media_list.bind('<Button-3>', self._show_orphan_media_context_menu)
 
+        # Drag & Drop support for orphan media
+        self.orphan_media_list.bind('<ButtonPress-1>', self._on_drag_start)
+        self.orphan_media_list.bind('<B1-Motion>', self._on_drag_motion)
+        self.preview_tree.bind('<ButtonRelease-1>', self._on_drop)
+        self.orphan_events_list.bind('<ButtonRelease-1>', self._on_drop_orphan_event)
+
+        # Store drag data
+        self._drag_data = {'items': [], 'x': 0, 'y': 0}
+
         orphan_media_frame.columnconfigure(0, weight=1)
         orphan_media_frame.rowconfigure(1, weight=1)
 
@@ -2534,8 +2543,121 @@ class MocoAutoImportGUI:
         for idx in reversed(selected_indices):
             self.orphan_media_list.delete(idx)
 
-        # Keep event in orphan events list for additional assignments
-        # (User may want to assign multiple files to the same event)
+        # Check if event should be removed from orphan events list
+        # Remove it if it now has at least one media file assigned
+        event_has_children = len(self.preview_tree.get_children(event_item)) > 0
+        if event_has_children:
+            # Remove event from orphan events list
+            for i in range(self.orphan_events_list.size()):
+                if self.orphan_events_list.get(i) == event_name:
+                    self.orphan_events_list.delete(i)
+                    break
+
+    def _on_drag_start(self, event):
+        """Start dragging orphan media files"""
+        # Get selected items
+        selected_indices = self.orphan_media_list.curselection()
+        if not selected_indices:
+            return
+
+        # Store selected media files
+        self._drag_data['items'] = [self.orphan_media_list.get(idx) for idx in selected_indices]
+        self._drag_data['indices'] = list(selected_indices)
+        self._drag_data['x'] = event.x
+        self._drag_data['y'] = event.y
+
+    def _on_drag_motion(self, event):
+        """Handle drag motion (optional visual feedback)"""
+        # Could add visual feedback here if needed
+        pass
+
+    def _on_drop(self, event):
+        """Drop orphan media onto preview tree event"""
+        if not self._drag_data['items']:
+            return
+
+        # Identify the item under the cursor
+        item = self.preview_tree.identify_row(event.y)
+        if not item:
+            self._drag_data['items'] = []
+            return
+
+        # Get the top-level parent (event item)
+        parent = self.preview_tree.parent(item)
+        event_item = item if not parent else parent
+
+        # Get event name
+        event_name = self.preview_tree.item(event_item, 'text')
+
+        # Add media files to this event
+        for media_filename in self._drag_data['items']:
+            self.preview_tree.insert(event_item, 'end', text=f"  → {media_filename}",
+                                     values=('', ''))
+
+        # Remove from orphan media list
+        for idx in reversed(self._drag_data['indices']):
+            self.orphan_media_list.delete(idx)
+
+        # Check if event should be removed from orphan events list
+        event_has_children = len(self.preview_tree.get_children(event_item)) > 0
+        if event_has_children:
+            for i in range(self.orphan_events_list.size()):
+                if self.orphan_events_list.get(i) == event_name:
+                    self.orphan_events_list.delete(i)
+                    break
+
+        # Clear drag data
+        self._drag_data['items'] = []
+
+    def _on_drop_orphan_event(self, event):
+        """Drop orphan media onto orphan event"""
+        if not self._drag_data['items']:
+            return
+
+        # Get the event under cursor
+        widget = event.widget
+        index = widget.nearest(event.y)
+        if index < 0:
+            self._drag_data['items'] = []
+            return
+
+        event_name = widget.get(index)
+
+        # Get bank and bus from current selection
+        bank_name = self.bank_var.get()
+        bus_name = self.bus_var.get()
+
+        # Check if event already exists in preview tree
+        event_item = None
+        for item in self.preview_tree.get_children():
+            if self.preview_tree.item(item, 'text') == event_name:
+                event_item = item
+                break
+
+        # If event doesn't exist in tree, create it
+        if event_item is None:
+            event_item = self.preview_tree.insert('', 'end', text=event_name,
+                                                   values=(bank_name, bus_name))
+
+        # Add media files to this event
+        for media_filename in self._drag_data['items']:
+            self.preview_tree.insert(event_item, 'end', text=f"  → {media_filename}",
+                                     values=('', ''))
+
+        # Remove from orphan media list
+        for idx in reversed(self._drag_data['indices']):
+            self.orphan_media_list.delete(idx)
+
+        # Check if event should be removed from orphan events list
+        event_has_children = len(self.preview_tree.get_children(event_item)) > 0
+        if event_has_children:
+            for i in range(self.orphan_events_list.size()):
+                if self.orphan_events_list.get(i) == event_name:
+                    self.orphan_events_list.delete(i)
+                    break
+
+        # Clear drag data
+        self._drag_data['items'] = []
 
     def import_assets(self):
         """Import assets using FMOD JavaScript API via auto-execute script"""
