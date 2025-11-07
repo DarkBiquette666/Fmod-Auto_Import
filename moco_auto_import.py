@@ -757,6 +757,101 @@ class AudioMatcher:
     """Handles intelligent matching between audio files and event templates"""
 
     @staticmethod
+    def normalize_string(s: str) -> str:
+        """Normalize a string for fuzzy matching by removing underscores and converting to lowercase"""
+        return s.replace('_', '').replace('-', '').lower()
+
+    @staticmethod
+    def calculate_similarity(str1: str, str2: str) -> float:
+        """Calculate similarity score between two strings (0.0 to 1.0)"""
+        # Exact match (case sensitive)
+        if str1 == str2:
+            return 1.0
+
+        # Normalized comparison (no underscores, lowercase)
+        norm1 = AudioMatcher.normalize_string(str1)
+        norm2 = AudioMatcher.normalize_string(str2)
+
+        if norm1 == norm2:
+            return 0.95  # High confidence for normalized match (e.g., "Attack_A" == "AttackA")
+
+        # Check if one contains the other
+        if norm1 in norm2:
+            # norm1 is contained in norm2
+            # Special case: if norm2 is just norm1 + single character, likely a variant (e.g., "attack" vs "attacka")
+            if len(norm2) - len(norm1) <= 1:
+                return 0.92  # High confidence for single character difference
+            return min(len(norm1), len(norm2)) / max(len(norm1), len(norm2)) * 0.9
+        elif norm2 in norm1:
+            # norm2 is contained in norm1
+            if len(norm1) - len(norm2) <= 1:
+                return 0.92  # High confidence for single character difference
+            return min(len(norm1), len(norm2)) / max(len(norm1), len(norm2)) * 0.9
+
+        # Levenshtein-like simple ratio
+        max_len = max(len(norm1), len(norm2))
+        if max_len == 0:
+            return 0.0
+
+        # Simple character overlap ratio
+        set1 = set(norm1)
+        set2 = set(norm2)
+        overlap = len(set1 & set2)
+        total = len(set1 | set2)
+
+        return (overlap / total) * 0.7 if total > 0 else 0.0  # 70% max for character overlap
+
+    @staticmethod
+    def extract_suffix_from_basename(basename: str, prefix: str, character: str) -> Optional[str]:
+        """Extract the event suffix from an audio file basename
+
+        Tries multiple strategies to extract the suffix:
+        1. Exact match: Prefix_Character_Suffix
+        2. Partial character match: Prefix_PartialChar_Suffix
+        3. Character parts match: Prefix_Char1_Char2_Suffix
+
+        Returns the suffix or None if no match found
+        """
+        # Strategy 1: Exact match
+        exact_pattern = f"{prefix}_{character}_"
+        if basename.startswith(exact_pattern):
+            suffix_part = basename[len(exact_pattern):]
+            return AudioMatcher._clean_suffix(suffix_part)
+
+        # Strategy 2: Try with prefix only, then analyze what comes after
+        prefix_pattern = f"{prefix}_"
+        if basename.startswith(prefix_pattern):
+            after_prefix = basename[len(prefix_pattern):]
+
+            # Split character name into parts (e.g., "Weak_Ranged" -> ["Weak", "Ranged"])
+            char_parts = character.split('_')
+
+            # Try to match all character parts
+            char_pattern = '_'.join(char_parts) + '_'
+            if after_prefix.startswith(char_pattern):
+                suffix_part = after_prefix[len(char_pattern):]
+                return AudioMatcher._clean_suffix(suffix_part)
+
+            # Try to match partial character parts (e.g., "Weak" only)
+            for i in range(len(char_parts), 0, -1):
+                partial_char = '_'.join(char_parts[:i]) + '_'
+                if after_prefix.startswith(partial_char):
+                    suffix_part = after_prefix[len(partial_char):]
+                    return AudioMatcher._clean_suffix(suffix_part)
+
+        return None
+
+    @staticmethod
+    def _clean_suffix(suffix: str) -> str:
+        """Clean suffix by removing trailing numbers (_01, _02, etc.)"""
+        if '_' in suffix:
+            parts = suffix.rsplit('_', 1)
+            if parts[-1].isdigit() or parts[-1].upper() in ['A', 'B', 'C', 'D', 'E']:
+                # Could be _01, _02 or _A, _B variation numbers
+                return parts[0]
+        return suffix
+
+    @staticmethod
     def collect_audio_files(directory: str) -> List[Dict]:
         """Collect all audio files from directory"""
         audio_extensions = {'.wav', '.mp3', '.ogg', '.flac', '.aif', '.aiff'}
@@ -786,49 +881,95 @@ class AudioMatcher:
         return f"{prefix}_{character}_{suffix}"
 
     @staticmethod
-    def match_files_to_events(audio_files: List[Dict], prefix: str, character: str) -> Dict[str, List[Dict]]:
-        """Group audio files by their base names to create events
+    def match_files_to_events(audio_files: List[Dict], prefix: str, character: str,
+                              expected_events: Optional[Dict[str, Dict]] = None) -> Dict[str, List[Dict]]:
+        """Group audio files by their base names to create events with intelligent matching
 
         Args:
             audio_files: List of audio file dictionaries
-            prefix: Event prefix (e.g., 'Cat')
-            character: Character name (e.g., 'Infiltrator')
+            prefix: Event prefix (e.g., 'Mechaflora')
+            character: Character name (e.g., 'Weak_Ranged')
+            expected_events: Optional dict of expected event names to match against
 
         Returns:
-            Dictionary mapping event names to their audio files
-            Example: {'Cat_Infiltrator_Attack': [file1, file2], 'Cat_Infiltrator_Jump': [file3]}
+            Dictionary mapping event names to their audio files with confidence scores
+            Example: {'Mechaflora_Weak_Ranged_Attack': {'files': [file1, file2], 'confidence': 1.0}}
         """
         groups = {}
 
+        # If we have expected events, try to match each file to an event
+        if expected_events:
+            matched_files = set()
+
+            for file in audio_files:
+                basename = file['basename']
+                best_match = None
+                best_score = 0.0
+                best_suffix = None
+
+                # Extract suffix from the file
+                extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, character)
+
+                if extracted_suffix:
+                    # Try to match against expected events
+                    for event_name in expected_events.keys():
+                        # Extract the suffix from the expected event name
+                        # Expected format: Prefix_Character_Suffix
+                        # Need to remove Prefix_Character_ to get the suffix
+
+                        # Try exact pattern first
+                        exact_pattern = f"{prefix}_{character}_"
+                        event_suffix = None
+
+                        if event_name.startswith(exact_pattern):
+                            event_suffix = event_name[len(exact_pattern):]
+                        else:
+                            # Try partial character matching
+                            prefix_pattern = f"{prefix}_"
+                            if event_name.startswith(prefix_pattern):
+                                after_prefix = event_name[len(prefix_pattern):]
+
+                                # Split character into parts and try to match
+                                char_parts = character.split('_')
+                                for i in range(len(char_parts), 0, -1):
+                                    partial_char = '_'.join(char_parts[:i]) + '_'
+                                    if after_prefix.startswith(partial_char):
+                                        event_suffix = after_prefix[len(partial_char):]
+                                        break
+
+                        if event_suffix:
+                            # Calculate similarity between suffixes
+                            score = AudioMatcher.calculate_similarity(extracted_suffix, event_suffix)
+
+                            if score > best_score and score >= 0.7:  # Minimum 70% confidence
+                                best_score = score
+                                best_match = event_name
+                                best_suffix = event_suffix
+
+                # If we found a good match, assign it
+                if best_match:
+                    if best_match not in groups:
+                        groups[best_match] = {'files': [], 'confidence': best_score}
+                    groups[best_match]['files'].append(file)
+                    # Update confidence to the average if multiple files
+                    if len(groups[best_match]['files']) > 1:
+                        groups[best_match]['confidence'] = (groups[best_match]['confidence'] + best_score) / 2
+                    matched_files.add(file['filename'])
+
+        # Fallback to original logic for unmatched files (build event names from file names)
         for file in audio_files:
-            # Remove trailing numbers (_01, _02, etc.) to get base event name
+            if expected_events and file['filename'] in matched_files:
+                continue  # Already matched
+
             basename = file['basename']
+            extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, character)
 
-            # Try to match pattern: Prefix_CharacterName_Suffix[_##]
-            # Example: Cat_Infiltrator_Attack_01 -> Cat_Infiltrator_Attack
-            pattern = f"{prefix}_{character}_"
-
-            if basename.startswith(pattern):
-                # Remove prefix to get suffix part
-                suffix_part = basename[len(pattern):]
-
-                # Remove trailing numbers if present
-                if '_' in suffix_part:
-                    # Check if last part is a number
-                    parts = suffix_part.rsplit('_', 1)
-                    if parts[-1].isdigit():
-                        event_suffix = parts[0]
-                    else:
-                        event_suffix = suffix_part
-                else:
-                    event_suffix = suffix_part
-
-                # Build full event name
-                event_name = f"{prefix}_{character}_{event_suffix}"
+            if extracted_suffix:
+                event_name = f"{prefix}_{character}_{extracted_suffix}"
 
                 if event_name not in groups:
-                    groups[event_name] = []
-                groups[event_name].append(file)
+                    groups[event_name] = {'files': [], 'confidence': 0.5}  # Lower confidence for auto-generated
+                groups[event_name]['files'].append(file)
 
         return groups
 
@@ -856,6 +997,14 @@ class MocoAutoImportGUI:
         self._load_default_settings()
 
         self.media_lookup: Dict[str, List[str]] = {}
+
+    def _clean_event_name(self, event_name: str) -> str:
+        """Remove confidence indicators from event name"""
+        # Remove confidence icons (✓, ~, ?)
+        for icon in ['✓ ', '~ ', '? ']:
+            if event_name.startswith(icon):
+                return event_name[len(icon):]
+        return event_name
 
     def _init_media_lookup(self, audio_files: List[Dict]):
         """Create lookup from filename to available file paths"""
@@ -984,7 +1133,12 @@ class MocoAutoImportGUI:
         asset_frame.columnconfigure(0, weight=1)
 
         # Preview section - Events matched to media
-        ttk.Label(main_frame, text="Preview - Matched Events:").grid(row=9, column=0, sticky=tk.NW, pady=10)
+        preview_header_frame = ttk.Frame(main_frame)
+        preview_header_frame.grid(row=9, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+
+        ttk.Label(preview_header_frame, text="Preview - Matched Events:").pack(side=tk.LEFT)
+        ttk.Label(preview_header_frame, text="  |  Confidence: ✓ High (≥95%)  ~ Good (≥85%)  ? Uncertain (≥70%)",
+                 foreground="gray").pack(side=tk.LEFT, padx=(10, 0))
 
         preview_frame = ttk.Frame(main_frame)
         preview_frame.grid(row=10, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
@@ -2465,24 +2619,44 @@ class MocoAutoImportGUI:
 
                 expected_events[expected_name] = template_event
 
-            # Match audio files to expected events
-            matches = AudioMatcher.match_files_to_events(audio_files, prefix, character)
+            # Match audio files to expected events with intelligent matching
+            matches = AudioMatcher.match_files_to_events(audio_files, prefix, character, expected_events)
 
             # Track which events and media were matched
             matched_events = set()
             assigned_media = set()
 
+            # Sort matches by event name (A-Z) for consistent display
+            sorted_matches = sorted(matches.items(), key=lambda x: x[0])
+
             # Populate matched events tree
-            for event_name, files in matches.items():
+            for event_name, match_data in sorted_matches:
                 if event_name in expected_events:
                     matched_events.add(event_name)
 
-                    # Insert parent item (event)
-                    parent = self.preview_tree.insert('', 'end', text=event_name,
+                    # Get files and confidence from the new structure
+                    files = match_data['files'] if isinstance(match_data, dict) else match_data
+                    confidence = match_data.get('confidence', 1.0) if isinstance(match_data, dict) else 1.0
+
+                    # Sort audio files by filename (A-Z)
+                    sorted_files = sorted(files, key=lambda x: x['filename'])
+
+                    # Format confidence indicator
+                    confidence_icon = ""
+                    if confidence >= 0.95:
+                        confidence_icon = "✓"  # High confidence
+                    elif confidence >= 0.85:
+                        confidence_icon = "~"  # Good confidence
+                    elif confidence >= 0.7:
+                        confidence_icon = "?"  # Uncertain match
+
+                    # Insert parent item (event) with confidence indicator
+                    event_display = f"{confidence_icon} {event_name}" if confidence_icon else event_name
+                    parent = self.preview_tree.insert('', 'end', text=event_display,
                                                        values=(bank_name, bus))
 
-                    # Insert child items (audio files)
-                    for file_info in files:
+                    # Insert child items (audio files) - already sorted
+                    for file_info in sorted_files:
                         self.preview_tree.insert(parent, 'end', text=f"  → {file_info['filename']}",
                                                  values=('', ''))
                         assigned_media.add(file_info['filename'])
@@ -2573,7 +2747,8 @@ class MocoAutoImportGUI:
         # Check if event already exists in preview tree
         event_item = None
         for item in self.preview_tree.get_children():
-            if self.preview_tree.item(item, 'text') == event_name:
+            item_text = self.preview_tree.item(item, 'text')
+            if self._clean_event_name(item_text) == event_name:
                 event_item = item
                 break
 
@@ -2893,7 +3068,8 @@ class MocoAutoImportGUI:
 
             # Check if parent event now has no media files
             if parent:
-                event_name = self.preview_tree.item(parent, 'text')
+                event_name_raw = self.preview_tree.item(parent, 'text')
+                event_name = self._clean_event_name(event_name_raw)
                 children = self.preview_tree.get_children(parent)
                 if len(children) == 0:
                     # Event has no media, remove from preview tree
@@ -2956,7 +3132,8 @@ class MocoAutoImportGUI:
 
         # Check if any parent events now have no media files
         for parent in parent_events:
-            event_name = self.preview_tree.item(parent, 'text')
+            event_name_raw = self.preview_tree.item(parent, 'text')
+            event_name = self._clean_event_name(event_name_raw)
             children = self.preview_tree.get_children(parent)
             if len(children) == 0:
                 # Event has no media, remove from preview tree
@@ -3044,8 +3221,9 @@ class MocoAutoImportGUI:
         parent = self.preview_tree.parent(item)
         event_item = item if not parent else parent
 
-        # Get event name
-        event_name = self.preview_tree.item(event_item, 'text')
+        # Get event name (clean from confidence indicators)
+        event_name_raw = self.preview_tree.item(event_item, 'text')
+        event_name = self._clean_event_name(event_name_raw)
 
         # Add media files to this event
         for media_filename in self._drag_data['items']:
@@ -3086,7 +3264,8 @@ class MocoAutoImportGUI:
         # Check if event already exists in preview tree
         event_item = None
         for item in self.preview_tree.get_children():
-            if self.preview_tree.item(item, 'text') == event_name:
+            item_text = self.preview_tree.item(item, 'text')
+            if self._clean_event_name(item_text) == event_name:
                 event_item = item
                 break
 
@@ -3251,7 +3430,8 @@ class MocoAutoImportGUI:
             # 2. Get event-audio mapping from preview tree
             event_audio_map = {}
             for item in self.preview_tree.get_children():
-                event_name = self.preview_tree.item(item, "text")
+                event_name_raw = self.preview_tree.item(item, "text")
+                event_name = self._clean_event_name(event_name_raw)
                 audio_files = []
                 for child in self.preview_tree.get_children(item):
                     audio_label = self.preview_tree.item(child, "text") or ""
