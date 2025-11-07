@@ -1009,6 +1009,14 @@ class MocoAutoImportGUI:
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         self.preview_tree['yscrollcommand'] = scrollbar.set
 
+        # Drag & Drop support for preview tree (for media files only)
+        self.preview_tree.bind('<ButtonPress-1>', self._on_preview_tree_press)
+        self.preview_tree.bind('<B1-Motion>', self._on_preview_tree_drag)
+        self.preview_tree.bind('<ButtonRelease-1>', self._on_preview_tree_release)
+
+        # Delete key support for removing media files from preview tree
+        self.preview_tree.bind('<Delete>', self._on_preview_tree_delete)
+
         # Orphans section
         ttk.Label(main_frame, text="Orphans:").grid(row=11, column=0, sticky=tk.NW, pady=10)
 
@@ -1054,6 +1062,17 @@ class MocoAutoImportGUI:
         self.orphan_media_list.bind('<B1-Motion>', self._on_drag_motion)
         self.orphan_media_list.bind('<ButtonRelease-1>', self._on_listbox_release)
 
+        # Override the default Listbox bindings that cause drag-select behavior
+        # By changing bindtags order, our handlers run first and can prevent default behavior
+        bindtags = list(self.orphan_media_list.bindtags())
+        bindtags.remove('Listbox')  # Remove default Listbox class bindings
+        self.orphan_media_list.bindtags(tuple(bindtags))
+
+        # Add keyboard navigation bindings since we removed default Listbox bindings
+        self.orphan_media_list.bind('<Up>', self._on_listbox_up)
+        self.orphan_media_list.bind('<Down>', self._on_listbox_down)
+        self.orphan_media_list.bind('<Control-a>', self._on_listbox_select_all)
+
         # Drop targets
         self.preview_tree.bind('<Enter>', lambda e: self._set_drop_target('preview'))
         self.orphan_events_list.bind('<Enter>', lambda e: self._set_drop_target('orphan'))
@@ -1065,9 +1084,16 @@ class MocoAutoImportGUI:
             'start_x': 0,
             'start_y': 0,
             'dragging': False,
-            'drop_target': None
+            'drop_target': None,
+            'source_widget': None  # Track which widget initiated the drag
         }
         self._drag_threshold = 5  # pixels to move before starting drag
+        self._drag_highlight_items = []  # Store items to highlight during drag
+
+        # Create drag feedback label (hidden by default)
+        self._drag_label = tk.Label(self.root, text="", bg="lightyellow", relief=tk.RIDGE,
+                                     borderwidth=2, font=('Segoe UI', 9))
+        self._drag_label.place_forget()  # Hide initially
 
         orphan_media_frame.columnconfigure(0, weight=1)
         orphan_media_frame.rowconfigure(1, weight=1)
@@ -2570,6 +2596,44 @@ class MocoAutoImportGUI:
         if self._drag_data['dragging']:
             self._drag_data['drop_target'] = target
 
+    def _on_listbox_up(self, event):
+        """Handle Up arrow key navigation"""
+        current = self.orphan_media_list.curselection()
+        if not current:
+            # Select first item
+            if self.orphan_media_list.size() > 0:
+                self.orphan_media_list.selection_set(0)
+                self.orphan_media_list.see(0)
+        else:
+            current_idx = current[0]
+            if current_idx > 0:
+                self.orphan_media_list.selection_clear(0, tk.END)
+                self.orphan_media_list.selection_set(current_idx - 1)
+                self.orphan_media_list.see(current_idx - 1)
+        return "break"
+
+    def _on_listbox_down(self, event):
+        """Handle Down arrow key navigation"""
+        current = self.orphan_media_list.curselection()
+        size = self.orphan_media_list.size()
+        if not current:
+            # Select first item
+            if size > 0:
+                self.orphan_media_list.selection_set(0)
+                self.orphan_media_list.see(0)
+        else:
+            current_idx = current[0]
+            if current_idx < size - 1:
+                self.orphan_media_list.selection_clear(0, tk.END)
+                self.orphan_media_list.selection_set(current_idx + 1)
+                self.orphan_media_list.see(current_idx + 1)
+        return "break"
+
+    def _on_listbox_select_all(self, event):
+        """Handle Ctrl+A to select all"""
+        self.orphan_media_list.selection_set(0, tk.END)
+        return "break"
+
     def _on_listbox_press(self, event):
         """Handle initial press on listbox - store position and selection"""
         # Store initial position
@@ -2577,14 +2641,57 @@ class MocoAutoImportGUI:
         self._drag_data['start_y'] = event.y
         self._drag_data['dragging'] = False
 
-        # Allow normal selection behavior
-        # Tkinter will handle the selection automatically
+        # Get the index under cursor
+        index = self.orphan_media_list.nearest(event.y)
+
+        # Handle selection manually to prevent drag-select behavior
+        # Check if item is already selected
+        if index in self.orphan_media_list.curselection():
+            # Already selected, don't change selection (allows drag of multiple items)
+            return "break"
+        else:
+            # Not selected, select it
+            # Check for Ctrl or Shift modifiers
+            if event.state & 0x4:  # Ctrl key
+                # Toggle selection
+                if index in self.orphan_media_list.curselection():
+                    self.orphan_media_list.selection_clear(index)
+                else:
+                    self.orphan_media_list.selection_set(index)
+            elif event.state & 0x1:  # Shift key
+                # Range selection from last selected to current
+                current = self.orphan_media_list.curselection()
+                if current:
+                    start = current[0]
+                    end = index
+                    if start > end:
+                        start, end = end, start
+                    self.orphan_media_list.selection_clear(0, tk.END)
+                    for i in range(start, end + 1):
+                        self.orphan_media_list.selection_set(i)
+                else:
+                    self.orphan_media_list.selection_set(index)
+            else:
+                # Normal click - clear and select
+                self.orphan_media_list.selection_clear(0, tk.END)
+                self.orphan_media_list.selection_set(index)
+
+            return "break"
 
     def _on_drag_motion(self, event):
         """Handle drag motion - start drag if moved beyond threshold"""
         if self._drag_data['dragging']:
-            # Already dragging, update drop target based on cursor position
-            return
+            # Already dragging, update label position
+            root_x = self.root.winfo_rootx()
+            root_y = self.root.winfo_rooty()
+            x = event.x_root - root_x + 10
+            y = event.y_root - root_y + 10
+            self._drag_label.place(x=x, y=y)
+
+            # Update drop target highlight
+            self._update_drop_target_highlight(event.x_root, event.y_root)
+
+            return "break"
 
         # Check if moved beyond threshold
         dx = abs(event.x - self._drag_data['start_x'])
@@ -2594,15 +2701,245 @@ class MocoAutoImportGUI:
             # Start dragging
             selected_indices = self.orphan_media_list.curselection()
             if not selected_indices:
-                return
+                return "break"
 
             # Store selected media files
             self._drag_data['items'] = [self.orphan_media_list.get(idx) for idx in selected_indices]
             self._drag_data['indices'] = list(selected_indices)
             self._drag_data['dragging'] = True
+            self._drag_data['source_widget'] = 'orphan_media'
+
+            # Show drag feedback label
+            count = len(self._drag_data['items'])
+            if count == 1:
+                label_text = f"📁 {self._drag_data['items'][0]}"
+            else:
+                label_text = f"📁 {count} files"
+            self._drag_label.config(text=label_text)
+
+            # Position label near cursor (convert screen coords to root widget coords)
+            root_x = self.root.winfo_rootx()
+            root_y = self.root.winfo_rooty()
+            x = event.x_root - root_x + 10
+            y = event.y_root - root_y + 10
+            self._drag_label.place(x=x, y=y)
 
             # Change cursor to indicate dragging
             self.orphan_media_list.config(cursor='hand2')
+
+            # Highlight selected items with a different background
+            for idx in selected_indices:
+                self.orphan_media_list.itemconfig(idx, bg='lightblue')
+
+        # Prevent default drag-select behavior
+        return "break"
+
+    def _on_preview_tree_press(self, event):
+        """Handle initial press on preview tree"""
+        # Store initial position
+        self._drag_data['start_x'] = event.x
+        self._drag_data['start_y'] = event.y
+        self._drag_data['dragging'] = False
+
+        # Let default selection happen
+        return
+
+    def _on_preview_tree_drag(self, event):
+        """Handle drag from preview tree - only media files can be dragged"""
+        if self._drag_data['dragging']:
+            # Already dragging, update label position
+            root_x = self.root.winfo_rootx()
+            root_y = self.root.winfo_rooty()
+            x = event.x_root - root_x + 10
+            y = event.y_root - root_y + 10
+            self._drag_label.place(x=x, y=y)
+
+            # Update drop target highlight
+            self._update_drop_target_highlight(event.x_root, event.y_root)
+            return
+
+        # Check if moved beyond threshold
+        dx = abs(event.x - self._drag_data['start_x'])
+        dy = abs(event.y - self._drag_data['start_y'])
+
+        if dx > self._drag_threshold or dy > self._drag_threshold:
+            # Get selected item
+            selected = self.preview_tree.selection()
+            if not selected:
+                return
+
+            # Only allow dragging media files (child items starting with "  → ")
+            media_items = []
+            media_files = []
+            for item in selected:
+                text = self.preview_tree.item(item, 'text')
+                if text.startswith('  → '):
+                    media_items.append(item)
+                    # Extract filename (remove "  → " prefix)
+                    filename = text[4:]
+                    media_files.append(filename)
+
+            if not media_files:
+                # No media files selected, don't start drag
+                return
+
+            # Store media files for dragging
+            self._drag_data['items'] = media_files
+            self._drag_data['tree_items'] = media_items  # Store tree items for deletion
+            self._drag_data['dragging'] = True
+            self._drag_data['source_widget'] = 'preview_tree'
+
+            # Show drag feedback label
+            count = len(media_files)
+            if count == 1:
+                label_text = f"📁 {media_files[0]}"
+            else:
+                label_text = f"📁 {count} files"
+            self._drag_label.config(text=label_text)
+
+            # Position label near cursor (convert screen coords to root widget coords)
+            root_x = self.root.winfo_rootx()
+            root_y = self.root.winfo_rooty()
+            x = event.x_root - root_x + 10
+            y = event.y_root - root_y + 10
+            self._drag_label.place(x=x, y=y)
+
+            # Change cursor
+            self.preview_tree.config(cursor='hand2')
+
+    def _on_preview_tree_release(self, event):
+        """Handle release from preview tree drag"""
+        if not self._drag_data['dragging'] or self._drag_data['source_widget'] != 'preview_tree':
+            return
+
+        # Restore cursor
+        self.preview_tree.config(cursor='')
+
+        # Check if dropped over orphan media list
+        x_root = event.x_root
+        y_root = event.y_root
+
+        try:
+            media_x = self.orphan_media_list.winfo_rootx()
+            media_y = self.orphan_media_list.winfo_rooty()
+            media_width = self.orphan_media_list.winfo_width()
+            media_height = self.orphan_media_list.winfo_height()
+
+            if (media_x <= x_root <= media_x + media_width and
+                media_y <= y_root <= media_y + media_height):
+                # Valid drop - move media files back to orphan list
+                self._drop_preview_to_orphan()
+                return
+        except:
+            pass
+
+        # Not a valid drop, cancel
+        self._clear_drag_data()
+
+    def _drop_preview_to_orphan(self):
+        """Move media files from preview tree back to orphan media list"""
+        if not self._drag_data['items']:
+            return
+
+        # Add files to orphan media list
+        for filename in self._drag_data['items']:
+            self.orphan_media_list.insert(tk.END, filename)
+
+        # Sort the orphan media list
+        items = list(self.orphan_media_list.get(0, tk.END))
+        items.sort()
+        self.orphan_media_list.delete(0, tk.END)
+        for item in items:
+            self.orphan_media_list.insert(tk.END, item)
+
+        # Remove from preview tree
+        for tree_item in self._drag_data.get('tree_items', []):
+            # Get parent event
+            parent = self.preview_tree.parent(tree_item)
+            # Delete the media item
+            self.preview_tree.delete(tree_item)
+
+            # Check if parent event now has no media files
+            if parent:
+                event_name = self.preview_tree.item(parent, 'text')
+                children = self.preview_tree.get_children(parent)
+                if len(children) == 0:
+                    # Event has no media, remove from preview tree
+                    self.preview_tree.delete(parent)
+
+                    # Add back to orphan events
+                    orphan_events = list(self.orphan_events_list.get(0, tk.END))
+                    if event_name not in orphan_events:
+                        orphan_events.append(event_name)
+                        orphan_events.sort()
+                        self.orphan_events_list.delete(0, tk.END)
+                        for event in orphan_events:
+                            self.orphan_events_list.insert(tk.END, event)
+
+        self._clear_drag_data()
+
+    def _on_preview_tree_delete(self, event):
+        """Handle Delete key press on preview tree - remove media files and move to orphan list"""
+        selected = self.preview_tree.selection()
+        if not selected:
+            return
+
+        # Filter to only media files (child items starting with "  → ")
+        media_items = []
+        media_files = []
+        for item in selected:
+            text = self.preview_tree.item(item, 'text')
+            if text.startswith('  → '):
+                media_items.append(item)
+                # Extract filename (remove "  → " prefix)
+                filename = text[4:]
+                media_files.append(filename)
+
+        if not media_files:
+            # No media files selected, nothing to delete
+            return
+
+        # Add files back to orphan media list
+        for filename in media_files:
+            self.orphan_media_list.insert(tk.END, filename)
+
+        # Sort the orphan media list
+        items = list(self.orphan_media_list.get(0, tk.END))
+        items.sort()
+        self.orphan_media_list.delete(0, tk.END)
+        for item in items:
+            self.orphan_media_list.insert(tk.END, item)
+
+        # Track parent events that might become orphans
+        parent_events = set()
+
+        # Remove from preview tree
+        for tree_item in media_items:
+            # Get parent event before deleting
+            parent = self.preview_tree.parent(tree_item)
+            if parent:
+                parent_events.add(parent)
+            # Delete the media item
+            self.preview_tree.delete(tree_item)
+
+        # Check if any parent events now have no media files
+        for parent in parent_events:
+            event_name = self.preview_tree.item(parent, 'text')
+            children = self.preview_tree.get_children(parent)
+            if len(children) == 0:
+                # Event has no media, remove from preview tree
+                self.preview_tree.delete(parent)
+
+                # Add back to orphan events
+                orphan_events = list(self.orphan_events_list.get(0, tk.END))
+                if event_name not in orphan_events:
+                    orphan_events.append(event_name)
+                    orphan_events.sort()
+                    self.orphan_events_list.delete(0, tk.END)
+                    for event in orphan_events:
+                        self.orphan_events_list.insert(tk.END, event)
+
+        return "break"  # Prevent default behavior
 
     def _on_listbox_release(self, event):
         """Handle release - perform drop if dragging, otherwise allow normal selection"""
@@ -2739,12 +3076,114 @@ class MocoAutoImportGUI:
 
         self._clear_drag_data()
 
+    def _update_drop_target_highlight(self, x_root, y_root):
+        """Highlight valid drop targets when hovering during drag"""
+        # Clear previous highlights
+        self._clear_drop_highlights()
+
+        source = self._drag_data.get('source_widget')
+
+        # If dragging from orphan_media, highlight preview tree and orphan events
+        if source == 'orphan_media':
+            # Check if over preview tree
+            try:
+                preview_x = self.preview_tree.winfo_rootx()
+                preview_y = self.preview_tree.winfo_rooty()
+                preview_width = self.preview_tree.winfo_width()
+                preview_height = self.preview_tree.winfo_height()
+
+                if (preview_x <= x_root <= preview_x + preview_width and
+                    preview_y <= y_root <= preview_y + preview_height):
+                    # Highlight the preview tree
+                    widget_y = y_root - preview_y
+                    item = self.preview_tree.identify_row(widget_y)
+                    if item:
+                        # Get the top-level parent (event item)
+                        parent = self.preview_tree.parent(item)
+                        event_item = item if not parent else parent
+                        # Highlight this event
+                        self.preview_tree.selection_set(event_item)
+                        self._drag_highlight_items.append(('preview_tree', event_item))
+                    return
+            except:
+                pass
+
+            # Check if over orphan events list
+            try:
+                orphan_x = self.orphan_events_list.winfo_rootx()
+                orphan_y = self.orphan_events_list.winfo_rooty()
+                orphan_width = self.orphan_events_list.winfo_width()
+                orphan_height = self.orphan_events_list.winfo_height()
+
+                if (orphan_x <= x_root <= orphan_x + orphan_width and
+                    orphan_y <= y_root <= orphan_y + orphan_height):
+                    # Highlight the orphan events list
+                    widget_y = y_root - orphan_y
+                    index = self.orphan_events_list.nearest(widget_y)
+                    if index >= 0 and index < self.orphan_events_list.size():
+                        self.orphan_events_list.selection_clear(0, tk.END)
+                        self.orphan_events_list.selection_set(index)
+                        self._drag_highlight_items.append(('orphan_events', index))
+                    return
+            except:
+                pass
+
+        # If dragging from preview_tree, highlight orphan media list
+        elif source == 'preview_tree':
+            try:
+                media_x = self.orphan_media_list.winfo_rootx()
+                media_y = self.orphan_media_list.winfo_rooty()
+                media_width = self.orphan_media_list.winfo_width()
+                media_height = self.orphan_media_list.winfo_height()
+
+                if (media_x <= x_root <= media_x + media_width and
+                    media_y <= y_root <= media_y + media_height):
+                    # Highlight the entire orphan media list
+                    self.orphan_media_list.config(bg='lightyellow')
+                    self._drag_highlight_items.append(('orphan_media_list', None))
+                    return
+            except:
+                pass
+
+    def _clear_drop_highlights(self):
+        """Clear all drop target highlights"""
+        for widget_type, item in self._drag_highlight_items:
+            if widget_type == 'preview_tree':
+                self.preview_tree.selection_remove(item)
+            elif widget_type == 'orphan_events':
+                self.orphan_events_list.selection_clear(item)
+            elif widget_type == 'orphan_media_list':
+                self.orphan_media_list.config(bg='white')
+        self._drag_highlight_items = []
+
     def _clear_drag_data(self):
         """Clear drag data after drop or cancel"""
+        # Hide drag label
+        self._drag_label.place_forget()
+
+        # Restore cursors based on source
+        source = self._drag_data.get('source_widget')
+        if source == 'orphan_media':
+            self.orphan_media_list.config(cursor='')
+        elif source == 'preview_tree':
+            self.preview_tree.config(cursor='')
+
+        # Clear item highlights
+        for idx in self._drag_data.get('indices', []):
+            try:
+                self.orphan_media_list.itemconfig(idx, bg='white')
+            except:
+                pass  # Item may have been deleted
+
+        # Clear drop target highlights
+        self._clear_drop_highlights()
+
+        # Reset drag data
         self._drag_data['items'] = []
         self._drag_data['indices'] = []
         self._drag_data['dragging'] = False
         self._drag_data['drop_target'] = None
+        self._drag_data['source_widget'] = None
 
     def import_assets(self):
         """Import assets using FMOD JavaScript API via auto-execute script"""
