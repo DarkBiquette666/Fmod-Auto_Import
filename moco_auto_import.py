@@ -1036,6 +1036,11 @@ class MocoAutoImportGUI:
         events_scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
         self.orphan_events_list['yscrollcommand'] = events_scrollbar.set
 
+        # Mouse wheel scrolling support
+        self.orphan_events_list.bind('<MouseWheel>', self._on_mousewheel)
+        self.orphan_events_list.bind('<Button-4>', self._on_mousewheel)  # Linux scroll up
+        self.orphan_events_list.bind('<Button-5>', self._on_mousewheel)  # Linux scroll down
+
         orphan_events_frame.columnconfigure(0, weight=1)
         orphan_events_frame.rowconfigure(1, weight=1)
 
@@ -1061,6 +1066,11 @@ class MocoAutoImportGUI:
         self.orphan_media_list.bind('<ButtonPress-1>', self._on_listbox_press)
         self.orphan_media_list.bind('<B1-Motion>', self._on_drag_motion)
         self.orphan_media_list.bind('<ButtonRelease-1>', self._on_listbox_release)
+
+        # Mouse wheel scrolling support
+        self.orphan_media_list.bind('<MouseWheel>', self._on_mousewheel)
+        self.orphan_media_list.bind('<Button-4>', self._on_mousewheel)  # Linux scroll up
+        self.orphan_media_list.bind('<Button-5>', self._on_mousewheel)  # Linux scroll down
 
         # Override the default Listbox bindings that cause drag-select behavior
         # By changing bindtags order, our handlers run first and can prevent default behavior
@@ -2596,6 +2606,21 @@ class MocoAutoImportGUI:
         if self._drag_data['dragging']:
             self._drag_data['drop_target'] = target
 
+    def _on_mousewheel(self, event):
+        """Handle mouse wheel scrolling for Listbox widgets"""
+        # Get the widget that triggered the event
+        widget = event.widget
+
+        # Determine scroll direction and amount
+        if event.num == 5 or event.delta < 0:
+            # Scroll down
+            widget.yview_scroll(1, "units")
+        elif event.num == 4 or event.delta > 0:
+            # Scroll up
+            widget.yview_scroll(-1, "units")
+
+        return "break"
+
     def _on_listbox_up(self, event):
         """Handle Up arrow key navigation"""
         current = self.orphan_media_list.curselection()
@@ -2640,6 +2665,7 @@ class MocoAutoImportGUI:
         self._drag_data['start_x'] = event.x
         self._drag_data['start_y'] = event.y
         self._drag_data['dragging'] = False
+        self._drag_data['click_index'] = None
 
         # Get the index under cursor
         index = self.orphan_media_list.nearest(event.y)
@@ -2647,17 +2673,23 @@ class MocoAutoImportGUI:
         # Handle selection manually to prevent drag-select behavior
         # Check if item is already selected
         if index in self.orphan_media_list.curselection():
-            # Already selected, don't change selection (allows drag of multiple items)
+            # Already selected
+            # Check for modifiers
+            if event.state & 0x4:  # Ctrl key - deselect immediately
+                self.orphan_media_list.selection_clear(index)
+            elif event.state & 0x1:  # Shift key - do nothing, wait for release
+                pass
+            else:
+                # Normal click - store index to potentially deselect others on release
+                # This allows drag of multiple items but also single-click to deselect others
+                self._drag_data['click_index'] = index
             return "break"
         else:
             # Not selected, select it
             # Check for Ctrl or Shift modifiers
             if event.state & 0x4:  # Ctrl key
-                # Toggle selection
-                if index in self.orphan_media_list.curselection():
-                    self.orphan_media_list.selection_clear(index)
-                else:
-                    self.orphan_media_list.selection_set(index)
+                # Toggle selection (add to selection)
+                self.orphan_media_list.selection_set(index)
             elif event.state & 0x1:  # Shift key
                 # Range selection from last selected to current
                 current = self.orphan_media_list.curselection()
@@ -2944,7 +2976,13 @@ class MocoAutoImportGUI:
     def _on_listbox_release(self, event):
         """Handle release - perform drop if dragging, otherwise allow normal selection"""
         if not self._drag_data['dragging']:
-            # Not dragging, allow normal selection behavior
+            # Not dragging - check if it was a simple click on already selected item
+            if self._drag_data.get('click_index') is not None:
+                # Simple click on selected item - deselect others and keep only this one
+                index = self._drag_data['click_index']
+                self.orphan_media_list.selection_clear(0, tk.END)
+                self.orphan_media_list.selection_set(index)
+                self._drag_data['click_index'] = None
             return
 
         # Restore cursor
