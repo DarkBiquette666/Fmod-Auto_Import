@@ -36,7 +36,8 @@
       "Bash(\"C:\\Program Files\\FMOD SoundSystem\\FMOD Studio 2.03.09\\FMOD Studio.exe\" --help)",
       "Bash(\"C:\\Program Files\\FMOD SoundSystem\\FMOD Studio 2.03.09\\fmodstudiocl.exe\")",
       "Bash(tree:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []

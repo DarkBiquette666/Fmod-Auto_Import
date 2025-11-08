@@ -980,7 +980,7 @@ class MocoAutoImportGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("Moco Auto Import - FMOD Asset Importer")
-        self.root.geometry("900x700")
+        self.root.geometry("1000x800")
 
         self.project: Optional[FMODProject] = None
         self.config = {
@@ -992,6 +992,9 @@ class MocoAutoImportGUI:
             'bank_name': 'CatInfiltrator',
             'destination_folder_id': ''
         }
+
+        # Initialize presets BEFORE creating widgets
+        self.presets: Dict[str, dict] = self._load_presets()
 
         self._create_widgets()
         self._load_default_settings()
@@ -1035,11 +1038,26 @@ class MocoAutoImportGUI:
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
+        # Presets section - at the top
+        presets_frame = ttk.LabelFrame(main_frame, text="Presets", padding="10")
+        presets_frame.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
+
+        ttk.Label(presets_frame, text="Preset:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
+
+        self.preset_var = tk.StringVar()
+        self.preset_combo = ttk.Combobox(presets_frame, textvariable=self.preset_var, width=30, state='readonly')
+        self.preset_combo.grid(row=0, column=1, padx=5)
+        self._update_preset_list()
+
+        ttk.Button(presets_frame, text="Load", command=self._load_preset_ui, width=10).grid(row=0, column=2, padx=5)
+        ttk.Button(presets_frame, text="Save", command=self._save_preset_ui, width=10).grid(row=0, column=3, padx=5)
+        ttk.Button(presets_frame, text="Delete", command=self._delete_preset_ui, width=10).grid(row=0, column=4, padx=5)
+
         # Project selection
-        ttk.Label(main_frame, text="FMOD Project (.fspro):").grid(row=0, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="FMOD Project (.fspro):").grid(row=1, column=0, sticky=tk.W, pady=5)
 
         project_frame = ttk.Frame(main_frame)
-        project_frame.grid(row=0, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        project_frame.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.project_entry = ttk.Entry(project_frame, width=40)
         self.project_entry.grid(row=0, column=0, padx=(0, 5))
@@ -1048,9 +1066,9 @@ class MocoAutoImportGUI:
         ttk.Button(project_frame, text="Reload Scripts", command=self.reload_fmod_scripts).grid(row=0, column=3, padx=5)
 
         # Media files path
-        ttk.Label(main_frame, text="Media Files Directory:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Media Files Directory:").grid(row=2, column=0, sticky=tk.W, pady=5)
         media_frame = ttk.Frame(main_frame)
-        media_frame.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        media_frame.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.media_entry = ttk.Entry(media_frame, width=60)
         self.media_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
@@ -1058,9 +1076,9 @@ class MocoAutoImportGUI:
         media_frame.columnconfigure(0, weight=1)
 
         # Template folder
-        ttk.Label(main_frame, text="Template Folder:").grid(row=4, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Template Folder:").grid(row=5, column=0, sticky=tk.W, pady=5)
         template_frame = ttk.Frame(main_frame)
-        template_frame.grid(row=4, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        template_frame.grid(row=5, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.template_var = tk.StringVar(value="(No folder selected)")
         self.template_label = ttk.Label(template_frame, textvariable=self.template_var, relief="sunken", width=55)
@@ -1069,7 +1087,7 @@ class MocoAutoImportGUI:
         template_frame.columnconfigure(0, weight=1)
 
         # Prefix
-        ttk.Label(main_frame, text="Prefix:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Prefix:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.prefix_entry = ttk.Entry(main_frame, width=60)
         self.prefix_entry.insert(0, "")
         # Add placeholder effect
@@ -1077,21 +1095,21 @@ class MocoAutoImportGUI:
         self.prefix_entry.config(foreground='gray')
         self.prefix_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.prefix_entry, 'e.g. Cat'))
         self.prefix_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.prefix_entry, 'e.g. Cat'))
-        self.prefix_entry.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        self.prefix_entry.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         # Character name
-        ttk.Label(main_frame, text="Character Name:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Character Name:").grid(row=4, column=0, sticky=tk.W, pady=5)
         self.character_entry = ttk.Entry(main_frame, width=60)
         self.character_entry.insert(0, "e.g. Infiltrator")
         self.character_entry.config(foreground='gray')
         self.character_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.character_entry, 'e.g. Infiltrator'))
         self.character_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.character_entry, 'e.g. Infiltrator'))
-        self.character_entry.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        self.character_entry.grid(row=4, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         # Destination folder (moved before Bank)
-        ttk.Label(main_frame, text="Event Folder:").grid(row=6, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Event Folder:").grid(row=7, column=0, sticky=tk.W, pady=5)
         dest_frame = ttk.Frame(main_frame)
-        dest_frame.grid(row=6, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        dest_frame.grid(row=7, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.dest_var = tk.StringVar(value="(No folder selected)")
         self.dest_label = ttk.Label(dest_frame, textvariable=self.dest_var, relief="sunken", width=55)
@@ -1100,9 +1118,9 @@ class MocoAutoImportGUI:
         dest_frame.columnconfigure(0, weight=1)
 
         # Bank selection
-        ttk.Label(main_frame, text="Bank:").grid(row=7, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Bank:").grid(row=8, column=0, sticky=tk.W, pady=5)
         bank_frame = ttk.Frame(main_frame)
-        bank_frame.grid(row=7, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        bank_frame.grid(row=8, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.bank_var = tk.StringVar(value="(No bank selected)")
         self.bank_label = ttk.Label(bank_frame, textvariable=self.bank_var, relief="sunken", width=55)
@@ -1111,9 +1129,9 @@ class MocoAutoImportGUI:
         bank_frame.columnconfigure(0, weight=1)
 
         # Bus assignment
-        ttk.Label(main_frame, text="Bus:").grid(row=8, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Bus:").grid(row=9, column=0, sticky=tk.W, pady=5)
         bus_frame = ttk.Frame(main_frame)
-        bus_frame.grid(row=8, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        bus_frame.grid(row=9, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.bus_var = tk.StringVar(value="(No bus selected)")
         self.bus_label = ttk.Label(bus_frame, textvariable=self.bus_var, relief="sunken", width=55)
@@ -1122,9 +1140,9 @@ class MocoAutoImportGUI:
         bus_frame.columnconfigure(0, weight=1)
 
         # Audio Asset Folder
-        ttk.Label(main_frame, text="Audio Asset Folder:").grid(row=5, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Audio Asset Folder:").grid(row=6, column=0, sticky=tk.W, pady=5)
         asset_frame = ttk.Frame(main_frame)
-        asset_frame.grid(row=5, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        asset_frame.grid(row=6, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.asset_var = tk.StringVar(value="(No asset folder selected)")
         self.asset_label = ttk.Label(asset_frame, textvariable=self.asset_var, relief="sunken", width=55)
@@ -1134,14 +1152,14 @@ class MocoAutoImportGUI:
 
         # Preview section - Events matched to media
         preview_header_frame = ttk.Frame(main_frame)
-        preview_header_frame.grid(row=9, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        preview_header_frame.grid(row=10, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
 
         ttk.Label(preview_header_frame, text="Preview - Matched Events:").pack(side=tk.LEFT)
         ttk.Label(preview_header_frame, text="  |  Confidence: ✓ High (≥95%)  ~ Good (≥85%)  ? Uncertain (≥70%)  |  + Auto-created (Double-click to rename)",
                  foreground="gray").pack(side=tk.LEFT, padx=(10, 0))
 
         preview_frame = ttk.Frame(main_frame)
-        preview_frame.grid(row=10, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+        preview_frame.grid(row=11, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
 
         # Create Treeview with 2 columns (removed 'Events → Assets' column)
         columns = ('bank', 'bus')
@@ -1182,10 +1200,10 @@ class MocoAutoImportGUI:
         self.preview_tree.bind('<Button-3>', self._show_preview_tree_context_menu)
 
         # Orphans section
-        ttk.Label(main_frame, text="Orphans:").grid(row=11, column=0, sticky=tk.NW, pady=10)
+        ttk.Label(main_frame, text="Orphans:").grid(row=12, column=0, sticky=tk.NW, pady=10)
 
         orphans_frame = ttk.Frame(main_frame)
-        orphans_frame.grid(row=12, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+        orphans_frame.grid(row=13, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
 
         # Left side - Orphan Events
         orphan_events_frame = ttk.Frame(orphans_frame)
@@ -1194,10 +1212,10 @@ class MocoAutoImportGUI:
         ttk.Label(orphan_events_frame, text="Orphan Events (no media assigned)").grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
 
         self.orphan_events_list = tk.Listbox(orphan_events_frame, height=8, selectmode=tk.EXTENDED)
-        self.orphan_events_list.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.orphan_events_list.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         events_scrollbar = ttk.Scrollbar(orphan_events_frame, orient=tk.VERTICAL, command=self.orphan_events_list.yview)
-        events_scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
+        events_scrollbar.grid(row=2, column=1, sticky=(tk.N, tk.S))
         self.orphan_events_list['yscrollcommand'] = events_scrollbar.set
 
         # Mouse wheel scrolling support
@@ -1215,10 +1233,10 @@ class MocoAutoImportGUI:
         ttk.Label(orphan_media_frame, text="Orphan Media Files (Drag to assign, or Right-click)").grid(row=0, column=0, sticky=tk.W, pady=(0, 5))
 
         self.orphan_media_list = tk.Listbox(orphan_media_frame, height=8, selectmode=tk.EXTENDED)
-        self.orphan_media_list.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.orphan_media_list.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         media_scrollbar = ttk.Scrollbar(orphan_media_frame, orient=tk.VERTICAL, command=self.orphan_media_list.yview)
-        media_scrollbar.grid(row=1, column=1, sticky=(tk.N, tk.S))
+        media_scrollbar.grid(row=2, column=1, sticky=(tk.N, tk.S))
         self.orphan_media_list['yscrollcommand'] = media_scrollbar.set
 
         # Context menu for orphan media files
@@ -1279,7 +1297,7 @@ class MocoAutoImportGUI:
 
         # Buttons
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=13, column=0, columnspan=3, pady=10)
+        button_frame.grid(row=14, column=0, columnspan=3, pady=10)
 
         ttk.Button(button_frame, text="Analyze", command=self.analyze, width=15).grid(row=0, column=0, padx=5)
         ttk.Button(button_frame, text="Import", command=self.import_assets, width=15).grid(row=0, column=1, padx=5)
@@ -1290,8 +1308,8 @@ class MocoAutoImportGUI:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(10, weight=1)
-        main_frame.rowconfigure(12, weight=1)
+        main_frame.rowconfigure(11, weight=1)  # Preview row (was 10, now 11)
+        main_frame.rowconfigure(13, weight=1)  # Orphans row (was 12, now 13)
         preview_frame.columnconfigure(0, weight=1)
         preview_frame.rowconfigure(0, weight=1)
 
@@ -4167,6 +4185,207 @@ eval(importScriptContent);
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save settings:\n{str(e)}")
             return False
+
+    def _load_presets(self) -> Dict[str, dict]:
+        """Load presets from JSON file"""
+        presets_file = Path.home() / ".moco_auto_import_presets.json"
+        if presets_file.exists():
+            try:
+                with open(presets_file, 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                print(f"Failed to load presets: {e}")
+        return {}
+
+    def _save_presets(self):
+        """Save presets to JSON file"""
+        presets_file = Path.home() / ".moco_auto_import_presets.json"
+        try:
+            with open(presets_file, 'w') as f:
+                json.dump(self.presets, f, indent=4)
+            return True
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save presets:\n{str(e)}")
+            return False
+
+    def _get_current_preset_data(self) -> dict:
+        """Capture current state of all input fields"""
+        return {
+            'project_path': self.project_entry.get(),
+            'media_path': self.media_entry.get(),
+            'prefix': self._get_entry_value(self.prefix_entry, 'e.g. Cat'),
+            'character_name': self._get_entry_value(self.character_entry, 'e.g. Infiltrator'),
+            'template_folder_id': self.config.get('template_folder_id', ''),
+            'template_folder_name': self.template_var.get(),
+            'destination_folder_id': self.config.get('destination_folder_id', ''),
+            'destination_folder_name': self.dest_var.get(),
+            'bank_id': self.config.get('bank_name', ''),
+            'bank_name': self.bank_var.get(),
+            'bus_id': self.config.get('bus_id', ''),
+            'bus_name': self.bus_var.get(),
+            'asset_folder_id': self.config.get('asset_folder_id', ''),
+            'asset_folder_name': self.asset_var.get()
+        }
+
+    def _apply_preset_data(self, preset_data: dict):
+        """Apply preset data to all input fields"""
+        # Project path
+        if 'project_path' in preset_data:
+            self.project_entry.delete(0, tk.END)
+            self.project_entry.insert(0, preset_data['project_path'])
+
+        # Media path
+        if 'media_path' in preset_data:
+            self.media_entry.delete(0, tk.END)
+            self.media_entry.insert(0, preset_data['media_path'])
+
+        # Prefix
+        if 'prefix' in preset_data:
+            self.prefix_entry.delete(0, tk.END)
+            if preset_data['prefix']:
+                self.prefix_entry.insert(0, preset_data['prefix'])
+                self.prefix_entry.config(foreground='black')
+            else:
+                self.prefix_entry.insert(0, 'e.g. Cat')
+                self.prefix_entry.config(foreground='gray')
+
+        # Character name
+        if 'character_name' in preset_data:
+            self.character_entry.delete(0, tk.END)
+            if preset_data['character_name']:
+                self.character_entry.insert(0, preset_data['character_name'])
+                self.character_entry.config(foreground='black')
+            else:
+                self.character_entry.insert(0, 'e.g. Infiltrator')
+                self.character_entry.config(foreground='gray')
+
+        # Template folder
+        if 'template_folder_id' in preset_data:
+            self.config['template_folder_id'] = preset_data['template_folder_id']
+            if 'template_folder_name' in preset_data:
+                self.template_var.set(preset_data['template_folder_name'])
+
+        # Destination folder
+        if 'destination_folder_id' in preset_data:
+            self.config['destination_folder_id'] = preset_data['destination_folder_id']
+            if 'destination_folder_name' in preset_data:
+                self.dest_var.set(preset_data['destination_folder_name'])
+
+        # Bank
+        if 'bank_id' in preset_data:
+            self.config['bank_name'] = preset_data['bank_id']
+            if 'bank_name' in preset_data:
+                self.bank_var.set(preset_data['bank_name'])
+
+        # Bus
+        if 'bus_id' in preset_data:
+            self.config['bus_id'] = preset_data['bus_id']
+            if 'bus_name' in preset_data:
+                self.bus_var.set(preset_data['bus_name'])
+
+        # Asset folder
+        if 'asset_folder_id' in preset_data:
+            self.config['asset_folder_id'] = preset_data['asset_folder_id']
+            if 'asset_folder_name' in preset_data:
+                self.asset_var.set(preset_data['asset_folder_name'])
+
+    def _update_preset_list(self):
+        """Update the preset combobox with current presets"""
+        preset_names = list(self.presets.keys())
+        self.preset_combo['values'] = preset_names
+        if preset_names and not self.preset_var.get():
+            self.preset_combo.current(0)
+
+    def _save_preset_ui(self):
+        """UI handler for saving a preset"""
+        # Ask user for preset name
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Save Preset")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        frame = ttk.Frame(dialog, padding="10")
+        frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        ttk.Label(frame, text="Preset Name:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        name_entry = ttk.Entry(frame, width=30)
+        name_entry.grid(row=0, column=1, pady=5, padx=5)
+        name_entry.focus()
+
+        # Pre-fill with current preset name if one is selected
+        if self.preset_var.get():
+            name_entry.insert(0, self.preset_var.get())
+
+        result = {'save': False, 'name': ''}
+
+        def save():
+            name = name_entry.get().strip()
+            if not name:
+                messagebox.showwarning("Warning", "Please enter a preset name")
+                return
+            result['save'] = True
+            result['name'] = name
+            dialog.destroy()
+
+        def cancel():
+            dialog.destroy()
+
+        button_frame = ttk.Frame(frame)
+        button_frame.grid(row=1, column=0, columnspan=2, pady=10)
+
+        ttk.Button(button_frame, text="Save", command=save, width=10).grid(row=0, column=0, padx=5)
+        ttk.Button(button_frame, text="Cancel", command=cancel, width=10).grid(row=0, column=1, padx=5)
+
+        # Bind Enter key to save
+        name_entry.bind('<Return>', lambda e: save())
+        dialog.bind('<Escape>', lambda e: cancel())
+
+        self._center_dialog(dialog)
+        dialog.wait_window()
+
+        if result['save']:
+            preset_name = result['name']
+            preset_data = self._get_current_preset_data()
+            self.presets[preset_name] = preset_data
+
+            if self._save_presets():
+                self._update_preset_list()
+                self.preset_var.set(preset_name)
+                messagebox.showinfo("Success", f"Preset '{preset_name}' saved successfully")
+
+    def _load_preset_ui(self):
+        """UI handler for loading a preset"""
+        preset_name = self.preset_var.get()
+        if not preset_name:
+            messagebox.showwarning("Warning", "Please select a preset to load")
+            return
+
+        if preset_name not in self.presets:
+            messagebox.showerror("Error", f"Preset '{preset_name}' not found")
+            return
+
+        preset_data = self.presets[preset_name]
+        self._apply_preset_data(preset_data)
+        messagebox.showinfo("Success", f"Preset '{preset_name}' loaded successfully")
+
+    def _delete_preset_ui(self):
+        """UI handler for deleting a preset"""
+        preset_name = self.preset_var.get()
+        if not preset_name:
+            messagebox.showwarning("Warning", "Please select a preset to delete")
+            return
+
+        if preset_name not in self.presets:
+            messagebox.showerror("Error", f"Preset '{preset_name}' not found")
+            return
+
+        # Confirm deletion
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete preset '{preset_name}'?"):
+            del self.presets[preset_name]
+            if self._save_presets():
+                self._update_preset_list()
+                self.preset_var.set('')
+                messagebox.showinfo("Success", f"Preset '{preset_name}' deleted successfully")
 
     def open_settings(self):
         """Open settings dialog"""
