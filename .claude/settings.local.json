@@ -37,7 +37,10 @@
       "Bash(\"C:\\Program Files\\FMOD SoundSystem\\FMOD Studio 2.03.09\\fmodstudiocl.exe\")",
       "Bash(tree:*)",
       "Bash(git pull:*)",
-      "Bash(git restore:*)"
+      "Bash(git restore:*)",
+      "Bash(del \"moco_preset_manager.py\" \"test_preset_manager.py\" \"PRESET_IMPROVEMENTS.md\")",
+      "Bash(chmod:*)",
+      "Bash(zip:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<objects serializationModel="Studio.02.02.00">
-	<object class="BankFolder" id="{770ac772-5ca8-4bf6-9085-d33d648fc690}">
-		<property name="name">
-			<value>Mechaflora Weak Ranged</value>
-		</property>
-	</object>
-</objects>
