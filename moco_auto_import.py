@@ -999,9 +999,9 @@ class MocoAutoImportGUI:
         self.media_lookup: Dict[str, List[str]] = {}
 
     def _clean_event_name(self, event_name: str) -> str:
-        """Remove confidence indicators from event name"""
-        # Remove confidence icons (✓, ~, ?)
-        for icon in ['✓ ', '~ ', '? ']:
+        """Remove confidence indicators and auto-created marker from event name"""
+        # Remove confidence icons (✓, ~, ?, +)
+        for icon in ['✓ ', '~ ', '? ', '+ ']:
             if event_name.startswith(icon):
                 return event_name[len(icon):]
         return event_name
@@ -1137,7 +1137,7 @@ class MocoAutoImportGUI:
         preview_header_frame.grid(row=9, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
 
         ttk.Label(preview_header_frame, text="Preview - Matched Events:").pack(side=tk.LEFT)
-        ttk.Label(preview_header_frame, text="  |  Confidence: ✓ High (≥95%)  ~ Good (≥85%)  ? Uncertain (≥70%)",
+        ttk.Label(preview_header_frame, text="  |  Confidence: ✓ High (≥95%)  ~ Good (≥85%)  ? Uncertain (≥70%)  |  + Auto-created (Double-click to rename)",
                  foreground="gray").pack(side=tk.LEFT, padx=(10, 0))
 
         preview_frame = ttk.Frame(main_frame)
@@ -1170,6 +1170,16 @@ class MocoAutoImportGUI:
 
         # Delete key support for removing media files from preview tree
         self.preview_tree.bind('<Delete>', self._on_preview_tree_delete)
+
+        # Double-click to rename event
+        self.preview_tree.bind('<Double-Button-1>', self._on_preview_tree_double_click)
+
+        # F2 key to rename event (standard shortcut)
+        self.preview_tree.bind('<F2>', self._on_preview_tree_f2)
+
+        # Right-click context menu for preview tree
+        self.preview_tree_menu = tk.Menu(self.root, tearoff=0)
+        self.preview_tree.bind('<Button-3>', self._show_preview_tree_context_menu)
 
         # Orphans section
         ttk.Label(main_frame, text="Orphans:").grid(row=11, column=0, sticky=tk.NW, pady=10)
@@ -2667,7 +2677,48 @@ class MocoAutoImportGUI:
             for expected_name in orphan_events:
                 self.orphan_events_list.insert(tk.END, expected_name)
 
-            # Find orphan media files (media not assigned to any expected event) - sorted A-Z
+            # Find orphan media files (media not assigned to any expected event)
+            orphan_audio_files = [audio_file for audio_file in audio_files if audio_file['filename'] not in assigned_media]
+
+            # Auto-create events from orphan media files
+            auto_created_events = {}
+            if orphan_audio_files:
+                # Group orphan files by potential event name
+                for audio_file in orphan_audio_files:
+                    basename = audio_file['basename']
+                    extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, character)
+
+                    if extracted_suffix:
+                        # Generate event name
+                        event_name = f"{prefix}_{character}_{extracted_suffix}"
+
+                        if event_name not in auto_created_events:
+                            auto_created_events[event_name] = []
+                        auto_created_events[event_name].append(audio_file)
+                        assigned_media.add(audio_file['filename'])
+
+            # Add auto-created events to preview tree (sorted A-Z)
+            created_count = 0
+            if auto_created_events:
+                sorted_auto_events = sorted(auto_created_events.items(), key=lambda x: x[0])
+
+                for event_name, files in sorted_auto_events:
+                    # Sort audio files by filename
+                    sorted_files = sorted(files, key=lambda x: x['filename'])
+
+                    # Insert parent item with special indicator for auto-created events
+                    event_display = f"+ {event_name}"  # '+' indicates auto-created event
+                    parent = self.preview_tree.insert('', 'end', text=event_display,
+                                                       values=(bank_name, bus))
+
+                    # Insert child items (audio files)
+                    for file_info in sorted_files:
+                        self.preview_tree.insert(parent, 'end', text=f"  → {file_info['filename']}",
+                                                 values=('', ''))
+
+                    created_count += 1
+
+            # Update orphan media list with remaining unmatched files (sorted A-Z)
             orphan_media = [audio_file['filename'] for audio_file in audio_files if audio_file['filename'] not in assigned_media]
             orphan_media.sort()
             for media_file in orphan_media:
@@ -2677,17 +2728,21 @@ class MocoAutoImportGUI:
             orphan_events_count = self.orphan_events_list.size()
             matched_count = len(matched_events)
 
-            messagebox.showinfo("Success",
-                f"Analysis complete!\n\n"
-                f"Template events: {len(expected_events)}\n"
-                f"Matched events: {matched_count}\n"
-                f"Orphan events: {orphan_events_count}\n\n"
-                f"Audio files found: {len(audio_files)}\n"
-                f"Audio files assigned: {len(assigned_media)}\n"
-                f"Orphan media files: {orphan_media_count}\n\n"
-                f"Destination: {dest_folder_name}\n"
-                f"Bank: {bank_name}\n"
-                f"Bus: {bus}")
+            # Build success message
+            success_msg = f"Analysis complete!\n\n"
+            success_msg += f"Template events: {len(expected_events)}\n"
+            success_msg += f"Matched events: {matched_count}\n"
+            success_msg += f"Orphan events: {orphan_events_count}\n"
+            if created_count > 0:
+                success_msg += f"Auto-created events: {created_count}\n"
+            success_msg += f"\nAudio files found: {len(audio_files)}\n"
+            success_msg += f"Audio files assigned: {len(assigned_media)}\n"
+            success_msg += f"Orphan media files: {orphan_media_count}\n\n"
+            success_msg += f"Destination: {dest_folder_name}\n"
+            success_msg += f"Bank: {bank_name}\n"
+            success_msg += f"Bus: {bus}"
+
+            messagebox.showinfo("Success", success_msg)
 
         except Exception as e:
             messagebox.showerror("Error", f"Analysis failed:\n{str(e)}")
@@ -2701,6 +2756,13 @@ class MocoAutoImportGUI:
 
         # Clear previous menu items
         self.orphan_media_menu.delete(0, tk.END)
+
+        # Add "Create Event from Selection" option at the top
+        self.orphan_media_menu.add_command(
+            label="Create Event from Selection",
+            command=self._create_event_from_selection
+        )
+        self.orphan_media_menu.add_separator()
 
         # Get all orphan events and sort them A-Z
         orphan_events = []
@@ -2775,6 +2837,241 @@ class MocoAutoImportGUI:
                 if self.orphan_events_list.get(i) == event_name:
                     self.orphan_events_list.delete(i)
                     break
+
+    def _create_event_from_selection(self):
+        """Create a new event from selected orphan media files"""
+        # Get selected media files
+        selected_indices = list(self.orphan_media_list.curselection())
+        if not selected_indices:
+            return
+
+        # Get the media filenames
+        selected_media = []
+        for idx in selected_indices:
+            media_filename = self.orphan_media_list.get(idx)
+            selected_media.append(media_filename)
+
+        # Get prefix and character to generate event name
+        prefix = self._get_entry_value(self.prefix_entry, 'e.g. Cat')
+        character = self._get_entry_value(self.character_entry, 'e.g. Infiltrator')
+
+        if not prefix or not character:
+            messagebox.showwarning("Warning", "Please fill in Prefix and Character Name first")
+            return
+
+        # Try to extract common suffix from selected files
+        # Use the first file to determine the event name
+        first_file = selected_media[0]
+        basename = Path(first_file).stem
+
+        extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, character)
+
+        if not extracted_suffix:
+            messagebox.showwarning("Warning",
+                f"Could not determine event name from '{first_file}'.\n"
+                f"Expected format: {prefix}_{character}_EventName[_##]")
+            return
+
+        # Generate event name
+        event_name = f"{prefix}_{character}_{extracted_suffix}"
+
+        # Get bank and bus from current selection
+        bank_name = self.bank_var.get()
+        bus_name = self.bus_var.get()
+
+        # Check if event already exists in preview tree
+        event_item = None
+        for item in self.preview_tree.get_children():
+            item_text = self.preview_tree.item(item, 'text')
+            if self._clean_event_name(item_text) == event_name:
+                event_item = item
+                break
+
+        # If event doesn't exist in tree, create it with auto-created indicator
+        if event_item is None:
+            event_item = self.preview_tree.insert('', 'end', text=f"+ {event_name}",
+                                                   values=(bank_name, bus_name))
+
+        # Add media files as children of the event (sorted)
+        sorted_media = sorted(selected_media)
+        for media_filename in sorted_media:
+            self.preview_tree.insert(event_item, 'end', text=f"  → {media_filename}",
+                                     values=('', ''))
+
+        # Remove from orphan media list (in reverse order to maintain indices)
+        for idx in reversed(selected_indices):
+            self.orphan_media_list.delete(idx)
+
+        messagebox.showinfo("Success", f"Created event: {event_name}\nAssigned {len(selected_media)} file(s)")
+
+    def _show_preview_tree_context_menu(self, event):
+        """Show context menu for preview tree"""
+        # Identify the item under the cursor
+        item = self.preview_tree.identify_row(event.y)
+        if not item:
+            return
+
+        # Select the item
+        self.preview_tree.selection_set(item)
+
+        # Check if it's a parent (event) or child (media file)
+        parent = self.preview_tree.parent(item)
+        is_event = not parent  # If no parent, it's a top-level event
+
+        # Clear previous menu items
+        self.preview_tree_menu.delete(0, tk.END)
+
+        if is_event:
+            # Context menu for events
+            event_text = self.preview_tree.item(item, 'text')
+
+            # Check if it's an auto-created event (starts with '+')
+            if event_text.startswith('+ '):
+                self.preview_tree_menu.add_command(
+                    label="Rename Event (Auto-created)",
+                    command=lambda: self._rename_event(item)
+                )
+            else:
+                self.preview_tree_menu.add_command(
+                    label="Cannot rename template events",
+                    state=tk.DISABLED
+                )
+                self.preview_tree_menu.add_command(
+                    label="(Template events must match FMOD project)",
+                    state=tk.DISABLED
+                )
+        else:
+            # Context menu for media files
+            self.preview_tree_menu.add_command(
+                label="Remove Media File",
+                command=lambda: self._remove_media_from_event(item)
+            )
+
+        # Show menu at cursor position
+        try:
+            self.preview_tree_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self.preview_tree_menu.grab_release()
+
+    def _on_preview_tree_double_click(self, event):
+        """Handle double-click on preview tree items"""
+        # Identify the item under the cursor
+        item = self.preview_tree.identify_row(event.y)
+        if not item:
+            return
+
+        # Check if it's a parent (event) or child (media file)
+        parent = self.preview_tree.parent(item)
+        is_event = not parent
+
+        if is_event:
+            event_text = self.preview_tree.item(item, 'text')
+            # Only allow renaming auto-created events
+            if event_text.startswith('+ '):
+                self._rename_event(item)
+
+    def _on_preview_tree_f2(self, event):
+        """Handle F2 key press on preview tree items"""
+        # Get currently selected item
+        selected = self.preview_tree.selection()
+        if not selected:
+            return
+
+        item = selected[0]
+
+        # Check if it's a parent (event) or child (media file)
+        parent = self.preview_tree.parent(item)
+        is_event = not parent
+
+        if is_event:
+            event_text = self.preview_tree.item(item, 'text')
+            # Only allow renaming auto-created events
+            if event_text.startswith('+ '):
+                self._rename_event(item)
+            else:
+                messagebox.showinfo(
+                    "Cannot Rename",
+                    "Only auto-created events (marked with '+') can be renamed.\n\n"
+                    "Template events must match the FMOD project structure."
+                )
+
+    def _rename_event(self, item):
+        """Rename an event in the preview tree"""
+        # Get current event name
+        current_text = self.preview_tree.item(item, 'text')
+        current_name = self._clean_event_name(current_text)
+
+        # Ask user for new name
+        new_name = simpledialog.askstring(
+            "Rename Event",
+            f"Enter new name for event:\n(Current: {current_name})",
+            initialvalue=current_name,
+            parent=self.root
+        )
+
+        if not new_name or new_name == current_name:
+            return
+
+        # Validate the new name
+        new_name = new_name.strip()
+        if not new_name:
+            messagebox.showwarning("Warning", "Event name cannot be empty")
+            return
+
+        # Check if name already exists
+        for tree_item in self.preview_tree.get_children():
+            if tree_item != item:
+                existing_text = self.preview_tree.item(tree_item, 'text')
+                existing_name = self._clean_event_name(existing_text)
+                if existing_name == new_name:
+                    messagebox.showwarning("Warning", f"An event named '{new_name}' already exists")
+                    return
+
+        # Update the item with new name (keep the '+' indicator)
+        self.preview_tree.item(item, text=f"+ {new_name}")
+        messagebox.showinfo("Success", f"Event renamed to: {new_name}")
+
+    def _remove_media_from_event(self, item):
+        """Remove a media file from an event"""
+        # Get parent event
+        parent = self.preview_tree.parent(item)
+        if not parent:
+            return
+
+        # Get media filename
+        media_text = self.preview_tree.item(item, 'text')
+        media_filename = media_text.replace('  → ', '').strip()
+
+        # Remove from tree
+        self.preview_tree.delete(item)
+
+        # Add back to orphan media list (sorted)
+        orphan_media = list(self.orphan_media_list.get(0, tk.END))
+        orphan_media.append(media_filename)
+        orphan_media.sort()
+
+        self.orphan_media_list.delete(0, tk.END)
+        for media_file in orphan_media:
+            self.orphan_media_list.insert(tk.END, media_file)
+
+        # Check if parent event now has no media files
+        event_name_raw = self.preview_tree.item(parent, 'text')
+        event_name = self._clean_event_name(event_name_raw)
+        children = self.preview_tree.get_children(parent)
+
+        if len(children) == 0:
+            # Event has no media, remove from preview tree
+            self.preview_tree.delete(parent)
+
+            # Add back to orphan events (only if not auto-created)
+            if not event_name_raw.startswith('+ '):
+                orphan_events = list(self.orphan_events_list.get(0, tk.END))
+                if event_name not in orphan_events:
+                    orphan_events.append(event_name)
+                    orphan_events.sort()
+                    self.orphan_events_list.delete(0, tk.END)
+                    for event in orphan_events:
+                        self.orphan_events_list.insert(tk.END, event)
 
     def _set_drop_target(self, target):
         """Set the current drop target"""
