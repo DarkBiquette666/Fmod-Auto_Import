@@ -1439,6 +1439,55 @@ class MocoAutoImportGUI:
 
         return None
 
+    def _open_fmod_project(self):
+        """Open the current FMOD project in FMOD Studio"""
+        try:
+            if not self.project:
+                messagebox.showerror("Error", "No FMOD project is loaded.")
+                return
+
+            # Get FMOD Studio executable path (not command line version)
+            settings = self.load_settings()
+            fmod_exe = None
+
+            # Check settings first
+            if settings.get('fmod_exe_path') and os.path.exists(settings['fmod_exe_path']):
+                fmod_path = settings['fmod_exe_path']
+                # Make sure we use the GUI version, not the command line version
+                if fmod_path.endswith("fmodstudiocl.exe"):
+                    fmod_exe = fmod_path.replace("fmodstudiocl.exe", "FMOD Studio.exe")
+                else:
+                    fmod_exe = fmod_path
+
+            # If not found in settings, search for it
+            if not fmod_exe or not os.path.exists(fmod_exe):
+                base_dirs = [
+                    r"C:\Program Files\FMOD SoundSystem",
+                    r"C:\Program Files (x86)\FMOD SoundSystem"
+                ]
+
+                for base_dir in base_dirs:
+                    if os.path.exists(base_dir):
+                        for folder in os.listdir(base_dir):
+                            if folder.startswith("FMOD Studio"):
+                                exe_path = os.path.join(base_dir, folder, "FMOD Studio.exe")
+                                if os.path.exists(exe_path):
+                                    fmod_exe = exe_path
+                                    break
+                    if fmod_exe:
+                        break
+
+            if not fmod_exe or not os.path.exists(fmod_exe):
+                messagebox.showerror("Error", "FMOD Studio executable not found.\n\nPlease configure the FMOD executable path in Settings.")
+                return
+
+            # Open the project
+            project_path = str(self.project.project_path)
+            subprocess.Popen([fmod_exe, project_path])
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open FMOD Studio:\n{str(e)}")
+
     def browse_media(self):
         """Browse for media files directory"""
         directory = filedialog.askdirectory(title="Select Media Files Directory")
@@ -3998,27 +4047,29 @@ eval(importScriptContent);
                     with open(result_path, 'r', encoding='utf-8') as f:
                         import_result = json.load(f)
 
-                    success_msg = (f"Import Complete!\\n\\n"
-                                 f"Imported: {import_result.get('imported', 0)}\\n"
+                    success_msg = (f"Import Complete!\n\n"
+                                 f"Imported: {import_result.get('imported', 0)}\n"
                                  f"Failed: {import_result.get('failed', 0)}")
 
                     if import_result.get('messages'):
-                        success_msg += "\\n\\nMessages:\\n" + "\\n".join(import_result['messages'][:5])
+                        success_msg += "\n\nMessages:\n" + "\n".join(import_result['messages'][:5])
 
-                    messagebox.showinfo("Import Complete", success_msg)
+                    # Show success message and ask if user wants to open the project
+                    if messagebox.askyesno("Import Complete", success_msg + "\n\nDo you want to open the project in FMOD Studio?"):
+                        self._open_fmod_project()
                 else:
                     messagebox.showwarning("Import Status Unknown",
-                                         "Import executed but result file not found.\\n"
+                                         "Import executed but result file not found.\n"
                                          "Check FMOD Studio console for details.")
 
             except subprocess.TimeoutExpired:
                 messagebox.showerror("Import Timeout",
-                                   "Import operation timed out after 5 minutes.\\n"
+                                   "Import operation timed out after 5 minutes.\n"
                                    "The project may be too large.")
             except Exception as e:
                 messagebox.showerror("Import Failed",
-                                   f"Failed to execute import:\\n{str(e)}\\n\\n"
-                                   "You can try manual import:\\n"
+                                   f"Failed to execute import:\n{str(e)}\n\n"
+                                   "You can try manual import:\n"
                                    "Scripts > Moco: Import JSON")
     
         except Exception as e:
