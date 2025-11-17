@@ -73,19 +73,20 @@ jobs:
         with:
           path: artifacts
 
-      - name: Rename artifacts for release
+      - name: Prepare release files
         run: |
-          mv artifacts/FmodImporter-Windows.exe/FmodImporter.exe artifacts/FmodImporter-Windows.exe
-          mv artifacts/FmodImporter-macOS/FmodImporter artifacts/FmodImporter-macOS
-          mv artifacts/FmodImporter-Linux/FmodImporter artifacts/FmodImporter-Linux
+          mkdir -p release
+          cp artifacts/FmodImporter-Windows.exe/FmodImporter.exe release/FmodImporter-Windows.exe
+          cp artifacts/FmodImporter-macOS/FmodImporter release/FmodImporter-macOS
+          cp artifacts/FmodImporter-Linux/FmodImporter release/FmodImporter-Linux
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/FmodImporter-Windows.exe
-            artifacts/FmodImporter-macOS
-            artifacts/FmodImporter-Linux
+            release/FmodImporter-Windows.exe
+            release/FmodImporter-macOS
+            release/FmodImporter-Linux
           draft: false
           prerelease: false
         env:
