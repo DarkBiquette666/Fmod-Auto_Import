@@ -1,7 +1,7 @@
 # FMOD Importer Tool - Automatic Audio Asset Importer for FMOD Studio
 
 **Version:** 1.0
-**Description:** Python GUI tool for intelligently importing audio assets into FMOD Studio projects
+**Description:** Standalone Windows application for intelligently importing audio assets into FMOD Studio projects
 
 ---
 
@@ -41,22 +41,11 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 
 ### Required Software
 
-1. **Python 3.8 or higher**
-   - Download from: https://www.python.org/downloads/
-   - ⚠️ During installation, check "Add Python to PATH"
+**FMOD Studio**
+- Version 2.0 or higher recommended
+- Works with FMOD Studio projects (.fspro)
 
-2. **FMOD Studio**
-   - Version 2.0 or higher recommended
-   - Works with FMOD Studio projects (.fspro)
-
-### Verify Python Installation
-
-Open a terminal/command prompt and type:
-```bash
-python --version
-```
-
-You should see something like: `Python 3.12.0`
+**That's it!** This is a standalone executable - **no Python installation required!**
 
 ---
 
@@ -64,23 +53,9 @@ You should see something like: `Python 3.12.0`
 
 ### Launching the Application
 
-**Windows:**
-```bash
-launch.bat
-```
+**Simply double-click on `FmodImporter.exe`**
 
-OR double-click on `launch.bat`
-
-**macOS/Linux:**
-```bash
-chmod +x launch.sh
-./launch.sh
-```
-
-**Command line (all platforms):**
-```bash
-python fmod_importer.py
-```
+**Note:** The first launch may take a few seconds as the executable extracts its dependencies to a temporary folder.
 
 ---
 
@@ -249,18 +224,6 @@ These values will be pre-filled on next launch.
 2. Verify the project opens correctly in FMOD Studio
 3. Close FMOD Studio again before using the tool
 
-### Tkinter not available (Linux)
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install python3-tk
-```
-
-**Fedora:**
-```bash
-sudo dnf install python3-tkinter
-```
-
 ### Audio files not detected
 
 **Check:**
@@ -274,10 +237,8 @@ sudo dnf install python3-tkinter
 
 ```
 FmodImporterTool-Package/
-├── fmod_importer.py       # Main Python script
+├── FmodImporter.exe       # Standalone Windows executable
 ├── README.md              # Main documentation (this file)
-├── launch.bat             # Windows launcher
-├── launch.sh              # macOS/Linux launcher
 └── docs/                  # Documentation folder
     ├── QUICKSTART.md      # Quick start guide
     ├── INDEX.md           # Package overview
@@ -309,8 +270,8 @@ FmodImporterTool-Package/
 
 To update the tool:
 1. Backup your settings if important
-2. Replace `fmod_importer.py` with the new version
-3. Relaunch the application
+2. Download the new version of `FmodImporter.exe`
+3. Replace the old executable with the new one
 
 ---
 
@@ -318,7 +279,7 @@ To update the tool:
 
 In case of problems:
 1. Check the "Troubleshooting" section above
-2. Verify Python and FMOD are correctly installed
+2. Verify FMOD Studio is correctly installed
 3. Test with a simple FMOD project
 4. See [docs/QUICKSTART.md](docs/QUICKSTART.md) for quick reference
 
