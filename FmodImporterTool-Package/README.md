@@ -5,7 +5,7 @@
 
 ---
 
-## ⚠️ CRITICAL WARNING
+## CRITICAL WARNING
 
 **ALWAYS CLOSE FMOD STUDIO BEFORE USING THIS TOOL!**
 
@@ -24,7 +24,7 @@ This tool directly manipulates XML files in your FMOD project. Having FMOD Studi
 
 ---
 
-## 📋 Description
+## Description
 
 FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importation into FMOD Studio projects. It allows you to:
 
@@ -37,7 +37,7 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 
 ---
 
-## 🔧 Requirements
+## Requirements
 
 ### Required Software
 
@@ -49,7 +49,7 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 
 ---
 
-## 🚀 Usage
+## Usage
 
 ### Launching the Application
 
@@ -59,11 +59,11 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 
 ---
 
-## 📖 User Guide
+## User Guide
 
-### 1️⃣ Initial Setup
+### 1. Initial Setup
 
-**⚠️ IMPORTANT: Close FMOD Studio before proceeding!**
+**IMPORTANT: Close FMOD Studio before proceeding!**
 
 1. **Load an FMOD Project**
    - **Ensure FMOD Studio is closed**
@@ -75,7 +75,7 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
    - Click "Browse..." next to "Media Files Directory"
    - Select the folder containing your audio files (.wav, .mp3, etc.)
 
-### 2️⃣ Configuration
+### 2. Configuration
 
 **Required fields:**
 
@@ -90,7 +90,7 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 - **Character Name**: Character name (e.g., "Weak_Ranged")
 - **Asset Folder**: Audio asset folder
 
-### 3️⃣ Recommended Workflow
+### 3. Recommended Workflow
 
 #### **Option A: Import from Template**
 
@@ -108,7 +108,7 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 4. Check the event list
 5. Click **"Import"**
 
-### 4️⃣ Icon Interpretation
+### 4. Icon Interpretation
 
 In the import event list:
 
@@ -117,7 +117,7 @@ In the import event list:
 - **?**: No match found
 - **+**: Auto-created event (no template)
 
-### 5️⃣ Match Management
+### 5. Match Management
 
 **Orphan Media Files** (files without event):
 - Right-click to manually assign to an event
@@ -125,17 +125,17 @@ In the import event list:
 **Orphan Events** (events without media):
 - Right-click to manually assign an audio file
 
-### 6️⃣ Finalization
+### 6. Finalization
 
 1. Verify all matches
 2. Click **"Import"**
 3. Wait for import completion
 4. **Important:** Now you can open FMOD Studio and save the project (Ctrl+S)
-5. **⚠️ Remember:** The tool directly modifies XML files, so never have FMOD Studio open while importing
+5. **Remember:** The tool directly modifies XML files, so never have FMOD Studio open while importing
 
 ---
 
-## ⚙️ Advanced Settings
+## Advanced Settings
 
 Access via the **"Settings"** button at the bottom of the interface.
 
@@ -233,7 +233,7 @@ These values will be pre-filled on next launch.
 
 ---
 
-## 📁 Package Structure
+## Package Structure
 
 ```
 FmodImporterTool-Package/
@@ -260,8 +260,8 @@ FmodImporterTool-Package/
 
 ### Avoid
 
-- **⚠️ NEVER** import into an open FMOD project (always close FMOD Studio first!)
-- **⚠️ NEVER** have FMOD Studio open while using this tool (XML file conflicts!)
+- **NEVER** import into an open FMOD project (always close FMOD Studio first!)
+- **NEVER** have FMOD Studio open while using this tool (XML file conflicts!)
 - **Don't** interrupt import in progress
 - **Don't** modify FMOD project files manually while tool is running
 - **Don't** use special characters in file names
