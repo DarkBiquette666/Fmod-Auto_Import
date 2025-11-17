@@ -295,5 +295,5 @@ Full license: [docs/LICENSE.txt](docs/LICENSE.txt)
 
 ---
 
-**Version:** 1.0
-**Last update:** November 2024
+**Version:** 0.9.0
+**Last update:** November 2025

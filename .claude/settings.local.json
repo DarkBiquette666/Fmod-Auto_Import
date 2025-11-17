@@ -40,7 +40,14 @@
       "Bash(git restore:*)",
       "Bash(del \"moco_preset_manager.py\" \"test_preset_manager.py\" \"PRESET_IMPROVEMENTS.md\")",
       "Bash(chmod:*)",
-      "Bash(zip:*)"
+      "Bash(zip:*)",
+      "Bash(fmod_importer_temp.py)",
+      "Bash(FmodImporterTool-Package/README.md)",
+      "Bash(FmodImporterTool-Package/docs/INDEX.md)",
+      "Bash(FmodImporterTool-Package/docs/LICENSE.txt)",
+      "Bash(FmodImporterTool-Package/docs/QUICKSTART.md)",
+      "Bash(FmodImporterTool-Package/docs/VERSION.txt)",
+      "Bash(FmodImporterTool-Package/docs/requirements.txt)"
     ],
     "deny": [],
     "ask": []
