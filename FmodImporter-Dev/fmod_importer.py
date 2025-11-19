@@ -807,8 +807,9 @@ class AudioMatcher:
 
         Tries multiple strategies to extract the suffix:
         1. Exact match: Prefix_Character_Suffix
-        2. Partial character match: Prefix_PartialChar_Suffix
-        3. Character parts match: Prefix_Char1_Char2_Suffix
+        2. Normalized match: Handles variations like "BossDuoRanged" vs "Boss_Duo_Ranged"
+        3. Partial character match: Prefix_PartialChar_Suffix
+        4. Character parts match: Prefix_Char1_Char2_Suffix
 
         Returns the suffix or None if no match found
         """
@@ -839,17 +840,39 @@ class AudioMatcher:
                     suffix_part = after_prefix[len(partial_char):]
                     return AudioMatcher._clean_suffix(suffix_part)
 
+            # Strategy 3: Normalized matching (handles "BossDuoRanged" vs "Boss_Duo_Ranged")
+            # Try to find where the character name ends in the filename using fuzzy matching
+            norm_char = AudioMatcher.normalize_string(character)
+
+            # Split the after_prefix into potential character and suffix parts
+            # Try different split points to find best match
+            parts = after_prefix.split('_')
+            for split_idx in range(1, len(parts)):
+                potential_char_part = '_'.join(parts[:split_idx])
+                norm_potential = AudioMatcher.normalize_string(potential_char_part)
+
+                # Check if this matches the normalized character name
+                if norm_potential == norm_char:
+                    # Found a match! The rest is the suffix
+                    suffix_part = '_'.join(parts[split_idx:])
+                    return AudioMatcher._clean_suffix(suffix_part)
+
         return None
 
     @staticmethod
     def _clean_suffix(suffix: str) -> str:
-        """Clean suffix by removing trailing numbers (_01, _02, etc.)"""
-        if '_' in suffix:
-            parts = suffix.rsplit('_', 1)
+        """Clean suffix by removing trailing numbers (_01, _02, etc.) and file extensions"""
+        # Remove file extension first
+        import os
+        suffix_no_ext = os.path.splitext(suffix)[0]
+
+        # Remove trailing variation numbers (_01, _02, _A, _B, etc.)
+        if '_' in suffix_no_ext:
+            parts = suffix_no_ext.rsplit('_', 1)
             if parts[-1].isdigit() or parts[-1].upper() in ['A', 'B', 'C', 'D', 'E']:
                 # Could be _01, _02 or _A, _B variation numbers
                 return parts[0]
-        return suffix
+        return suffix_no_ext
 
     @staticmethod
     def collect_audio_files(directory: str) -> List[Dict]:
@@ -936,6 +959,20 @@ class AudioMatcher:
                                     if after_prefix.startswith(partial_char):
                                         event_suffix = after_prefix[len(partial_char):]
                                         break
+
+                                # If still no match, try normalized matching
+                                if not event_suffix:
+                                    norm_char = AudioMatcher.normalize_string(character)
+                                    parts = after_prefix.split('_')
+
+                                    # Try different split points
+                                    for split_idx in range(1, len(parts)):
+                                        potential_char_part = '_'.join(parts[:split_idx])
+                                        norm_potential = AudioMatcher.normalize_string(potential_char_part)
+
+                                        if norm_potential == norm_char:
+                                            event_suffix = '_'.join(parts[split_idx:])
+                                            break
 
                         if event_suffix:
                             # Calculate similarity between suffixes
@@ -1206,7 +1243,7 @@ class FmodImporterGUI:
         self.orphan_events_list.bind('<Button-5>', self._on_mousewheel)  # Linux scroll down
 
         orphan_events_frame.columnconfigure(0, weight=1)
-        orphan_events_frame.rowconfigure(1, weight=1)
+        orphan_events_frame.rowconfigure(2, weight=1)  # Row 2 contains the Listbox
 
         # Right side - Orphan Media Files
         orphan_media_frame = ttk.Frame(orphans_frame)
@@ -1270,7 +1307,7 @@ class FmodImporterGUI:
         self._drag_label.place_forget()  # Hide initially
 
         orphan_media_frame.columnconfigure(0, weight=1)
-        orphan_media_frame.rowconfigure(1, weight=1)
+        orphan_media_frame.rowconfigure(2, weight=1)  # Row 2 contains the Listbox
 
         # Configure orphans_frame columns to split equally
         orphans_frame.columnconfigure(0, weight=1)
