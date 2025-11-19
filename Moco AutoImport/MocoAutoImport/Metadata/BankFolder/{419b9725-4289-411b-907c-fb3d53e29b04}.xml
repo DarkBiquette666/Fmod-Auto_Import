@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="BankFolder" id="{419b9725-4289-411b-907c-fb3d53e29b04}">
+		<property name="name">
+			<value>Mecha</value>
+		</property>
+	</object>
+</objects>

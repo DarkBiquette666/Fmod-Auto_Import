@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="EncodableAsset" id="{852e42a5-3c56-4f62-b088-dcc56f950618}">
+		<property name="assetPath">
+			<value>Characters/Cat Boss Rich/</value>
+		</property>
+		<relationship name="masterAssetFolder">
+			<destination>{cb173a8f-4773-40ed-962f-f182e250243d}</destination>
+		</relationship>
+	</object>
+</objects>

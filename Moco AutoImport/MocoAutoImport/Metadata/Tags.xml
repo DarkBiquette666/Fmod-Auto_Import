@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="MasterTagFolder" id="{a50ea54d-a4ab-4ba1-9901-4a76a936c68c}">
+		<property name="name">
+			<value>Master</value>
+		</property>
+		<relationship name="items">
+			<destination>{e8a8d0e2-3c0a-43eb-a33c-a79e5937a38e}</destination>
+			<destination>{bbf2065c-1bf0-4d8a-9548-7305eb594880}</destination>
+			<destination>{63a840fb-7c0a-4b4f-bf84-96e88e36eacd}</destination>
+			<destination>{0de80f79-676a-446a-8554-2b2de9941b4c}</destination>
+			<destination>{ee9b1d3f-a97c-4bc5-a549-ee18cb8a05b3}</destination>
+			<destination>{1b9b08c3-5310-439f-bef1-0c480d706800}</destination>
+			<destination>{40ed5e3d-dc77-4121-9e4f-9aca1b17227b}</destination>
+			<destination>{a554410a-0a15-4e5e-b39c-92c1e01ecf2c}</destination>
+			<destination>{24df7341-bb83-4255-969c-d426033d994a}</destination>
+			<destination>{4da53d05-4c2e-4651-952c-1ea901fda24f}</destination>
+			<destination>{4f0569b1-c3f3-4949-b861-1b9d956ddf93}</destination>
+			<destination>{41fe5423-27b5-4c5a-adfd-ae8fcccdf4e3}</destination>
+			<destination>{fa9f83fb-5cc8-4c4a-a80e-598f9aede644}</destination>
+			<destination>{7c6d6c1d-6c5e-455f-9b20-75f5c959fd4c}</destination>
+			<destination>{be8e356d-b515-4275-90bf-07bea067c3ee}</destination>
+			<destination>{7d9e9657-028a-4d3b-827b-531fd80e8d89}</destination>
+			<destination>{caa4b96f-f5bf-4b9e-8f4c-3e09e0c7d2ab}</destination>
+			<destination>{84299b4b-d6c8-42b8-889a-52aab473e2cc}</destination>
+			<destination>{b8f96828-b154-492b-95b4-74e969ba46ee}</destination>
+			<destination>{f0d208e6-888c-4bd4-be74-d24068d832cb}</destination>
+			<destination>{16246a7c-12cc-42f6-99e8-000d84de7b79}</destination>
+			<destination>{72156af1-61a0-4f40-84d2-1c843ea82dff}</destination>
+			<destination>{ffd90979-0267-4dce-8c22-4eedc2845d8d}</destination>
+			<destination>{874e864a-577d-4c5b-acf2-ff95a7be2237}</destination>
+			<destination>{e3f97be5-e5b8-4ee0-a496-515148e77068}</destination>
+		</relationship>
+	</object>
+	<object class="Tag" id="{e8a8d0e2-3c0a-43eb-a33c-a79e5937a38e}">
+		<property name="name">
+			<value>ambience</value>
+		</property>
+	</object>
+	<object class="Tag" id="{bbf2065c-1bf0-4d8a-9548-7305eb594880}">
+		<property name="name">
+			<value>loop</value>
+		</property>
+	</object>
+	<object class="Tag" id="{63a840fb-7c0a-4b4f-bf84-96e88e36eacd}">
+		<property name="name">
+			<value>2d</value>
+		</property>
+	</object>
+	<object class="Tag" id="{0de80f79-676a-446a-8554-2b2de9941b4c}">
+		<property name="name">
+			<value>stereo</value>
+		</property>
+	</object>
+	<object class="Tag" id="{ee9b1d3f-a97c-4bc5-a549-ee18cb8a05b3}">
+		<property name="name">
+			<value>3d</value>
+		</property>
+	</object>
+	<object class="Tag" id="{1b9b08c3-5310-439f-bef1-0c480d706800}">
+		<property name="name">
+			<value>music</value>
+		</property>
+	</object>
+	<object class="Tag" id="{40ed5e3d-dc77-4121-9e4f-9aca1b17227b}">
+		<property name="name">
+			<value>enemy</value>
+		</property>
+	</object>
+	<object class="Tag" id="{a554410a-0a15-4e5e-b39c-92c1e01ecf2c}">
+		<property name="name">
+			<value>character</value>
+		</property>
+	</object>
+	<object class="Tag" id="{24df7341-bb83-4255-969c-d426033d994a}">
+		<property name="name">
+			<value>npc</value>
+		</property>
+	</object>
+	<object class="Tag" id="{4da53d05-4c2e-4651-952c-1ea901fda24f}">
+		<property name="name">
+			<value>pet</value>
+		</property>
+	</object>
+	<object class="Tag" id="{4f0569b1-c3f3-4949-b861-1b9d956ddf93}">
+		<property name="name">
+			<value>founder</value>
+		</property>
+	</object>
+	<object class="Tag" id="{41fe5423-27b5-4c5a-adfd-ae8fcccdf4e3}">
+		<property name="name">
+			<value>mount</value>
+		</property>
+	</object>
+	<object class="Tag" id="{fa9f83fb-5cc8-4c4a-a80e-598f9aede644}">
+		<property name="name">
+			<value>vfx</value>
+		</property>
+	</object>
+	<object class="Tag" id="{7c6d6c1d-6c5e-455f-9b20-75f5c959fd4c}">
+		<property name="name">
+			<value>player</value>
+		</property>
+	</object>
+	<object class="Tag" id="{be8e356d-b515-4275-90bf-07bea067c3ee}">
+		<property name="name">
+			<value>boss</value>
+		</property>
+	</object>
+	<object class="Tag" id="{7d9e9657-028a-4d3b-827b-531fd80e8d89}">
+		<property name="name">
+			<value>jingle</value>
+		</property>
+	</object>
+	<object class="Tag" id="{caa4b96f-f5bf-4b9e-8f4c-3e09e0c7d2ab}">
+		<property name="name">
+			<value>home</value>
+		</property>
+	</object>
+	<object class="Tag" id="{84299b4b-d6c8-42b8-889a-52aab473e2cc}">
+		<property name="name">
+			<value>ui</value>
+		</property>
+	</object>
+	<object class="Tag" id="{b8f96828-b154-492b-95b4-74e969ba46ee}">
+		<property name="name">
+			<value>item</value>
+		</property>
+	</object>
+	<object class="Tag" id="{f0d208e6-888c-4bd4-be74-d24068d832cb}">
+		<property name="name">
+			<value>ability</value>
+		</property>
+	</object>
+	<object class="Tag" id="{16246a7c-12cc-42f6-99e8-000d84de7b79}">
+		<property name="name">
+			<value>ftue</value>
+		</property>
+	</object>
+	<object class="Tag" id="{72156af1-61a0-4f40-84d2-1c843ea82dff}">
+		<property name="name">
+			<value>emoji</value>
+		</property>
+	</object>
+	<object class="Tag" id="{ffd90979-0267-4dce-8c22-4eedc2845d8d}">
+		<property name="name">
+			<value>weapon</value>
+		</property>
+	</object>
+	<object class="Tag" id="{874e864a-577d-4c5b-acf2-ff95a7be2237}">
+		<property name="name">
+			<value>snapshot</value>
+		</property>
+	</object>
+	<object class="Tag" id="{e3f97be5-e5b8-4ee0-a496-515148e77068}">
+		<property name="name">
+			<value>FREEZER</value>
+		</property>
+	</object>
+</objects>
