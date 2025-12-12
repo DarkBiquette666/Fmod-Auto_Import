@@ -104,42 +104,94 @@
         }
     }
 
-    // Find bus/mixer group by name
-    function findBusByName(busName) {
-        if (!busName) return null;
+    // Find bus/mixer group by path (supports "bus:/SFX/Weapons" or "SFX/Weapons" or just "Weapons")
+    function findBusByPath(busPath) {
+        if (!busPath) return null;
 
-        // Check master bus first
-        if (studio.project.workspace.masterBus.name === busName) {
-            return studio.project.workspace.masterBus;
-        }
-
-        // Search all MixerGroup instances
-        var mixerGroups = studio.project.model.MixerGroup.findInstances();
-        for (var i = 0; i < mixerGroups.length; i++) {
-            if (mixerGroups[i].name === busName) {
-                return mixerGroups[i];
+        try {
+            // Try lookup with bus:/ prefix first
+            var lookupPath = busPath;
+            if (!busPath.startsWith("bus:/")) {
+                lookupPath = "bus:/" + busPath;
             }
+            return studio.project.lookup(lookupPath);
+        } catch (e) {
+            // Lookup failed, try searching by name (last part of path)
+            var parts = busPath.replace("bus:/", "").split('/');
+            var searchName = parts[parts.length - 1];
+
+            // Check master bus
+            var masterBus = studio.project.workspace.masterBus;
+            if (masterBus && masterBus.name === searchName) {
+                return masterBus;
+            }
+
+            // Search all MixerGroup instances
+            var mixerGroups = studio.project.model.MixerGroup.findInstances();
+            for (var i = 0; i < mixerGroups.length; i++) {
+                if (mixerGroups[i].name === searchName) {
+                    return mixerGroups[i];
+                }
+            }
+            return null;
         }
-        return null;
     }
 
-    // Find or create bus by name
-    function findOrCreateBus(busName, messages) {
-        if (!busName) return null;
+    // Find or create bus by path (creates hierarchy like "SFX/Weapons")
+    function findOrCreateBus(busPath, messages) {
+        if (!busPath) return null;
 
-        var bus = findBusByName(busName);
-        if (bus) return bus;
+        // First try to find existing bus
+        var existingBus = findBusByPath(busPath);
+        if (existingBus) return existingBus;
 
-        // Bus doesn't exist, create it under master bus
+        // Bus doesn't exist, create it (with hierarchy if path contains /)
         try {
-            bus = studio.project.create("MixerGroup");
-            bus.name = busName;
-            // Add as child of master bus
-            bus.output = studio.project.workspace.masterBus;
-            messages.push("INFO: Created bus '" + busName + "'");
-            return bus;
+            // Remove bus:/ prefix if present
+            var cleanPath = busPath.replace("bus:/", "");
+            var parts = cleanPath.split('/');
+
+            // Get master bus as starting point
+            var masterBus = studio.project.workspace.masterBus;
+            if (!masterBus) {
+                messages.push("WARN: Master bus not found, cannot create bus hierarchy");
+                return null;
+            }
+
+            var currentBus = masterBus;
+
+            // Create each level of the hierarchy
+            for (var i = 0; i < parts.length; i++) {
+                var partName = parts[i];
+                if (!partName) continue;
+
+                // Look for existing child bus with this name
+                var found = null;
+
+                // Search in mixer groups that output to current bus
+                var mixerGroups = studio.project.model.MixerGroup.findInstances();
+                for (var j = 0; j < mixerGroups.length; j++) {
+                    if (mixerGroups[j].name === partName && mixerGroups[j].output === currentBus) {
+                        found = mixerGroups[j];
+                        break;
+                    }
+                }
+
+                if (found) {
+                    currentBus = found;
+                } else {
+                    // Create new bus as child of current bus
+                    var newBus = studio.project.create("MixerGroup");
+                    newBus.name = partName;
+                    newBus.output = currentBus;  // Parent is current bus, not master
+                    messages.push("INFO: Created bus '" + partName + "' under '" + currentBus.name + "'");
+                    currentBus = newBus;
+                }
+            }
+
+            return currentBus;
         } catch (e) {
-            messages.push("WARN: Failed to create bus '" + busName + "': " + e.message);
+            messages.push("WARN: Failed to create bus '" + busPath + "': " + e.message);
             return null;
         }
     }
@@ -315,9 +367,13 @@
 
                 // 8. Assign bus/mixer output (create if doesn't exist)
                 if (eventData.busName) {
-                    var bus = findOrCreateBus(eventData.busName, result.messages);
-                    if (bus) {
-                        event.masterTrack.mixerGroup.output = bus;
+                    try {
+                        var bus = findOrCreateBus(eventData.busName, result.messages);
+                        if (bus && event.masterTrack && event.masterTrack.mixerGroup) {
+                            event.masterTrack.mixerGroup.output = bus;
+                        }
+                    } catch (busErr) {
+                        result.messages.push("WARN: Could not assign bus '" + eventData.busName + "': " + busErr.message);
                     }
                 }
 

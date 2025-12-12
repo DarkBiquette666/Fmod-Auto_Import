@@ -4057,6 +4057,7 @@ class FmodImporterGUI:
             dest_folder_path = self._get_folder_path(dest_folder_id)
             bank_name = self.project.banks[bank_id]["name"]
             bus_name = self.project.buses[bus_id]["name"]
+            bus_path = self._get_bus_path(bus_id)  # Full path for hierarchical creation
     
             for event_name, audio_entries in event_audio_map.items():
                 template_event = template_map.get(event_name)
@@ -4082,7 +4083,7 @@ class FmodImporterGUI:
                     "audioFilePaths": audio_paths,
                     "assetFolderPath": asset_folder,
                     "bankName": bank_name,
-                    "busName": bus_name,
+                    "busName": bus_path or bus_name,  # Use full path for hierarchical bus creation
                     "isMulti": len(audio_paths) > 1,
                 })
     
@@ -4123,7 +4124,7 @@ class FmodImporterGUI:
                 "projectPath": str(self.project.project_path),
                 "resultPath": str(result_path),
                 "bankName": bank_name,
-                "busName": bus_name,
+                "busName": bus_path or bus_name,  # Full path for hierarchical bus creation
                 "defaultDestFolderPath": dest_folder_path,
                 "events": import_events,
             }
@@ -4155,7 +4156,8 @@ class FmodImporterGUI:
                 fh.write(f"  Bank ID: {bank_id}\n")
                 fh.write(f"  Bank Name: {bank_name}\n")
                 fh.write(f"  Bus ID: {bus_id}\n")
-                fh.write(f"  Bus Name: {bus_name}\n\n")
+                fh.write(f"  Bus Name: {bus_name}\n")
+                fh.write(f"  Bus Path: {bus_path}\n\n")
 
                 fh.write(f"[EVENTS TO IMPORT] ({len(import_events)} total)\n")
                 for event in import_events:
@@ -4164,7 +4166,7 @@ class FmodImporterGUI:
                     fh.write(f"    Dest Folder: {event['destFolderPath']}\n")
                     fh.write(f"    Asset Folder: {event['assetFolderPath']}\n")
                     fh.write(f"    Bank: {event['bankName']}\n")
-                    fh.write(f"    Bus: {event['busName']}\n")
+                    fh.write(f"    Bus Path: {event['busName']}\n")
                     fh.write(f"    Is Multi: {event['isMulti']}\n")
                     fh.write(f"    Audio Files: {len(event['audioFilePaths'])}\n")
                     for i, path in enumerate(event['audioFilePaths'], 1):
@@ -4303,6 +4305,23 @@ eval(importScriptContent);
             folder = self.project.event_folders[current_id]
             parts.insert(0, folder['name'])
             current_id = folder.get('parent')
+
+        return '/'.join(parts)
+
+    def _get_bus_path(self, bus_id):
+        """Get full path of a bus (excluding master bus)"""
+        parts = []
+        current_id = bus_id
+        master_bus_id = self.project._get_master_bus_id()
+
+        while current_id and current_id in self.project.buses:
+            # Don't include the master bus itself
+            if current_id == master_bus_id:
+                break
+
+            bus = self.project.buses[current_id]
+            parts.insert(0, bus['name'])
+            current_id = bus.get('parent')
 
         return '/'.join(parts)
 
