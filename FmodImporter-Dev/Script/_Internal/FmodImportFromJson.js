@@ -121,6 +121,41 @@
         }
     }
 
+    // Find bus by path or name
+    function findBusByPath(busPath) {
+        if (!busPath) return null;
+
+        // Try lookup with bus:/ prefix first
+        try {
+            var lookupPath = busPath;
+            if (!busPath.startsWith("bus:/")) {
+                lookupPath = "bus:/" + busPath;
+            }
+            var result = studio.project.lookup(lookupPath);
+            if (result) return result;
+        } catch (e) {
+            // Lookup failed, try by name
+        }
+
+        // Search by name (last part of path)
+        var parts = busPath.replace("bus:/", "").split('/');
+        var searchName = parts[parts.length - 1];
+
+        // Search all MixerGroup instances
+        try {
+            var mixerGroups = studio.project.model.MixerGroup.findInstances();
+            for (var i = 0; i < mixerGroups.length; i++) {
+                if (mixerGroups[i].name === searchName) {
+                    return mixerGroups[i];
+                }
+            }
+        } catch (e) {
+            // Search failed
+        }
+
+        return null;
+    }
+
     // Find or create folder by path
     function findOrCreateFolder(folderPath, messages) {
         if (!folderPath) return null;
@@ -210,22 +245,33 @@
                 var event;
 
                 if (eventData.templateEventPath) {
-                    // MODE A: Clone from template
+                    // MODE A: Clone from template using UI action
                     var template = findEventByPath(eventData.templateEventPath);
                     if (template && template.isOfType("Event")) {
-                        // Try duplicate() first (FMOD Studio 2.x), then copy()
-                        if (typeof template.duplicate === "function") {
-                            event = template.duplicate();
-                        } else if (typeof template.copy === "function") {
-                            event = template.copy();
-                        } else {
-                            // No clone method available, create from scratch
-                            result.messages.push("WARN: Template found but cannot clone (no duplicate/copy method), creating from scratch");
-                            event = studio.project.create("Event");
+                        // Use FMOD's UI action to duplicate (correct method per FMOD docs)
+                        studio.window.navigateTo(template);
+                        studio.window.triggerAction(studio.window.actions.Duplicate);
+
+                        // The duplicated event should now be selected - find it
+                        // It will have the same name as template + " copy" or similar
+                        var allEvents = studio.project.model.Event.findInstances();
+                        var duplicatedEvent = null;
+
+                        // Find the newly created event (most recent one with similar name)
+                        for (var ev = 0; ev < allEvents.length; ev++) {
+                            var evName = allEvents[ev].name;
+                            if (evName.indexOf(template.name) === 0 && allEvents[ev] !== template) {
+                                // Check if this is the duplicate (has "copy" or number suffix)
+                                if (!duplicatedEvent || allEvents[ev].id > duplicatedEvent.id) {
+                                    duplicatedEvent = allEvents[ev];
+                                }
+                            }
                         }
 
-                        // Clear existing audio from cloned template (if we successfully cloned)
-                        if (event && event !== template) {
+                        if (duplicatedEvent) {
+                            event = duplicatedEvent;
+
+                            // Clear existing audio from cloned template
                             var tracks = event.groupTracks;
                             for (var t = 0; t < tracks.length; t++) {
                                 var modules = tracks[t].modules;
@@ -235,6 +281,9 @@
                                     }
                                 }
                             }
+                        } else {
+                            result.messages.push("WARN: Duplicate action failed, creating from scratch");
+                            event = studio.project.create("Event");
                         }
                     } else {
                         result.messages.push("WARN: Template not found '" + eventData.templateEventPath + "', creating from scratch");
@@ -301,12 +350,22 @@
                     singleSound.audioFile = audioAsset;
                 }
 
-                // 8. Bus routing - DISABLED
-                // FMOD scripting API doesn't support proper bus routing without creating
-                // unwanted mixer group children. Events default to Master Bus.
-                // Route events to correct bus manually in FMOD Studio after import.
+                // 8. Bus routing - use mixerInput.output (correct FMOD API)
                 if (eventData.busName) {
-                    result.messages.push("NOTE: Route '" + eventData.newEventName + "' to bus '" + eventData.busName + "' manually");
+                    try {
+                        var bus = findBusByPath(eventData.busName);
+                        if (bus) {
+                            // Correct method: event.mixerInput.output = bus
+                            // NOT: event.masterTrack.mixerGroup.output (creates parasitic groups)
+                            if (event.mixerInput) {
+                                event.mixerInput.output = bus;
+                            }
+                        } else {
+                            result.messages.push("WARN: Bus not found '" + eventData.busName + "'");
+                        }
+                    } catch (busErr) {
+                        result.messages.push("WARN: Could not assign bus '" + eventData.busName + "': " + busErr.message);
+                    }
                 }
 
                 result.imported++;
