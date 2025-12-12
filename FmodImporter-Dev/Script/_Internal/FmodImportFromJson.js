@@ -258,15 +258,26 @@
                     // MODE A: Clone from template
                     var template = findEventByPath(eventData.templateEventPath);
                     if (template && template.isOfType("Event")) {
-                        event = template.clone();
+                        // Try duplicate() first (FMOD Studio 2.x), then copy()
+                        if (typeof template.duplicate === "function") {
+                            event = template.duplicate();
+                        } else if (typeof template.copy === "function") {
+                            event = template.copy();
+                        } else {
+                            // No clone method available, create from scratch
+                            result.messages.push("WARN: Template found but cannot clone (no duplicate/copy method), creating from scratch");
+                            event = studio.project.create("Event");
+                        }
 
-                        // Clear existing audio from cloned template
-                        var tracks = event.groupTracks;
-                        for (var t = 0; t < tracks.length; t++) {
-                            var modules = tracks[t].modules;
-                            for (var m = modules.length - 1; m >= 0; m--) {
-                                if (modules[m].isOfType("SingleSound") || modules[m].isOfType("MultiSound")) {
-                                    modules[m].deleteObject();
+                        // Clear existing audio from cloned template (if we successfully cloned)
+                        if (event && event !== template) {
+                            var tracks = event.groupTracks;
+                            for (var t = 0; t < tracks.length; t++) {
+                                var modules = tracks[t].modules;
+                                for (var m = modules.length - 1; m >= 0; m--) {
+                                    if (modules[m].isOfType("SingleSound") || modules[m].isOfType("MultiSound")) {
+                                        modules[m].deleteObject();
+                                    }
                                 }
                             }
                         }
