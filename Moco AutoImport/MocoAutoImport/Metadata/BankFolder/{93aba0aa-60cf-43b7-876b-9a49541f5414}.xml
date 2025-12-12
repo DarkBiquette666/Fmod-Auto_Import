@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<objects serializationModel="Studio.02.02.00">
+	<object class="BankFolder" id="{93aba0aa-60cf-43b7-876b-9a49541f5414}">
+		<property name="name">
+			<value>MechafloraStrong Repair</value>
+		</property>
+	</object>
+</objects>
