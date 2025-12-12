@@ -758,8 +758,58 @@ class AudioMatcher:
 
     @staticmethod
     def normalize_string(s: str) -> str:
-        """Normalize a string for fuzzy matching by removing underscores and converting to lowercase"""
-        return s.replace('_', '').replace('-', '').lower()
+        """Normalize a string for fuzzy matching by removing separators and converting to lowercase
+
+        Handles: underscores, dashes, spaces, and converts to lowercase
+        Examples:
+            "Strong Repair" -> "strongrepair"
+            "Strong_Repair" -> "strongrepair"
+            "StrongRepair" -> "strongrepair"
+        """
+        return s.replace('_', '').replace('-', '').replace(' ', '').lower()
+
+    @staticmethod
+    def get_feature_variants(feature: str) -> List[str]:
+        """Generate all possible variants of a feature name for matching
+
+        Args:
+            feature: Feature name (e.g., "Strong Repair", "Strong_Repair", "StrongRepair")
+
+        Returns:
+            List of variants to try for matching, ordered by preference
+        """
+        variants = []
+
+        # Normalize the feature name first (remove all separators)
+        normalized = AudioMatcher.normalize_string(feature)
+
+        # Original as-is
+        if feature not in variants:
+            variants.append(feature)
+
+        # With underscores instead of spaces
+        underscore_version = feature.replace(' ', '_')
+        if underscore_version not in variants:
+            variants.append(underscore_version)
+
+        # With spaces instead of underscores
+        space_version = feature.replace('_', ' ')
+        if space_version not in variants:
+            variants.append(space_version)
+
+        # No separators (concatenated)
+        no_sep_version = feature.replace('_', '').replace(' ', '')
+        if no_sep_version not in variants:
+            variants.append(no_sep_version)
+
+        # Split by any separator and rejoin with underscore
+        parts = feature.replace('_', ' ').replace('-', ' ').split()
+        if len(parts) > 1:
+            rejoined = '_'.join(parts)
+            if rejoined not in variants:
+                variants.append(rejoined)
+
+        return variants
 
     @staticmethod
     def calculate_similarity(str1: str, str2: str) -> float:
@@ -802,59 +852,88 @@ class AudioMatcher:
         return (overlap / total) * 0.7 if total > 0 else 0.0  # 70% max for character overlap
 
     @staticmethod
-    def extract_suffix_from_basename(basename: str, prefix: str, character: str) -> Optional[str]:
+    def extract_suffix_from_basename(basename: str, prefix: str, feature: str) -> Optional[str]:
         """Extract the event suffix from an audio file basename
 
         Tries multiple strategies to extract the suffix:
-        1. Exact match: Prefix_Character_Suffix
-        2. Normalized match: Handles variations like "BossDuoRanged" vs "Boss_Duo_Ranged"
-        3. Partial character match: Prefix_PartialChar_Suffix
-        4. Character parts match: Prefix_Char1_Char2_Suffix
+        1. Try all feature variants (spaces, underscores, concatenated)
+        2. Normalized matching (handles "StrongRepair" vs "Strong_Repair" vs "Strong Repair")
+        3. Partial feature match for multi-word features
+
+        Args:
+            basename: Audio file name without extension (e.g., "Mechaflora_StrongRepair_Attack_01")
+            prefix: Event prefix (e.g., "Mechaflora")
+            feature: Feature name - can have spaces, underscores, or be concatenated
+                     (e.g., "Strong Repair", "Strong_Repair", "StrongRepair")
 
         Returns the suffix or None if no match found
         """
-        # Strategy 1: Exact match
-        exact_pattern = f"{prefix}_{character}_"
-        if basename.startswith(exact_pattern):
-            suffix_part = basename[len(exact_pattern):]
-            return AudioMatcher._clean_suffix(suffix_part)
+        # Get all possible variants of the feature name
+        feature_variants = AudioMatcher.get_feature_variants(feature)
+
+        # Strategy 1: Try exact match with each variant
+        for variant in feature_variants:
+            exact_pattern = f"{prefix}_{variant}_"
+            if basename.startswith(exact_pattern):
+                suffix_part = basename[len(exact_pattern):]
+                return AudioMatcher._clean_suffix(suffix_part)
 
         # Strategy 2: Try with prefix only, then analyze what comes after
         prefix_pattern = f"{prefix}_"
         if basename.startswith(prefix_pattern):
             after_prefix = basename[len(prefix_pattern):]
 
-            # Split character name into parts (e.g., "Weak_Ranged" -> ["Weak", "Ranged"])
-            char_parts = character.split('_')
+            # Try each variant
+            for variant in feature_variants:
+                # Split variant into parts (handles both "Strong_Repair" and "Strong Repair")
+                variant_parts = variant.replace(' ', '_').split('_')
 
-            # Try to match all character parts
-            char_pattern = '_'.join(char_parts) + '_'
-            if after_prefix.startswith(char_pattern):
-                suffix_part = after_prefix[len(char_pattern):]
-                return AudioMatcher._clean_suffix(suffix_part)
-
-            # Try to match partial character parts (e.g., "Weak" only)
-            for i in range(len(char_parts), 0, -1):
-                partial_char = '_'.join(char_parts[:i]) + '_'
-                if after_prefix.startswith(partial_char):
-                    suffix_part = after_prefix[len(partial_char):]
+                # Try to match all variant parts
+                variant_pattern = '_'.join(variant_parts) + '_'
+                if after_prefix.startswith(variant_pattern):
+                    suffix_part = after_prefix[len(variant_pattern):]
                     return AudioMatcher._clean_suffix(suffix_part)
 
-            # Strategy 3: Normalized matching (handles "BossDuoRanged" vs "Boss_Duo_Ranged")
-            # Try to find where the character name ends in the filename using fuzzy matching
-            norm_char = AudioMatcher.normalize_string(character)
+                # Try to match partial variant parts
+                for i in range(len(variant_parts), 0, -1):
+                    partial_variant = '_'.join(variant_parts[:i]) + '_'
+                    if after_prefix.startswith(partial_variant):
+                        suffix_part = after_prefix[len(partial_variant):]
+                        return AudioMatcher._clean_suffix(suffix_part)
 
-            # Split the after_prefix into potential character and suffix parts
+            # Strategy 3: Normalized matching (handles "StrongRepair" vs "Strong_Repair")
+            # Try to find where the feature name ends in the filename using fuzzy matching
+            norm_feature = AudioMatcher.normalize_string(feature)
+
+            # Split the after_prefix into potential feature and suffix parts
             # Try different split points to find best match
             parts = after_prefix.split('_')
             for split_idx in range(1, len(parts)):
-                potential_char_part = '_'.join(parts[:split_idx])
-                norm_potential = AudioMatcher.normalize_string(potential_char_part)
+                potential_feature_part = '_'.join(parts[:split_idx])
+                norm_potential = AudioMatcher.normalize_string(potential_feature_part)
 
-                # Check if this matches the normalized character name
-                if norm_potential == norm_char:
+                # Check if this matches the normalized feature name
+                if norm_potential == norm_feature:
                     # Found a match! The rest is the suffix
                     suffix_part = '_'.join(parts[split_idx:])
+                    return AudioMatcher._clean_suffix(suffix_part)
+
+            # Strategy 4: Try matching concatenated feature directly in the after_prefix
+            # For cases like "Mechaflora_StrongRepairAttack" where feature is "Strong Repair"
+            concatenated_feature = feature.replace(' ', '').replace('_', '')
+            if after_prefix.startswith(concatenated_feature):
+                # Found concatenated feature, extract suffix
+                suffix_start = len(concatenated_feature)
+                if suffix_start < len(after_prefix):
+                    remainder = after_prefix[suffix_start:]
+                    # Check if remainder starts with underscore or capital letter
+                    if remainder.startswith('_'):
+                        suffix_part = remainder[1:]  # Remove leading underscore
+                    elif remainder[0].isupper():
+                        # CamelCase continuation - this is the suffix
+                        suffix_part = remainder
+                    else:
+                        suffix_part = remainder
                     return AudioMatcher._clean_suffix(suffix_part)
 
         return None
@@ -896,22 +975,24 @@ class AudioMatcher:
         return files
 
     @staticmethod
-    def build_event_name(prefix: str, character: str, template_name: str) -> str:
+    def build_event_name(prefix: str, feature: str, template_name: str) -> str:
         """Build event name from template"""
         # Extract suffix from template (last part after underscore)
         parts = template_name.split('_')
         suffix = parts[-1]
-        return f"{prefix}_{character}_{suffix}"
+        # Normalize feature name (replace spaces with underscores)
+        normalized_feature = feature.replace(' ', '_')
+        return f"{prefix}_{normalized_feature}_{suffix}"
 
     @staticmethod
-    def match_files_to_events(audio_files: List[Dict], prefix: str, character: str,
+    def match_files_to_events(audio_files: List[Dict], prefix: str, feature: str,
                               expected_events: Optional[Dict[str, Dict]] = None) -> Dict[str, List[Dict]]:
         """Group audio files by their base names to create events with intelligent matching
 
         Args:
             audio_files: List of audio file dictionaries
             prefix: Event prefix (e.g., 'Mechaflora')
-            character: Character name (e.g., 'Weak_Ranged')
+            feature: Feature name (e.g., 'Weak_Ranged')
             expected_events: Optional dict of expected event names to match against
 
         Returns:
@@ -931,46 +1012,55 @@ class AudioMatcher:
                 best_suffix = None
 
                 # Extract suffix from the file
-                extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, character)
+                extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, feature)
 
                 if extracted_suffix:
                     # Try to match against expected events
                     for event_name in expected_events.keys():
                         # Extract the suffix from the expected event name
-                        # Expected format: Prefix_Character_Suffix
-                        # Need to remove Prefix_Character_ to get the suffix
+                        # Expected format: Prefix_Feature_Suffix
+                        # Need to remove Prefix_Feature_ to get the suffix
 
-                        # Try exact pattern first
-                        exact_pattern = f"{prefix}_{character}_"
+                        # Get all possible variants of the feature name
+                        feature_variants = AudioMatcher.get_feature_variants(feature)
                         event_suffix = None
 
-                        if event_name.startswith(exact_pattern):
-                            event_suffix = event_name[len(exact_pattern):]
-                        else:
-                            # Try partial character matching
+                        # Try exact pattern with each variant first
+                        for variant in feature_variants:
+                            exact_pattern = f"{prefix}_{variant}_"
+                            if event_name.startswith(exact_pattern):
+                                event_suffix = event_name[len(exact_pattern):]
+                                break
+
+                        if not event_suffix:
+                            # Try partial feature matching
                             prefix_pattern = f"{prefix}_"
                             if event_name.startswith(prefix_pattern):
                                 after_prefix = event_name[len(prefix_pattern):]
 
-                                # Split character into parts and try to match
-                                char_parts = character.split('_')
-                                for i in range(len(char_parts), 0, -1):
-                                    partial_char = '_'.join(char_parts[:i]) + '_'
-                                    if after_prefix.startswith(partial_char):
-                                        event_suffix = after_prefix[len(partial_char):]
+                                # Try each variant
+                                for variant in feature_variants:
+                                    # Split variant into parts
+                                    variant_parts = variant.replace(' ', '_').split('_')
+                                    for i in range(len(variant_parts), 0, -1):
+                                        partial_variant = '_'.join(variant_parts[:i]) + '_'
+                                        if after_prefix.startswith(partial_variant):
+                                            event_suffix = after_prefix[len(partial_variant):]
+                                            break
+                                    if event_suffix:
                                         break
 
                                 # If still no match, try normalized matching
                                 if not event_suffix:
-                                    norm_char = AudioMatcher.normalize_string(character)
+                                    norm_feature = AudioMatcher.normalize_string(feature)
                                     parts = after_prefix.split('_')
 
                                     # Try different split points
                                     for split_idx in range(1, len(parts)):
-                                        potential_char_part = '_'.join(parts[:split_idx])
-                                        norm_potential = AudioMatcher.normalize_string(potential_char_part)
+                                        potential_feature_part = '_'.join(parts[:split_idx])
+                                        norm_potential = AudioMatcher.normalize_string(potential_feature_part)
 
-                                        if norm_potential == norm_char:
+                                        if norm_potential == norm_feature:
                                             event_suffix = '_'.join(parts[split_idx:])
                                             break
 
@@ -999,10 +1089,12 @@ class AudioMatcher:
                 continue  # Already matched
 
             basename = file['basename']
-            extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, character)
+            extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, feature)
 
             if extracted_suffix:
-                event_name = f"{prefix}_{character}_{extracted_suffix}"
+                # Normalize feature name for event creation (replace spaces with underscores)
+                normalized_feature = feature.replace(' ', '_')
+                event_name = f"{prefix}_{normalized_feature}_{extracted_suffix}"
 
                 if event_name not in groups:
                     groups[event_name] = {'files': [], 'confidence': 0.5}  # Lower confidence for auto-generated
@@ -1025,7 +1117,7 @@ class FmodImporterGUI:
             'media_path': '',
             'template_folder_id': '',
             'prefix': 'Mechaflora',
-            'character_name': 'Weak_Ranged',
+            'feature_name': 'Weak_Ranged',
             'bank_name': 'MechafloraWeakRanged',
             'destination_folder_id': ''
         }
@@ -1116,14 +1208,14 @@ class FmodImporterGUI:
         self.prefix_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.prefix_entry, 'e.g. Cat'))
         self.prefix_entry.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
-        # Character name
-        ttk.Label(main_frame, text="Character Name:").grid(row=3, column=0, sticky=tk.W, pady=5)
-        self.character_entry = ttk.Entry(main_frame, width=60)
-        self.character_entry.insert(0, "e.g. Weak_Ranged")
-        self.character_entry.config(foreground='gray')
-        self.character_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.character_entry, 'e.g. Weak_Ranged'))
-        self.character_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.character_entry, 'e.g. Weak_Ranged'))
-        self.character_entry.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        # Feature name
+        ttk.Label(main_frame, text="Feature Name:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        self.feature_entry = ttk.Entry(main_frame, width=60)
+        self.feature_entry.insert(0, "e.g. FeatureName, Feature_Name, feature_name, ...")
+        self.feature_entry.config(foreground='gray')
+        self.feature_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.feature_entry, 'e.g. FeatureName, Feature_Name, feature_name, ...'))
+        self.feature_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.feature_entry, 'e.g. FeatureName, Feature_Name, feature_name, ...'))
+        self.feature_entry.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         # Destination folder (moved before Bank)
         ttk.Label(main_frame, text="Event Folder:").grid(row=7, column=0, sticky=tk.W, pady=5)
@@ -1348,6 +1440,23 @@ class FmodImporterGUI:
         """Get actual value from entry (excluding placeholder)"""
         value = entry.get()
         return '' if value == placeholder else value
+
+    def _get_combined_name(self) -> str:
+        """Get combined Prefix + Feature Name for pre-filling dialogs
+
+        Returns empty string if either field is empty or contains placeholder text.
+        Performs direct concatenation without separator.
+        Examples:
+            - "Mechaflora" + "Boss_Duo" = "MechafloraBoss_Duo"
+            - "Mecha flora" + "Boss Duo" = "Mecha floraBoss Duo"
+        """
+        prefix = self._get_entry_value(self.prefix_entry, 'e.g. Cat')
+        feature = self._get_entry_value(self.feature_entry, 'e.g. FeatureName, Feature_Name, feature_name, ...')
+
+        if not prefix or not feature:
+            return ''
+
+        return f"{prefix}{feature}"
 
     def _center_dialog(self, dialog: tk.Toplevel):
         """Center dialog relative to main window"""
@@ -1897,11 +2006,31 @@ class FmodImporterGUI:
                 parent_item = selection[0]
                 parent_id = tree.item(parent_item, 'values')[0]
 
-            name = simpledialog.askstring("New Item", "Enter name:", parent=dialog)
+            initial_value = self._get_combined_name()
+            name = simpledialog.askstring("New Item", "Enter name:",
+                                          initialvalue=initial_value, parent=dialog)
             if name:
                 try:
-                    create_fn(name, parent_id)
+                    new_id = create_fn(name, parent_id)
                     refresh_tree()
+
+                    # Find and select the newly created item in the tree
+                    def find_and_select(item=''):
+                        """Recursively find the item with new_id and select it"""
+                        for child in tree.get_children(item):
+                            values = tree.item(child, 'values')
+                            if values and values[0] == new_id:
+                                tree.selection_set(child)
+                                tree.see(child)
+                                # Auto-select and close dialog
+                                result[0] = (name, new_id)
+                                dialog.destroy()
+                                return True
+                            if find_and_select(child):
+                                return True
+                        return False
+
+                    find_and_select()
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to create:\n{str(e)}")
 
@@ -2101,11 +2230,31 @@ class FmodImporterGUI:
             parent_item = selection[0]
             parent_id = tree.item(parent_item, 'values')[0]
 
-            name = simpledialog.askstring("New Folder", "Enter folder name:", parent=dialog)
+            initial_value = self._get_combined_name()
+            name = simpledialog.askstring("New Folder", "Enter folder name:",
+                                          initialvalue=initial_value, parent=dialog)
             if name:
                 try:
-                    self.project.create_event_folder(name, parent_id)
+                    new_id = self.project.create_event_folder(name, parent_id)
                     refresh_tree()
+
+                    # Find and select the newly created folder in the tree
+                    def find_and_select(item=''):
+                        """Recursively find the folder with new_id and select it"""
+                        for child in tree.get_children(item):
+                            values = tree.item(child, 'values')
+                            if values and values[0] == new_id:
+                                tree.selection_set(child)
+                                tree.see(child)
+                                # Auto-select and close dialog
+                                result[0] = (name, new_id)
+                                dialog.destroy()
+                                return True
+                            if find_and_select(child):
+                                return True
+                        return False
+
+                    find_and_select()
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to create folder:\n{str(e)}")
 
@@ -2368,7 +2517,9 @@ class FmodImporterGUI:
             values = tree.item(parent_item, 'values')
             parent_path = values[1] if len(values) > 1 else ''
 
-            name = simpledialog.askstring("New Asset Folder", "Enter folder name:", parent=dialog)
+            initial_value = self._get_combined_name()
+            name = simpledialog.askstring("New Asset Folder", "Enter folder name:",
+                                          initialvalue=initial_value, parent=dialog)
             if name:
                 # Remove any slashes from the name
                 name = name.replace('/', '')
@@ -2416,6 +2567,24 @@ class FmodImporterGUI:
                     }
 
                     refresh_tree()
+
+                    # Find and select the newly created asset folder in the tree
+                    def find_and_select(item=''):
+                        """Recursively find the asset folder with asset_id and select it"""
+                        for child in tree.get_children(item):
+                            values = tree.item(child, 'values')
+                            if values and len(values) >= 2 and values[0] == asset_id:
+                                tree.selection_set(child)
+                                tree.see(child)
+                                # Auto-select and close dialog
+                                result[0] = (new_path, asset_id)
+                                dialog.destroy()
+                                return True
+                            if find_and_select(child):
+                                return True
+                        return False
+
+                    find_and_select()
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to create asset folder:\n{str(e)}")
 
@@ -2628,10 +2797,10 @@ class FmodImporterGUI:
 
             # Get config values (check for placeholders)
             prefix = self._get_entry_value(self.prefix_entry, 'e.g. Mechaflora')
-            character = self._get_entry_value(self.character_entry, 'e.g. Weak_Ranged')
+            feature = self._get_entry_value(self.feature_entry, 'e.g. FeatureName, Feature_Name, feature_name, ...')
 
-            if not prefix or not character:
-                messagebox.showwarning("Warning", "Please fill in Prefix and Character Name")
+            if not prefix or not feature:
+                messagebox.showwarning("Warning", "Please fill in Prefix and Feature Name")
                 return
 
             # Get destination folder
@@ -2678,12 +2847,12 @@ class FmodImporterGUI:
                 messagebox.showinfo("Info", "No audio files found in the selected directory")
                 return
 
-            # Build expected event names by replacing template prefix/character with user input
-            # Expected template format: "TemplatePrefix_TemplateCharacter_Suffix"
-            # User wants: "UserPrefix_UserCharacter_Suffix"
+            # Build expected event names by replacing template prefix/feature with user input
+            # Expected template format: "TemplatePrefix_TemplateFeature_Suffix"
+            # User wants: "UserPrefix_UserFeature_Suffix"
 
-            # First, extract the template prefix and character from the first event
-            # Assume template events follow pattern: Prefix_Character_Suffix
+            # First, extract the template prefix and feature from the first event
+            # Assume template events follow pattern: Prefix_Feature_Suffix
             template_prefix = None
             template_character = None
 
@@ -2694,21 +2863,24 @@ class FmodImporterGUI:
                     template_prefix = parts[0]
                     template_character = parts[1]
 
-            # Create mapping of expected event names (with user's prefix/character) to template events
+            # Normalize feature name for event creation (replace spaces with underscores)
+            normalized_feature = feature.replace(' ', '_')
+
+            # Create mapping of expected event names (with user's prefix/feature) to template events
             expected_events = {}
             for template_event in template_events:
                 template_name = template_event['name']
 
-                # Replace template prefix/character with user's input
+                # Replace template prefix/feature with user's input
                 if template_prefix and template_character:
-                    # Replace first two parts (prefix_character) with user's values
+                    # Replace first two parts (prefix_feature) with user's values
                     parts = template_name.split('_', 2)  # Split into max 3 parts
                     if len(parts) >= 3:
                         suffix = parts[2]  # Everything after the second underscore
-                        expected_name = f"{prefix}_{character}_{suffix}"
+                        expected_name = f"{prefix}_{normalized_feature}_{suffix}"
                     else:
                         # Fallback if naming convention doesn't match
-                        expected_name = template_name.replace(template_prefix, prefix).replace(template_character, character)
+                        expected_name = template_name.replace(template_prefix, prefix).replace(template_character, normalized_feature)
                 else:
                     # Can't determine template pattern, just do simple replacement
                     expected_name = template_name
@@ -2716,7 +2888,7 @@ class FmodImporterGUI:
                 expected_events[expected_name] = template_event
 
             # Match audio files to expected events with intelligent matching
-            matches = AudioMatcher.match_files_to_events(audio_files, prefix, character, expected_events)
+            matches = AudioMatcher.match_files_to_events(audio_files, prefix, feature, expected_events)
 
             # Track which events and media were matched
             matched_events = set()
@@ -2772,11 +2944,11 @@ class FmodImporterGUI:
                 # Group orphan files by potential event name
                 for audio_file in orphan_audio_files:
                     basename = audio_file['basename']
-                    extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, character)
+                    extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, feature)
 
                     if extracted_suffix:
-                        # Generate event name
-                        event_name = f"{prefix}_{character}_{extracted_suffix}"
+                        # Generate event name (use normalized feature)
+                        event_name = f"{prefix}_{normalized_feature}_{extracted_suffix}"
 
                         if event_name not in auto_created_events:
                             auto_created_events[event_name] = []
@@ -2937,12 +3109,12 @@ class FmodImporterGUI:
             media_filename = self.orphan_media_list.get(idx)
             selected_media.append(media_filename)
 
-        # Get prefix and character to generate event name
+        # Get prefix and feature to generate event name
         prefix = self._get_entry_value(self.prefix_entry, 'e.g. Mechaflora')
-        character = self._get_entry_value(self.character_entry, 'e.g. Weak_Ranged')
+        feature = self._get_entry_value(self.feature_entry, 'e.g. FeatureName, Feature_Name, feature_name, ...')
 
-        if not prefix or not character:
-            messagebox.showwarning("Warning", "Please fill in Prefix and Character Name first")
+        if not prefix or not feature:
+            messagebox.showwarning("Warning", "Please fill in Prefix and Feature Name first")
             return
 
         # Try to extract common suffix from selected files
@@ -2950,16 +3122,17 @@ class FmodImporterGUI:
         first_file = selected_media[0]
         basename = Path(first_file).stem
 
-        extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, character)
+        extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, feature)
 
         if not extracted_suffix:
             messagebox.showwarning("Warning",
                 f"Could not determine event name from '{first_file}'.\n"
-                f"Expected format: {prefix}_{character}_EventName[_##]")
+                f"Expected format: {prefix}_{feature}_EventName[_##]")
             return
 
-        # Generate event name
-        event_name = f"{prefix}_{character}_{extracted_suffix}"
+        # Generate event name (normalize feature - replace spaces with underscores)
+        normalized_feature = feature.replace(' ', '_')
+        event_name = f"{prefix}_{normalized_feature}_{extracted_suffix}"
 
         # Get bank and bus from current selection
         bank_name = self.bank_var.get()
@@ -3848,9 +4021,9 @@ class FmodImporterGUI:
                 return
     
             prefix = self._get_entry_value(self.prefix_entry, "e.g. Mechaflora")
-            character = self._get_entry_value(self.character_entry, "e.g. Weak_Ranged")
-            if not prefix or not character:
-                messagebox.showerror("Error", "Please specify prefix and character name.")
+            feature = self._get_entry_value(self.feature_entry, "e.g. FeatureName, Feature_Name, feature_name, ...")
+            if not prefix or not feature:
+                messagebox.showerror("Error", "Please specify prefix and feature name.")
                 return
     
             template_folder_id = getattr(self, "selected_template_id", None)
@@ -3868,11 +4041,14 @@ class FmodImporterGUI:
                 messagebox.showerror("Error", "No template events found.")
                 return
     
+            # Normalize feature name (replace spaces with underscores)
+            normalized_feature = feature.replace(' ', '_')
+
             template_map = {}
             for tmpl in template_events:
                 parts = tmpl["name"].split("_", 2)
                 if len(parts) >= 3:
-                    expected_name = f"{prefix}_{character}_{parts[2]}"
+                    expected_name = f"{prefix}_{normalized_feature}_{parts[2]}"
                     template_map[expected_name] = tmpl
     
             # 5. Build import data
@@ -3968,7 +4144,7 @@ class FmodImporterGUI:
 
                 fh.write(f"[USER SELECTIONS]\n")
                 fh.write(f"  Prefix: {prefix}\n")
-                fh.write(f"  Character: {character}\n")
+                fh.write(f"  Feature Name: {feature}\n")
                 fh.write(f"  Media Path: {media_path}\n")
                 fh.write(f"  Asset Folder ID: {asset_id}\n")
                 fh.write(f"  Asset Folder Path: {asset_folder}\n")
