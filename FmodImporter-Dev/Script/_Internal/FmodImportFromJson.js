@@ -42,16 +42,33 @@
     // Find event by path (adds event:/ prefix if needed)
     function findEventByPath(path) {
         if (!path) return null;
+
+        // Try with event:/ prefix first
         try {
-            // Add event:/ prefix if not present
             var lookupPath = path;
             if (!path.startsWith("event:/")) {
                 lookupPath = "event:/" + path;
             }
-            return studio.project.lookup(lookupPath);
+            var result = studio.project.lookup(lookupPath);
+            if (result && result.isOfType("Event")) {
+                return result;
+            }
         } catch (e) {
-            return null;
+            // Lookup failed, try fallback search
         }
+
+        // Fallback: search by event name (last part of path)
+        var parts = path.replace("event:/", "").split('/');
+        var eventName = parts[parts.length - 1];
+
+        var allEvents = studio.project.model.Event.findInstances();
+        for (var i = 0; i < allEvents.length; i++) {
+            if (allEvents[i].name === eventName) {
+                return allEvents[i];
+            }
+        }
+
+        return null;
     }
 
     // Find folder by path (adds folder:/ prefix if needed)
@@ -104,96 +121,49 @@
         }
     }
 
-    // Find bus/mixer group by path (supports "bus:/SFX/Weapons" or "SFX/Weapons" or just "Weapons")
+    // Find bus/mixer group by path or name (NO CREATION - just find existing)
     function findBusByPath(busPath) {
         if (!busPath) return null;
 
+        // Try lookup with bus:/ prefix first
         try {
-            // Try lookup with bus:/ prefix first
             var lookupPath = busPath;
             if (!busPath.startsWith("bus:/")) {
                 lookupPath = "bus:/" + busPath;
             }
-            return studio.project.lookup(lookupPath);
+            var result = studio.project.lookup(lookupPath);
+            if (result) return result;
         } catch (e) {
-            // Lookup failed, try searching by name (last part of path)
-            var parts = busPath.replace("bus:/", "").split('/');
-            var searchName = parts[parts.length - 1];
+            // Lookup failed, try other methods
+        }
 
-            // Check master bus
+        // Search by name (last part of path or full name)
+        var parts = busPath.replace("bus:/", "").split('/');
+        var searchName = parts[parts.length - 1];
+
+        // Check master bus
+        try {
             var masterBus = studio.project.workspace.masterBus;
             if (masterBus && masterBus.name === searchName) {
                 return masterBus;
             }
+        } catch (e) {
+            // Master bus not accessible
+        }
 
-            // Search all MixerGroup instances
+        // Search all MixerGroup instances
+        try {
             var mixerGroups = studio.project.model.MixerGroup.findInstances();
             for (var i = 0; i < mixerGroups.length; i++) {
                 if (mixerGroups[i].name === searchName) {
                     return mixerGroups[i];
                 }
             }
-            return null;
-        }
-    }
-
-    // Find or create bus by path (creates hierarchy like "SFX/Weapons")
-    function findOrCreateBus(busPath, messages) {
-        if (!busPath) return null;
-
-        // First try to find existing bus
-        var existingBus = findBusByPath(busPath);
-        if (existingBus) return existingBus;
-
-        // Bus doesn't exist, create it (with hierarchy if path contains /)
-        try {
-            // Remove bus:/ prefix if present
-            var cleanPath = busPath.replace("bus:/", "");
-            var parts = cleanPath.split('/');
-
-            // Get master bus as starting point
-            var masterBus = studio.project.workspace.masterBus;
-            if (!masterBus) {
-                messages.push("WARN: Master bus not found, cannot create bus hierarchy");
-                return null;
-            }
-
-            var currentBus = masterBus;
-
-            // Create each level of the hierarchy
-            for (var i = 0; i < parts.length; i++) {
-                var partName = parts[i];
-                if (!partName) continue;
-
-                // Look for existing child bus with this name
-                var found = null;
-
-                // Search in mixer groups that output to current bus
-                var mixerGroups = studio.project.model.MixerGroup.findInstances();
-                for (var j = 0; j < mixerGroups.length; j++) {
-                    if (mixerGroups[j].name === partName && mixerGroups[j].output === currentBus) {
-                        found = mixerGroups[j];
-                        break;
-                    }
-                }
-
-                if (found) {
-                    currentBus = found;
-                } else {
-                    // Create new bus as child of current bus
-                    var newBus = studio.project.create("MixerGroup");
-                    newBus.name = partName;
-                    newBus.output = currentBus;  // Parent is current bus, not master
-                    messages.push("INFO: Created bus '" + partName + "' under '" + currentBus.name + "'");
-                    currentBus = newBus;
-                }
-            }
-
-            return currentBus;
         } catch (e) {
-            messages.push("WARN: Failed to create bus '" + busPath + "': " + e.message);
-            return null;
+            // Search failed
         }
+
+        return null;
     }
 
     // Find or create folder by path
@@ -365,12 +335,19 @@
                     singleSound.audioFile = audioAsset;
                 }
 
-                // 8. Assign bus/mixer output (create if doesn't exist)
+                // 8. Assign bus/mixer output (find existing bus only - no creation)
                 if (eventData.busName) {
                     try {
-                        var bus = findOrCreateBus(eventData.busName, result.messages);
-                        if (bus && event.masterTrack && event.masterTrack.mixerGroup) {
-                            event.masterTrack.mixerGroup.output = bus;
+                        var bus = findBusByPath(eventData.busName);
+                        if (bus) {
+                            // Route event output to this bus
+                            if (event.mixer && event.mixer.output !== undefined) {
+                                event.mixer.output = bus;
+                            } else if (event.masterTrack && event.masterTrack.mixerGroup) {
+                                event.masterTrack.mixerGroup.output = bus;
+                            }
+                        } else {
+                            result.messages.push("WARN: Bus not found '" + eventData.busName + "'");
                         }
                     } catch (busErr) {
                         result.messages.push("WARN: Could not assign bus '" + eventData.busName + "': " + busErr.message);
