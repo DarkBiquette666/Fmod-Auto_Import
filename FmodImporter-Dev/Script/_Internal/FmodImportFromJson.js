@@ -121,51 +121,6 @@
         }
     }
 
-    // Find bus/mixer group by path or name (NO CREATION - just find existing)
-    function findBusByPath(busPath) {
-        if (!busPath) return null;
-
-        // Try lookup with bus:/ prefix first
-        try {
-            var lookupPath = busPath;
-            if (!busPath.startsWith("bus:/")) {
-                lookupPath = "bus:/" + busPath;
-            }
-            var result = studio.project.lookup(lookupPath);
-            if (result) return result;
-        } catch (e) {
-            // Lookup failed, try other methods
-        }
-
-        // Search by name (last part of path or full name)
-        var parts = busPath.replace("bus:/", "").split('/');
-        var searchName = parts[parts.length - 1];
-
-        // Check master bus
-        try {
-            var masterBus = studio.project.workspace.masterBus;
-            if (masterBus && masterBus.name === searchName) {
-                return masterBus;
-            }
-        } catch (e) {
-            // Master bus not accessible
-        }
-
-        // Search all MixerGroup instances
-        try {
-            var mixerGroups = studio.project.model.MixerGroup.findInstances();
-            for (var i = 0; i < mixerGroups.length; i++) {
-                if (mixerGroups[i].name === searchName) {
-                    return mixerGroups[i];
-                }
-            }
-        } catch (e) {
-            // Search failed
-        }
-
-        return null;
-    }
-
     // Find or create folder by path
     function findOrCreateFolder(folderPath, messages) {
         if (!folderPath) return null;
@@ -346,23 +301,12 @@
                     singleSound.audioFile = audioAsset;
                 }
 
-                // 8. Assign bus/mixer output (find existing bus only - no creation)
+                // 8. Bus routing - DISABLED
+                // FMOD scripting API doesn't support proper bus routing without creating
+                // unwanted mixer group children. Events default to Master Bus.
+                // Route events to correct bus manually in FMOD Studio after import.
                 if (eventData.busName) {
-                    try {
-                        var bus = findBusByPath(eventData.busName);
-                        if (bus) {
-                            // Route event output to this bus
-                            if (event.mixer && event.mixer.output !== undefined) {
-                                event.mixer.output = bus;
-                            } else if (event.masterTrack && event.masterTrack.mixerGroup) {
-                                event.masterTrack.mixerGroup.output = bus;
-                            }
-                        } else {
-                            result.messages.push("WARN: Bus not found '" + eventData.busName + "'");
-                        }
-                    } catch (busErr) {
-                        result.messages.push("WARN: Could not assign bus '" + eventData.busName + "': " + busErr.message);
-                    }
+                    result.messages.push("NOTE: Route '" + eventData.newEventName + "' to bus '" + eventData.busName + "' manually");
                 }
 
                 result.imported++;
