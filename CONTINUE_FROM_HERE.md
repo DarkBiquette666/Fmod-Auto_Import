@@ -27,27 +27,43 @@ I modified the template matching logic in `import_assets()` function and broke i
 
 ## How to Fix
 
-### Option 1: Revert to working commit
-```bash
-git checkout ed044bd -- FmodImporter-Dev/fmod_importer.py
+**DO NOT REVERT** - The JavaScript fixes (template duplication, bus routing, bank assignment) are working and must be preserved.
+
+### The Problem
+The template matching logic in `import_assets()` was broken by changes to suffix extraction. The original working code used a simpler approach.
+
+### Original Working Logic (from commit ed044bd)
+```python
+# Simple and working:
+template_map = {}
+for tmpl in template_events:
+    parts = tmpl["name"].split("_", 2)
+    if len(parts) >= 3:
+        expected_name = f"{prefix}_{character}_{parts[2]}"
+        template_map[expected_name] = tmpl
 ```
-This reverts to "Improve fuzzy matching and fix orphan lists layout" commit which was working.
 
-### Option 2: Debug the current code
-Look at commit `ed044bd` to see how the original matching worked:
-```bash
-git show ed044bd:FmodImporter-Dev/fmod_importer.py | grep -A 50 "def analyze_folder"
-```
+### Current Broken Logic
+The new code with `normalize_action()` and complex suffix extraction broke the matching.
 
-The key is to understand:
-1. How `analyze_folder()` matches templates to audio files (this populates the preview tree)
-2. How `import_assets()` reads from preview tree and matches to templates
+### Fix Strategy
+1. **Keep all JavaScript fixes** in `FmodImportFromJson.js` - they work correctly
+2. **Fix Python matching** in `import_assets()` (~line 4050-4160):
+   - Restore simpler suffix extraction using `split("_", 2)`
+   - Use the `character` variable that was already available
+   - Add fuzzy matching as an ENHANCEMENT, not a replacement
 
-### Important: Two Different Matching Steps
+### Key Variables to Use
+- `prefix` - The selected prefix (e.g., "Mechaflora")
+- `character` - The normalized feature name (e.g., "Strong_Repair")
+- Template names follow: `_Template_{CharacterName}_{Action}`
+- Event names follow: `{Prefix}_{Character}_{Action}`
+
+### Two Matching Steps (Both Must Work)
 1. **Analyze phase** (`analyze_folder()`): Matches audio files to template events, populates preview tree
 2. **Import phase** (`import_assets()`): Reads preview tree, matches to templates for JSON generation
 
-Both need to work correctly.
+The analyze phase was likely still working. Focus on fixing `import_assets()` first.
 
 ## Working Features (confirmed)
 - Template duplication via `studio.window.triggerAction(studio.window.actions.Duplicate)`
