@@ -2713,6 +2713,12 @@ class FmodImporterGUI:
                 if len(values) >= 2:
                     asset_id = values[0]
                     asset_path = values[1]
+                    # Check if this is a valid FMOD asset folder (not an intermediate/placeholder)
+                    if not asset_id:
+                        messagebox.showwarning("Invalid Selection",
+                            "This folder doesn't exist in FMOD. Please select an actual asset folder, "
+                            "or create a new one using the 'New' button.")
+                        return
                     result[0] = (asset_path, asset_id)
                     dialog.destroy()
 
@@ -4044,51 +4050,120 @@ class FmodImporterGUI:
             # Normalize feature name (replace spaces with underscores)
             normalized_feature = feature.replace(' ', '_')
 
-            template_map = {}
+            # Helper function to normalize action names for fuzzy matching
+            def normalize_action(action):
+                """Normalize action name to base form for matching.
+
+                Handles all variants:
+                - AttackA, Attack_A, AttackB, Attack_B -> attack
+                - Attack1, Attack_1, Attack2, Attack_2 -> attack
+                - Attack_12, Attack12 -> attack
+                - Death, Spawn -> death, spawn (unchanged)
+                """
+                import re
+                # Remove trailing: optional underscore + (single uppercase letter OR one or more digits)
+                # This handles: AttackA, Attack_A, Attack1, Attack_1, Attack_12
+                action = re.sub(r'_?([A-Z]|\d+)$', '', action)
+                # Also handle multiple suffixes like Attack_A_1 or AttackA1
+                action = re.sub(r'_?([A-Z]|\d+)$', '', action)
+                return action.lower()
+
+            # Build template map by normalized suffix for fuzzy matching
+            # template_by_base[normalized_base] = [(original_suffix, template), ...]
+            template_by_base = {}
             for tmpl in template_events:
-                parts = tmpl["name"].split("_", 2)
+                parts = tmpl["name"].split("_")
                 if len(parts) >= 3:
-                    expected_name = f"{prefix}_{normalized_feature}_{parts[2]}"
-                    template_map[expected_name] = tmpl
-    
-            # 5. Build import data
+                    suffix = "_".join(parts[2:])  # "Spawn", "AttackA", etc.
+                    base = normalize_action(suffix)
+                    if base not in template_by_base:
+                        template_by_base[base] = []
+                    template_by_base[base].append((suffix, tmpl))
+
+            # Sort each group for consistent pairing (AttackA before AttackB, etc.)
+            for base in template_by_base:
+                template_by_base[base].sort(key=lambda x: x[0])
+
+            # Build event map by normalized suffix
+            # Use known prefix + feature to extract suffix correctly
+            # e.g., "Mechaflora_Strong_Repair_Attack_1" with prefix="Mechaflora", feature="Strong_Repair"
+            # → suffix = "Attack_1"
+            event_prefix = f"{prefix}_{normalized_feature}_"
+            event_by_base = {}
+            for event_name, audio_entries in event_audio_map.items():
+                if event_name.startswith(event_prefix):
+                    suffix = event_name[len(event_prefix):]  # Extract suffix after prefix_feature_
+                else:
+                    # Fallback: use parts[2:]
+                    parts = event_name.split("_")
+                    suffix = "_".join(parts[2:]) if len(parts) >= 3 else event_name
+
+                base = normalize_action(suffix)
+                if base not in event_by_base:
+                    event_by_base[base] = []
+                event_by_base[base].append((suffix, event_name, audio_entries))
+
+            # Sort each group for consistent pairing (Attack_1 before Attack_2, etc.)
+            for base in event_by_base:
+                event_by_base[base].sort(key=lambda x: x[0])
+
+            # 5. Build import data using fuzzy matching
             import_events = []
             template_folder_path = self._get_folder_path(template_folder_id)
             dest_folder_path = self._get_folder_path(dest_folder_id)
             bank_name = self.project.banks[bank_id]["name"]
             bus_name = self.project.buses[bus_id]["name"]
             bus_path = self._get_bus_path(bus_id)  # Full path for hierarchical creation
-    
-            for event_name, audio_entries in event_audio_map.items():
-                template_event = template_map.get(event_name)
-                if not template_event:
+
+            # Match templates to events by normalized base action
+            matched_events = set()
+            for base, templates in template_by_base.items():
+                if base not in event_by_base:
                     continue
-    
-                audio_paths = []
-                for label, path_str in audio_entries:
-                    resolved_path = Path(path_str)
-                    if not resolved_path.is_absolute():
-                        resolved_path = Path(media_path) / resolved_path
-                    if not resolved_path.exists():
+                events = event_by_base[base]
+                # Pair templates and events in order
+                for i in range(min(len(templates), len(events))):
+                    template_suffix, tmpl = templates[i]
+                    event_suffix, event_name, audio_entries = events[i]
+                    matched_events.add(event_name)
+
+                    audio_paths = []
+                    for label, path_str in audio_entries:
+                        resolved_path = Path(path_str)
+                        if not resolved_path.is_absolute():
+                            resolved_path = Path(media_path) / resolved_path
+                        if not resolved_path.exists():
+                            continue
+                        audio_paths.append(resolved_path.resolve().as_posix())
+
+                    if not audio_paths:
                         continue
-                    audio_paths.append(resolved_path.resolve().as_posix())
-    
-                if not audio_paths:
-                    continue
-    
-                import_events.append({
-                    "templateEventPath": f"{template_folder_path}/{template_event['name']}",
-                    "newEventName": event_name,
-                    "destFolderPath": dest_folder_path,
-                    "audioFilePaths": audio_paths,
-                    "assetFolderPath": asset_folder,
-                    "bankName": bank_name,
-                    "busName": bus_path or bus_name,  # Use full path for hierarchical bus creation
-                    "isMulti": len(audio_paths) > 1,
-                })
-    
+
+                    import_events.append({
+                        "templateEventPath": f"{template_folder_path}/{tmpl['name']}",
+                        "newEventName": event_name,
+                        "destFolderPath": dest_folder_path,
+                        "audioFilePaths": audio_paths,
+                        "assetFolderPath": asset_folder,
+                        "bankName": bank_name,
+                        "busName": bus_path or bus_name,
+                        "isMulti": len(audio_paths) > 1,
+                    })
+
             if not import_events:
-                messagebox.showerror("Error", "No events ready for import.")
+                # Debug: show what went wrong
+                debug_info = "No events matched templates.\n\n"
+                debug_info += f"Template bases: {list(template_by_base.keys())}\n"
+                debug_info += f"Event bases: {list(event_by_base.keys())}\n\n"
+                debug_info += f"Template names ({len(template_events)}):\n"
+                for tmpl in template_events[:5]:
+                    debug_info += f"  - {tmpl['name']}\n"
+                debug_info += f"\nEvent names from preview ({len(event_audio_map)}):\n"
+                for ev_name in list(event_audio_map.keys())[:5]:
+                    debug_info += f"  - {ev_name}\n"
+                if len(event_audio_map) > 5:
+                    debug_info += f"  ... and {len(event_audio_map) - 5} more\n"
+                messagebox.showerror("Error", debug_info)
                 return
 
             # 6. Copy audio files to FMOD Assets folder
