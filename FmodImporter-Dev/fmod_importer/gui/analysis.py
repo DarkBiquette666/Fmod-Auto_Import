@@ -134,6 +134,7 @@ class AnalysisMixin:
 
             # Track which events and media were matched
             matched_events = set()
+            matched_templates = set()  # Track which template names were used
             assigned_media = set()
             auto_created_count = 0
 
@@ -152,6 +153,10 @@ class AnalysisMixin:
                 # Format display based on whether it matches a template
                 if from_template:
                     matched_events.add(event_name)
+                    # Track which template was matched
+                    matched_template = match_data.get('matched_template')
+                    if matched_template:
+                        matched_templates.add(matched_template)
                     # Format confidence indicator
                     if confidence >= 0.95:
                         confidence_icon = "✓"  # High confidence
@@ -178,7 +183,8 @@ class AnalysisMixin:
                     assigned_media.add(file_info['filename'])
 
             # Find orphan events (template events without matching media) - sorted A-Z
-            orphan_events = [name for name in expected_events.keys() if name not in matched_events]
+            # Use matched_templates (template names) instead of matched_events (constructed names)
+            orphan_events = [name for name in expected_events.keys() if name not in matched_templates]
             orphan_events.sort()
             for expected_name in orphan_events:
                 self.orphan_events_list.insert(tk.END, expected_name)

@@ -460,7 +460,8 @@ class AudioMatcher:
                 groups[final_event_name] = {
                     'files': [],
                     'confidence': confidence,
-                    'from_template': from_template
+                    'from_template': from_template,
+                    'matched_template': matched_template_name if from_template else None
                 }
             groups[final_event_name]['files'].append(file)
 

@@ -89,6 +89,54 @@ class NamingPattern:
         tag_regex = re.compile(r'\$[a-zA-Z]+')
         return tag_regex.findall(self.pattern)
 
+    def get_separator(self) -> str:
+        """
+        Detect the separator used in the pattern.
+
+        Returns:
+            '' (empty) for no separator (e.g., $prefix$feature$action)
+            '_' for underscore (e.g., $prefix_$feature_$action)
+            '-' for dash (e.g., $prefix-$feature-$action)
+
+        Examples:
+            "$prefix$feature$action" → ""
+            "$prefix_$feature_$action" → "_"
+            "$prefix-$feature-$action" → "-"
+        """
+        # Look for separator between tags
+        if '_$' in self.pattern or '$_' in self.pattern:
+            return '_'
+        elif '-$' in self.pattern or '$-' in self.pattern:
+            return '-'
+        else:
+            return ''  # No separator (CamelCase)
+
+    def _normalize_action_separator(self, action: str, target_separator: str) -> str:
+        """
+        Normalize action separator to match pattern.
+
+        Args:
+            action: Action string (e.g., "Stun_Loop", "StunLoop", "Stun-Loop")
+            target_separator: Target separator from pattern ('', '_', or '-')
+
+        Returns:
+            Action with normalized separator
+
+        Examples:
+            action="Stun_Loop", target="" → "StunLoop"
+            action="StunLoop", target="_" → "StunLoop" (no separators to replace)
+            action="Stun-Loop", target="_" → "Stun_Loop"
+        """
+        if target_separator == '':
+            # Remove all separators for CamelCase
+            return action.replace('_', '').replace('-', '').replace(' ', '')
+        else:
+            # Replace all separators with target
+            normalized = action.replace('_', target_separator)
+            normalized = normalized.replace('-', target_separator)
+            normalized = normalized.replace(' ', target_separator)
+            return normalized
+
     def _build_regex(self, user_values: Dict[str, str] = None) -> re.Pattern:
         """
         Build regex pattern for parsing names.
@@ -363,12 +411,17 @@ class NamingPattern:
             Built event name string
         """
         name = self.pattern
+        separator = self.get_separator()
 
         for tag in self.tags:
             tag_name = tag[1:]  # Remove $ prefix
             value = components.get(tag_name, '')
 
             if value:
+                # Normalize action separator to match pattern
+                if tag_name == 'action':
+                    value = self._normalize_action_separator(value, separator)
+
                 name = name.replace(tag, value)
             elif tag in self.OPTIONAL_TAGS:
                 # Remove optional tag and its preceding separator
