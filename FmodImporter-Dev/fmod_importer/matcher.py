@@ -452,8 +452,9 @@ class AudioMatcher:
                         confidence = 0.92  # Good confidence for suffix match
                         break
 
-            # Add to groups (use matched_template_name if found, otherwise use constructed event_name)
-            final_event_name = matched_template_name if from_template else event_name
+            # Always use constructed event_name with user's prefix/feature
+            # The template is only for matching and copying properties, never for naming
+            final_event_name = event_name
 
             if final_event_name not in groups:
                 groups[final_event_name] = {
