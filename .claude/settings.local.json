@@ -47,7 +47,8 @@
       "Bash(FmodImporterTool-Package/docs/LICENSE.txt)",
       "Bash(FmodImporterTool-Package/docs/QUICKSTART.md)",
       "Bash(FmodImporterTool-Package/docs/VERSION.txt)",
-      "Bash(FmodImporterTool-Package/docs/requirements.txt)"
+      "Bash(FmodImporterTool-Package/docs/requirements.txt)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

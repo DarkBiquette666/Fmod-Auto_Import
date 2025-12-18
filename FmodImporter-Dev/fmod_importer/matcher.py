@@ -391,36 +391,14 @@ class AudioMatcher:
             """Remove underscores, spaces, convert to lowercase for fuzzy comparison"""
             return s.replace('_', '').replace(' ', '').lower()
 
-        # OPTIMIZATION: Pre-parse all expected events ONCE to avoid O(N*M) complexity
-        expected_parsed = {}
+        # Store templates for generic matching
+        # We'll match by checking if template name ends with the file's action (normalized)
+        template_names = list(expected_events.keys()) if expected_events else []
         expected_normalized = {}  # For fuzzy matching by normalized event name
+
         if expected_events:
             for exp_name in expected_events.keys():
-                # Try strict parsing first with build_pattern (how templates are named)
-                parsed = build_pattern.parse_asset(exp_name, user_values)
-                action = None
-                variation = ''
-
-                if parsed and 'action' in parsed:
-                    action = parsed.get('action', '').lower()
-                    variation = parsed.get('variation', '')
-                else:
-                    # Strict parsing failed - try fuzzy extraction
-                    # This handles templates like "PrefixCharacterNameAlert" without underscores
-                    fuzzy_action = build_pattern.extract_action_fuzzy(exp_name)
-                    if fuzzy_action:
-                        action = fuzzy_action.lower()
-                        # Try to extract variation if present (last char if it's a letter)
-                        if exp_name and exp_name[-1].isupper():
-                            variation = exp_name[-1]
-
-                if action:
-                    key = (action, variation)
-                    if key not in expected_parsed:
-                        expected_parsed[key] = []
-                    expected_parsed[key].append(exp_name)
-
-                # Also store normalized version for fuzzy matching
+                # Store normalized version for fuzzy matching
                 norm_name = normalize_for_matching(exp_name)
                 expected_normalized[norm_name] = exp_name
 
@@ -456,29 +434,22 @@ class AudioMatcher:
                         matched_template_name = expected_normalized[norm_event]
                         from_template = True
                         confidence = 0.98  # High confidence for normalized match
-                # Try 3: Match by exact action (Alert = Alert)
-                elif expected_parsed and 'action' in parsed:
-                    action = parsed.get('action', '').lower()
-                    variation = parsed.get('variation', '')
-                    key = (action, variation)
 
-                    # Lookup in pre-computed map (O(1) instead of O(M))
-                    if key in expected_parsed:
-                        matched_template_name = expected_parsed[key][0]  # Use first match
-                        from_template = True
-                        confidence = 0.95
-
-            # Try 4: Match by normalized action (Idle_A == IdleA, Attack_1 == Attack1)
-            if not from_template and expected_parsed and 'action' in parsed:
+            # Try 3: GENERIC matching - check if template ends with file's action (normalized)
+            # This handles cases like:
+            # - File action: "Stun_Loop" (normalized: "stunloop")
+            # - Template: "PrefixFeatureNameStunLoop" (normalized ends with "stunloop")
+            if not from_template and template_names and 'action' in parsed:
                 file_action = parsed.get('action', '')
                 file_action_normalized = normalize_for_matching(file_action)
 
-                for (exp_action, exp_var), template_names in expected_parsed.items():
-                    exp_action_normalized = normalize_for_matching(exp_action)
-                    if file_action_normalized == exp_action_normalized:
-                        matched_template_name = template_names[0]
+                for template_name in template_names:
+                    template_normalized = normalize_for_matching(template_name)
+                    # Check if template ends with the file's action (normalized)
+                    if template_normalized.endswith(file_action_normalized):
+                        matched_template_name = template_name
                         from_template = True
-                        confidence = 0.92  # Slightly lower confidence for normalized match
+                        confidence = 0.92  # Good confidence for suffix match
                         break
 
             # Add to groups (use matched_template_name if found, otherwise use constructed event_name)

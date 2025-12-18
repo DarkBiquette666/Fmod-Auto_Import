@@ -215,19 +215,107 @@ class NamingPattern:
 
         return None
 
-    def parse_asset_fuzzy(self, asset_name: str, user_values: Dict[str, str]) -> Optional[Dict[str, str]]:
+    def extract_action_generic(self, name: str, prefix: str, feature: str) -> Optional[str]:
         """
-        Parse asset using fuzzy action extraction (like templates).
+        Extract action from a name by removing known prefix and feature.
 
-        Instead of relying on regex which can't know where feature ends:
-        1. Extract action using fuzzy matching (looks for known action keywords)
-        2. Deduce feature as everything between prefix and action
-        3. Validate feature matches user's input when normalized
+        GENERIC - no hardcoded action names. Works by:
+        1. Removing the known prefix
+        2. Finding where the known feature ends (normalized comparison)
+        3. Everything remaining is the action
 
-        This handles cases like:
-        - File: "Mechaflora_Strong_Repair_Alert_01.wav"
-        - User feature: "StrongRepair"
-        - Extracted feature: "Strong_Repair" (normalized matches "StrongRepair")
+        Args:
+            name: Full name (file or template)
+            prefix: Known prefix value
+            feature: Known feature value
+
+        Returns:
+            Extracted action or None
+
+        Examples:
+            name="Mechaflora_Strong_Repair_Stun_Loop_01", prefix="Mechaflora", feature="StrongRepair"
+            -> "Stun_Loop"
+
+            name="PrefixFeatureNameStunLoop", prefix="Prefix", feature="FeatureName"
+            -> "StunLoop"
+        """
+        # Strip extension if present
+        if '.' in name:
+            name = os.path.splitext(name)[0]
+
+        # Strip iterator suffix
+        name = self._strip_iterator(name)
+
+        name_lower = name.lower()
+        prefix_lower = prefix.lower()
+        feature_normalized = normalize_for_comparison(feature)
+
+        # Remove prefix (with or without separator)
+        if name_lower.startswith(prefix_lower + '_'):
+            remaining = name[len(prefix) + 1:]  # +1 for separator
+        elif name_lower.startswith(prefix_lower + '-'):
+            remaining = name[len(prefix) + 1:]  # +1 for separator
+        elif name_lower.startswith(prefix_lower):
+            remaining = name[len(prefix):]
+        else:
+            return None
+
+        if not remaining:
+            return None
+
+        # Strategy 1: Try with separators (file pattern: Strong_Repair_Stun_Loop)
+        parts = remaining.replace('-', '_').replace(' ', '_').split('_')
+        parts = [p for p in parts if p]  # Remove empty parts
+
+        if parts:
+            # Try to find where feature ends and action begins
+            for i in range(1, len(parts) + 1):
+                candidate_feature = '_'.join(parts[:i])
+                if normalize_for_comparison(candidate_feature) == feature_normalized:
+                    # Found feature boundary! Action is what remains
+                    action_parts = parts[i:]
+                    if action_parts:
+                        return '_'.join(action_parts)  # Preserve original separators
+                    break
+
+        # Strategy 2: Try without separators (CamelCase: FeatureNameStunLoop)
+        remaining_normalized = normalize_for_comparison(remaining)
+        if remaining_normalized.startswith(feature_normalized):
+            # Feature found at start of remaining - action is what follows
+            # Need to find the boundary in the original string
+
+            # Count characters consumed by feature in normalized form
+            feature_len = len(feature_normalized)
+
+            # Find where action starts in original 'remaining' string
+            # by tracking normalized character consumption
+            norm_pos = 0
+            orig_pos = 0
+
+            while norm_pos < feature_len and orig_pos < len(remaining):
+                char = remaining[orig_pos]
+                # Skip separators (they're removed in normalization)
+                if char in '_- ':
+                    orig_pos += 1
+                    continue
+                norm_pos += 1
+                orig_pos += 1
+
+            # Action is everything after the feature
+            action = remaining[orig_pos:].lstrip('_- ')
+            if action:
+                return action
+
+        return None
+
+    def parse_asset_generic(self, asset_name: str, user_values: Dict[str, str]) -> Optional[Dict[str, str]]:
+        """
+        Parse asset using generic action extraction (no hardcoded actions).
+
+        Works by:
+        1. Removing known prefix
+        2. Finding feature boundary (normalized comparison)
+        3. What remains = action
 
         Args:
             asset_name: Asset filename (with or without extension)
@@ -236,49 +324,33 @@ class NamingPattern:
         Returns:
             Dict of extracted components or None if no match
         """
-        # Strip file extension if present
-        if '.' in asset_name:
-            asset_name = os.path.splitext(asset_name)[0]
-
-        # Strip iterator suffix
-        name = self._strip_iterator(asset_name)
-
         prefix = user_values.get('prefix', '')
-        user_feature = user_values.get('feature', '')
+        feature = user_values.get('feature', '')
 
-        # Check prefix matches (case-insensitive)
-        if not name.lower().startswith(prefix.lower()):
-            return None
-
-        # Extract action using fuzzy matching
-        action = self.extract_action_fuzzy(name)
+        action = self.extract_action_generic(asset_name, prefix, feature)
         if not action:
             return None
 
-        # Find where action starts in the name (case-insensitive)
-        action_lower = action.lower()
-        name_lower = name.lower()
-        action_pos = name_lower.rfind(action_lower)
-
-        if action_pos <= len(prefix):
-            return None
-
-        # Feature is everything between prefix and action (minus separators)
-        feature_start = len(prefix)
-        feature_end = action_pos
-
-        # Strip leading/trailing separators
-        file_feature = name[feature_start:feature_end].strip('_').strip()
-
-        # Validate feature matches when normalized
-        if normalize_for_comparison(file_feature) != normalize_for_comparison(user_feature):
-            return None
-
         return {
-            'prefix': name[:len(prefix)],  # Preserve original case from file
-            'feature': file_feature,
+            'prefix': prefix,
+            'feature': feature,  # Use user's feature for event building
             'action': action
         }
+
+    def parse_asset_fuzzy(self, asset_name: str, user_values: Dict[str, str]) -> Optional[Dict[str, str]]:
+        """
+        Parse asset using generic action extraction.
+
+        This is now an alias for parse_asset_generic() for backward compatibility.
+
+        Args:
+            asset_name: Asset filename (with or without extension)
+            user_values: Dict with 'prefix' and 'feature' values from user input
+
+        Returns:
+            Dict of extracted components or None if no match
+        """
+        return self.parse_asset_generic(asset_name, user_values)
 
     def build(self, **components) -> str:
         """

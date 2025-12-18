@@ -99,35 +99,20 @@ class AnalysisMixin:
                 messagebox.showinfo("Info", "No audio files found in the selected directory")
                 return
 
-            # Build expected event names by extracting action from templates
-            # and rebuilding with user's prefix/feature values
+            # Build expected events mapping
+            # With the generic approach, we pass template names directly to the matcher
+            # The matcher will use suffix matching: template.endswith(file_action)
+            # This works for any action name without hardcoding
 
             # Normalize feature name for event creation (replace spaces with underscores)
             normalized_feature = feature.replace(' ', '_')
 
-            # Create mapping of expected event names (with user's prefix/feature) to template events
-            # Use fuzzy action extraction to handle templates without separators (e.g., "PrefixFeatureNameAlert")
+            # Map template names to their event data
+            # The matcher will handle matching by normalized suffix
             expected_events = {}
             for template_event in template_events:
                 template_name = template_event['name']
-
-                # Extract action from template using fuzzy matching
-                # This works for templates with or without separators
-                action = pattern.extract_action_fuzzy(template_name)
-
-                if action:
-                    # Build expected event name using user values + extracted action
-                    build_values = {
-                        'prefix': prefix,
-                        'feature': normalized_feature,
-                        'action': action
-                    }
-                    expected_name = pattern.build(**build_values)
-                else:
-                    # Fallback: can't extract action, use template name as-is
-                    expected_name = template_name
-
-                expected_events[expected_name] = template_event
+                expected_events[template_name] = template_event
 
             # Get asset pattern (optional - for parsing files with different separators)
             asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional - leave empty to use Event Pattern)")
