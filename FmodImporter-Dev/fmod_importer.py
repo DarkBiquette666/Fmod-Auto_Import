@@ -19,6 +19,9 @@ import wave
 import platform
 import re
 
+# Version
+VERSION = "0.0.1"
+
 
 class FMODProject:
     """Represents a FMOD Studio project and handles XML manipulation"""
@@ -2016,6 +2019,10 @@ class FmodImporterGUI:
         ttk.Button(button_frame, text="Import", command=self.import_assets, width=15).grid(row=0, column=1, padx=5)
         ttk.Button(button_frame, text="Settings", command=self.open_settings, width=15).grid(row=0, column=2, padx=5)
         ttk.Button(button_frame, text="Cancel", command=self.root.quit, width=15).grid(row=0, column=3, padx=5)
+
+        # Version label (bottom-right)
+        version_label = tk.Label(main_frame, text=f"v{VERSION}", fg="#666666")
+        version_label.grid(row=16, column=2, sticky=tk.E, pady=(5, 0))
 
         # Configure grid weights
         self.root.columnconfigure(0, weight=1)
