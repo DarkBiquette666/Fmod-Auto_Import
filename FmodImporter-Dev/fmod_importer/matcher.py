@@ -456,7 +456,7 @@ class AudioMatcher:
                         matched_template_name = expected_normalized[norm_event]
                         from_template = True
                         confidence = 0.98  # High confidence for normalized match
-                # Try 3: Match by action (Alert = Alert)
+                # Try 3: Match by exact action (Alert = Alert)
                 elif expected_parsed and 'action' in parsed:
                     action = parsed.get('action', '').lower()
                     variation = parsed.get('variation', '')
@@ -467,6 +467,19 @@ class AudioMatcher:
                         matched_template_name = expected_parsed[key][0]  # Use first match
                         from_template = True
                         confidence = 0.95
+
+            # Try 4: Match by normalized action (Idle_A == IdleA, Attack_1 == Attack1)
+            if not from_template and expected_parsed and 'action' in parsed:
+                file_action = parsed.get('action', '')
+                file_action_normalized = normalize_for_matching(file_action)
+
+                for (exp_action, exp_var), template_names in expected_parsed.items():
+                    exp_action_normalized = normalize_for_matching(exp_action)
+                    if file_action_normalized == exp_action_normalized:
+                        matched_template_name = template_names[0]
+                        from_template = True
+                        confidence = 0.92  # Slightly lower confidence for normalized match
+                        break
 
             # Add to groups (use matched_template_name if found, otherwise use constructed event_name)
             final_event_name = matched_template_name if from_template else event_name

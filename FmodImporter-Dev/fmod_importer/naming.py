@@ -315,20 +315,25 @@ class NamingPattern:
         This is useful for template names that don't follow the exact pattern
         (e.g., "PrefixCharacterNameAlert" without underscores).
 
-        Looks for common action keywords at the end of the name.
+        Looks for common action keywords and captures any suffix (A, B, C, 1, 2, etc.)
 
         Args:
             name: Name to extract action from (e.g., "PrefixCharacterNameAlert")
 
         Returns:
-            Extracted action or None if no action found
+            Extracted action with suffix or None if no action found
+
+        Examples:
+            "MechafloraStrongRepairIdleA" -> "IdleA"
+            "Mechaflora_Strong_Repair_Idle_A" -> "Idle_A"
+            "Mechaflora_Strong_Repair_Attack_1" -> "Attack_1"
+            "PrefixFeatureNameAlert" -> "Alert"
         """
         # Common action keywords to look for (case-insensitive)
-        # Ordered by specificity (longer/compound actions first to match correctly)
+        # Only base actions - suffixes will be captured separately
         common_actions = [
-            # Compound actions (must come first for correct matching)
-            'StunLoop', 'StunEnd', 'VFXHeal', 'IdleA', 'IdleB', 'IdleC',
-            'Attack1', 'Attack2', 'Attack3',
+            # Multi-word actions (must come first)
+            'StunLoop', 'StunEnd', 'VFXHeal', 'StunRecover',
             # Basic actions
             'Alert', 'Ambush', 'Attack', 'Idle', 'Walk', 'Run', 'Jump', 'Die', 'Death',
             'Hit', 'Damage', 'Heal', 'Cast', 'Shoot', 'Fire', 'Reload',
@@ -339,27 +344,56 @@ class NamingPattern:
             'Swing', 'Block', 'Parry', 'Dodge',
             'Pickup', 'Drop', 'Use', 'Equip',
             'Charge', 'Release', 'Hold',
-            'Enter', 'Exit', 'Transition'
+            'Enter', 'Exit', 'Transition', 'Recover', 'VFX'
         ]
 
         # Normalize the name for matching
         name_lower = name.lower()
 
         # Try to find action keywords
-        for action in common_actions:
-            action_lower = action.lower()
+        for base_action in common_actions:
+            action_lower = base_action.lower()
 
-            # Check if action appears at the end
-            if name_lower.endswith(action_lower):
-                return action
+            # Find the position of the action in the name
+            pos = name_lower.rfind(action_lower)
+            if pos == -1:
+                continue
 
-            # Check if action appears followed by variation (e.g., "AlertA")
-            if re.search(rf'{action_lower}[a-z]?$', name_lower):
-                return action
+            # Get what comes after the base action
+            action_end = pos + len(action_lower)
+            remaining = name[action_end:]
 
-            # Check with underscore separator
-            if re.search(rf'_{action_lower}(?:_[a-z])?$', name_lower):
-                return action
+            # Check if this is a valid action position
+            # Valid positions:
+            # 1. Start of string
+            # 2. After underscore separator
+            # 3. CamelCase boundary (lowercase before, uppercase action start)
+            if pos > 0:
+                char_before = name[pos - 1]
+                action_first_char = name[pos]
+
+                # Allow underscore separator
+                if char_before == '_':
+                    pass  # Valid
+                # Allow CamelCase boundary (e.g., "NameAlert" -> "Alert")
+                elif char_before.islower() and action_first_char.isupper():
+                    pass  # Valid CamelCase boundary
+                # Otherwise, action is in the middle of a word - skip
+                elif char_before.isalnum():
+                    continue
+
+            # Capture suffix pattern: _A, _B, _1, _2, A, B, 1, 2, etc.
+            # But not if followed by more letters (like "Idle" in "IdleAnimation")
+            suffix_match = re.match(r'^([_]?[A-Za-z0-9])(?:[_]|$|\.)', remaining)
+            if suffix_match:
+                # Has a suffix (letter or number)
+                suffix = suffix_match.group(1)
+                # Preserve original case from the name
+                original_action = name[pos:action_end]
+                return original_action + suffix
+            elif remaining == '' or remaining.startswith('_') or remaining.startswith('.'):
+                # No suffix, just the base action
+                return name[pos:action_end]
 
         return None
 
