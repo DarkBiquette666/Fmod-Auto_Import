@@ -99,48 +99,38 @@ class AnalysisMixin:
                 messagebox.showinfo("Info", "No audio files found in the selected directory")
                 return
 
-            # Build expected event names by replacing template prefix/feature with user input
-            # Expected template format: "TemplatePrefix_TemplateFeature_Suffix"
-            # User wants: "UserPrefix_UserFeature_Suffix"
-
-            # First, extract the template prefix and feature from the first event
-            # Assume template events follow pattern: Prefix_Feature_Suffix
-            template_prefix = None
-            template_character = None
-
-            if template_events:
-                first_event_name = template_events[0]['name']
-                parts = first_event_name.split('_')
-                if len(parts) >= 3:
-                    template_prefix = parts[0]
-                    template_character = parts[1]
+            # Build expected event names by extracting action from templates
+            # and rebuilding with user's prefix/feature values
 
             # Normalize feature name for event creation (replace spaces with underscores)
             normalized_feature = feature.replace(' ', '_')
 
             # Create mapping of expected event names (with user's prefix/feature) to template events
+            # Use fuzzy action extraction to handle templates without separators (e.g., "PrefixFeatureNameAlert")
             expected_events = {}
             for template_event in template_events:
                 template_name = template_event['name']
 
-                # Replace template prefix/feature with user's input
-                if template_prefix and template_character:
-                    # Replace first two parts (prefix_feature) with user's values
-                    parts = template_name.split('_', 2)  # Split into max 3 parts
-                    if len(parts) >= 3:
-                        suffix = parts[2]  # Everything after the second underscore
-                        expected_name = f"{prefix}_{normalized_feature}_{suffix}"
-                    else:
-                        # Fallback if naming convention doesn't match
-                        expected_name = template_name.replace(template_prefix, prefix).replace(template_character, normalized_feature)
+                # Extract action from template using fuzzy matching
+                # This works for templates with or without separators
+                action = pattern.extract_action_fuzzy(template_name)
+
+                if action:
+                    # Build expected event name using user values + extracted action
+                    build_values = {
+                        'prefix': prefix,
+                        'feature': normalized_feature,
+                        'action': action
+                    }
+                    expected_name = pattern.build(**build_values)
                 else:
-                    # Can't determine template pattern, just do simple replacement
+                    # Fallback: can't extract action, use template name as-is
                     expected_name = template_name
 
                 expected_events[expected_name] = template_event
 
             # Get asset pattern (optional - for parsing files with different separators)
-            asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional - leave empty to use Naming Pattern)")
+            asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional - leave empty to use Event Pattern)")
             parse_pattern = pattern  # Default: use same pattern for parsing
             if asset_pattern_str:
                 # User provided a different pattern for parsing assets

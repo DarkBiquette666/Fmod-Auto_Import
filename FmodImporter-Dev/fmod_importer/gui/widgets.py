@@ -78,8 +78,8 @@ class WidgetsMixin:
         self.feature_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.feature_entry, 'e.g. FeatureName, Feature_Name, feature_name, ...'))
         self.feature_entry.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
-        # Event Naming Pattern
-        ttk.Label(main_frame, text="Naming Pattern:").grid(row=5, column=0, sticky=tk.W, pady=5)
+        # Event Pattern (defines template/event naming structure)
+        ttk.Label(main_frame, text="Event Pattern:").grid(row=5, column=0, sticky=tk.W, pady=5)
         pattern_frame = ttk.Frame(main_frame)
         pattern_frame.grid(row=5, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
@@ -111,10 +111,10 @@ class WidgetsMixin:
         asset_pattern_frame.grid(row=6, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.asset_pattern_entry = ttk.Entry(asset_pattern_frame, width=40)
-        self.asset_pattern_entry.insert(0, "(Optional - leave empty to use Naming Pattern)")
+        self.asset_pattern_entry.insert(0, "(Optional - leave empty to use Event Pattern)")
         self.asset_pattern_entry.config(foreground='gray')
-        self.asset_pattern_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.asset_pattern_entry, "(Optional - leave empty to use Naming Pattern)"))
-        self.asset_pattern_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.asset_pattern_entry, "(Optional - leave empty to use Naming Pattern)"))
+        self.asset_pattern_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.asset_pattern_entry, "(Optional - leave empty to use Event Pattern)"))
+        self.asset_pattern_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.asset_pattern_entry, "(Optional - leave empty to use Event Pattern)"))
         self.asset_pattern_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
 
         # Help button
@@ -392,8 +392,8 @@ class WidgetsMixin:
             pass  # Silently ignore errors during initialization
 
     def show_pattern_help(self):
-        """Show help dialog explaining the naming pattern system"""
-        help_text = """EVENT NAMING PATTERN HELP
+        """Show help dialog explaining the event pattern system"""
+        help_text = """EVENT PATTERN HELP
 
 The pattern defines how your FMOD events will be named based on your audio files.
 
@@ -424,7 +424,7 @@ NOTES:
 - Multiple audio files with same event name are grouped together
 - The separator is always underscore (_)
 """
-        messagebox.showinfo("Naming Pattern Help", help_text)
+        messagebox.showinfo("Event Pattern Help", help_text)
 
     def show_asset_pattern_help(self):
         """Show help dialog explaining the asset pattern system"""
@@ -439,7 +439,7 @@ WHEN TO USE THIS:
 
 EXAMPLE:
 
-Naming Pattern: $prefix$feature$action
+Event Pattern: $prefix$feature$action
   → Events will be named: MechafloraStrongRepairAlert
 
 Asset Pattern: $prefix_$feature_$action
@@ -447,10 +447,10 @@ Asset Pattern: $prefix_$feature_$action
 
 The tool will:
 1. Parse the file using Asset Pattern → extract action="Alert"
-2. Build event name using Naming Pattern → MechafloraStrongRepairAlert
+2. Build event name using Event Pattern → MechafloraStrongRepairAlert
 3. Match them intelligently (normalizes StrongRepair = Strong_Repair)
 
-LEAVE EMPTY if your files already match your naming pattern.
+LEAVE EMPTY if your files already match your event pattern.
 """
         messagebox.showinfo("Asset Pattern Help", help_text)
 

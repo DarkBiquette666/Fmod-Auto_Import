@@ -8,6 +8,24 @@ import re
 from typing import List, Dict, Optional, Tuple
 
 
+def normalize_for_comparison(s: str) -> str:
+    """
+    Normalize a string for comparison.
+
+    Removes underscores, spaces, and converts to lowercase.
+    This allows matching between different naming conventions:
+    - "Strong_Repair" -> "strongrepair"
+    - "StrongRepair" -> "strongrepair"
+
+    Args:
+        s: String to normalize
+
+    Returns:
+        Normalized string
+    """
+    return s.replace('_', '').replace(' ', '').lower()
+
+
 class NamingPattern:
     """
     Parse and build event names according to a user-defined tag pattern.
@@ -160,6 +178,108 @@ class NamingPattern:
 
         return None
 
+    def parse_asset_flexible(self, asset_name: str, user_values: Dict[str, str]) -> Optional[Dict[str, str]]:
+        """
+        Parse an asset filename with flexible feature matching.
+
+        Instead of requiring an exact feature match, this method:
+        1. Extracts the feature from the filename (without validating it)
+        2. Validates that it matches the user's feature when normalized
+
+        This allows matching between different naming conventions:
+        - User enters: "StrongRepair"
+        - File has: "Mechaflora_Strong_Repair_Attack_01.wav"
+        - Both normalize to "strongrepair" -> Match!
+
+        Args:
+            asset_name: Asset filename (with or without extension)
+            user_values: Dict with 'prefix' and 'feature' values from user input
+
+        Returns:
+            Dict of extracted components or None if no match
+        """
+        # Build regex without user_values for feature (let it capture anything)
+        flexible_values = {k: v for k, v in user_values.items() if k != 'feature'}
+
+        # Parse with flexible regex (only validates prefix, extracts feature)
+        result = self.parse_asset(asset_name, flexible_values)
+        if not result:
+            return None
+
+        # Validate feature matches when normalized
+        file_feature = result.get('feature', '')
+        user_feature = user_values.get('feature', '')
+
+        if normalize_for_comparison(file_feature) == normalize_for_comparison(user_feature):
+            return result
+
+        return None
+
+    def parse_asset_fuzzy(self, asset_name: str, user_values: Dict[str, str]) -> Optional[Dict[str, str]]:
+        """
+        Parse asset using fuzzy action extraction (like templates).
+
+        Instead of relying on regex which can't know where feature ends:
+        1. Extract action using fuzzy matching (looks for known action keywords)
+        2. Deduce feature as everything between prefix and action
+        3. Validate feature matches user's input when normalized
+
+        This handles cases like:
+        - File: "Mechaflora_Strong_Repair_Alert_01.wav"
+        - User feature: "StrongRepair"
+        - Extracted feature: "Strong_Repair" (normalized matches "StrongRepair")
+
+        Args:
+            asset_name: Asset filename (with or without extension)
+            user_values: Dict with 'prefix' and 'feature' values from user input
+
+        Returns:
+            Dict of extracted components or None if no match
+        """
+        # Strip file extension if present
+        if '.' in asset_name:
+            asset_name = os.path.splitext(asset_name)[0]
+
+        # Strip iterator suffix
+        name = self._strip_iterator(asset_name)
+
+        prefix = user_values.get('prefix', '')
+        user_feature = user_values.get('feature', '')
+
+        # Check prefix matches (case-insensitive)
+        if not name.lower().startswith(prefix.lower()):
+            return None
+
+        # Extract action using fuzzy matching
+        action = self.extract_action_fuzzy(name)
+        if not action:
+            return None
+
+        # Find where action starts in the name (case-insensitive)
+        action_lower = action.lower()
+        name_lower = name.lower()
+        action_pos = name_lower.rfind(action_lower)
+
+        if action_pos <= len(prefix):
+            return None
+
+        # Feature is everything between prefix and action (minus separators)
+        feature_start = len(prefix)
+        feature_end = action_pos
+
+        # Strip leading/trailing separators
+        file_feature = name[feature_start:feature_end].strip('_').strip()
+
+        # Validate feature matches when normalized
+        if normalize_for_comparison(file_feature) != normalize_for_comparison(user_feature):
+            return None
+
+        return {
+            'prefix': name[:len(prefix)],  # Preserve original case from file
+            'feature': file_feature,
+            'action': action
+        }
+
     def build(self, **components) -> str:
         """
         Build an event name from components.
@@ -204,10 +324,15 @@ class NamingPattern:
             Extracted action or None if no action found
         """
         # Common action keywords to look for (case-insensitive)
+        # Ordered by specificity (longer/compound actions first to match correctly)
         common_actions = [
-            'Alert', 'Attack', 'Idle', 'Walk', 'Run', 'Jump', 'Die', 'Death',
+            # Compound actions (must come first for correct matching)
+            'StunLoop', 'StunEnd', 'VFXHeal', 'IdleA', 'IdleB', 'IdleC',
+            'Attack1', 'Attack2', 'Attack3',
+            # Basic actions
+            'Alert', 'Ambush', 'Attack', 'Idle', 'Walk', 'Run', 'Jump', 'Die', 'Death',
             'Hit', 'Damage', 'Heal', 'Cast', 'Shoot', 'Fire', 'Reload',
-            'Open', 'Close', 'Start', 'Stop', 'Loop', 'End',
+            'Open', 'Close', 'Start', 'Stop', 'Loop', 'End', 'Stun',
             'Spawn', 'Despawn', 'Appear', 'Disappear',
             'Victory', 'Defeat', 'Win', 'Lose',
             'Footstep', 'Land', 'Fall', 'Slide',

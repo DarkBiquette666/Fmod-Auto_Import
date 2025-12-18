@@ -427,8 +427,10 @@ class AudioMatcher:
         for file in audio_files:
             basename = file['basename']
 
-            # Parse the asset file using parse_pattern (e.g., with underscores)
-            parsed = parse_pattern.parse_asset(basename, user_values)
+            # Parse the asset file using fuzzy action extraction
+            # This extracts action first (like "Alert"), then deduces feature as everything between prefix and action
+            # Allows matching even if user enters "StrongRepair" but file has "Strong_Repair"
+            parsed = parse_pattern.parse_asset_fuzzy(basename, user_values)
 
             if not parsed:
                 unmatched.append(file)
