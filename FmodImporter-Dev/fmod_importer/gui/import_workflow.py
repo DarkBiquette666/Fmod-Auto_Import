@@ -1,0 +1,462 @@
+"""
+GUI Import Workflow Mixin Module
+Handles the import workflow for importing audio assets to FMOD.
+"""
+
+import os
+import json
+import shutil
+import subprocess
+import uuid
+from pathlib import Path
+import tkinter as tk
+from tkinter import messagebox
+
+from ..naming import NamingPattern
+
+
+class ImportMixin:
+    """
+    Mixin class providing import workflow functionality.
+
+    These methods are mixed into FmodImporterGUI via multiple inheritance.
+    All methods access shared state through 'self'.
+    """
+
+    def import_assets(self):
+        """Import assets using FMOD JavaScript API via auto-execute script"""
+        try:
+            # 1. Validate inputs
+            if not self.project:
+                messagebox.showerror("Error", "No FMOD Studio project is loaded.")
+                return
+
+            asset_id = getattr(self, "selected_asset_id", None)
+            if not asset_id:
+                messagebox.showerror("Error", "Please select an audio asset folder.")
+                return
+
+            asset_info = self.project.asset_folders.get(asset_id)
+            if not asset_info:
+                messagebox.showerror("Error", "Selected audio asset folder could not be found.")
+                return
+
+            asset_folder = asset_info["path"] or ""
+            if asset_folder and not asset_folder.endswith(("/", "\\\\")):
+                asset_folder += "/"
+
+            media_path_input = self.media_entry.get()
+            media_root = Path(media_path_input) if media_path_input else None
+
+            # 2. Get event-audio mapping from preview tree
+            event_audio_map = {}
+            for item in self.preview_tree.get_children():
+                event_name_raw = self.preview_tree.item(item, "text")
+                event_name = self._clean_event_name(event_name_raw)
+                audio_files = []
+                for child in self.preview_tree.get_children(item):
+                    audio_label = self.preview_tree.item(child, "text") or ""
+                    if "->" in audio_label:
+                        audio_label = audio_label.split("->", 1)[1]
+                    audio_label = audio_label.strip()
+
+                    values = self.preview_tree.item(child, "values") or []
+                    audio_path = values[0] if len(values) > 0 and values[0] else None
+
+                    if not audio_path:
+                        if media_root:
+                            audio_path = str((media_root / audio_label).resolve())
+                        else:
+                            audio_path = audio_label
+
+                    audio_path = os.path.normpath(audio_path)
+                    audio_files.append((audio_label, audio_path))
+
+                if audio_files:
+                    event_audio_map[event_name] = audio_files
+
+            if not event_audio_map:
+                messagebox.showerror("Error", "No events in the preview tree to import.")
+                return
+
+            # 3. Validate other fields
+            media_path = media_path_input
+            if not media_path or not os.path.exists(media_path):
+                messagebox.showerror("Error", "Please specify a valid media path.")
+                return
+
+            prefix = self._get_entry_value(self.prefix_entry, "e.g. Mechaflora")
+            feature = self._get_entry_value(self.feature_entry, "e.g. FeatureName, Feature_Name, feature_name, ...")
+            if not prefix or not feature:
+                messagebox.showerror("Error", "Please specify prefix and feature name.")
+                return
+
+            template_folder_id = getattr(self, "selected_template_id", None)
+            dest_folder_id = getattr(self, "selected_dest_id", None)
+            bank_id = getattr(self, "selected_bank_id", None)
+            bus_id = getattr(self, "selected_bus_id", None)
+
+            if not all([template_folder_id, dest_folder_id, bank_id, bus_id]):
+                messagebox.showerror("Error", "Please select template folder, destination folder, bank, and bus.")
+                return
+
+            # 4. Load templates
+            template_events = self.project.get_events_in_folder(template_folder_id)
+            if not template_events:
+                messagebox.showerror("Error", "No template events found.")
+                return
+
+            # Normalize feature name (replace spaces with underscores)
+            normalized_feature = feature.replace(' ', '_')
+
+            # Get naming pattern for matching
+            pattern_str = self.pattern_var.get()
+            pattern = NamingPattern(pattern_str)
+            user_values = {'prefix': prefix, 'feature': normalized_feature}
+
+            # Build template map by action/variation extracted using pattern
+            # Key = (action, variation or '') for matching
+            template_by_key = {}
+            for tmpl in template_events:
+                # Extract template prefix and feature from first 2 parts
+                tmpl_parts = tmpl["name"].split("_", 2)
+                if len(tmpl_parts) >= 3:
+                    tmpl_prefix = tmpl_parts[0]
+                    tmpl_feature = tmpl_parts[1]
+                    tmpl_suffix = tmpl_parts[2]  # Everything after prefix_feature_
+
+                    # Parse the suffix using the pattern's action/variation extraction
+                    # Build a synthetic name to parse: prefix_feature_suffix
+                    synthetic_name = f"{prefix}_{normalized_feature}_{tmpl_suffix}"
+                    parsed = pattern.parse_asset(synthetic_name, user_values)
+
+                    if parsed:
+                        action = parsed.get('action', tmpl_suffix)
+                        variation = parsed.get('variation', '')
+                        key = (action.lower(), variation)
+
+                        if key not in template_by_key:
+                            template_by_key[key] = []
+                        template_by_key[key].append((tmpl_suffix, tmpl))
+
+            # Sort each group for consistent pairing
+            for key in template_by_key:
+                template_by_key[key].sort(key=lambda x: x[0])
+
+            # Build event map by action/variation extracted using pattern
+            event_by_key = {}
+            for event_name, audio_entries in event_audio_map.items():
+                parsed = pattern.parse_asset(event_name, user_values)
+
+                if parsed:
+                    action = parsed.get('action', '')
+                    variation = parsed.get('variation', '')
+                    key = (action.lower(), variation)
+
+                    # Extract suffix for reference (everything after prefix_feature_)
+                    event_prefix_str = f"{prefix}_{normalized_feature}_"
+                    if event_name.startswith(event_prefix_str):
+                        suffix = event_name[len(event_prefix_str):]
+                    else:
+                        suffix = action + (f"_{variation}" if variation else "")
+
+                    if key not in event_by_key:
+                        event_by_key[key] = []
+                    event_by_key[key].append((suffix, event_name, audio_entries))
+
+            # Sort each group for consistent pairing
+            for key in event_by_key:
+                event_by_key[key].sort(key=lambda x: x[0])
+
+            # 5. Build import data using fuzzy matching
+            import_events = []
+            template_folder_path = self._get_folder_path(template_folder_id)
+            dest_folder_path = self._get_folder_path(dest_folder_id)
+            bank_name = self.project.banks[bank_id]["name"]
+            bus_name = self.project.buses[bus_id]["name"]
+            bus_path = self._get_bus_path(bus_id)  # Full path for hierarchical creation
+
+            # Match templates to events by (action, variation) key
+            matched_events = set()
+            for key, templates in template_by_key.items():
+                if key not in event_by_key:
+                    continue
+                events = event_by_key[key]
+                # Pair templates and events in order
+                for i in range(min(len(templates), len(events))):
+                    template_suffix, tmpl = templates[i]
+                    event_suffix, event_name, audio_entries = events[i]
+                    matched_events.add(event_name)
+
+                    audio_paths = []
+                    for label, path_str in audio_entries:
+                        resolved_path = Path(path_str)
+                        if not resolved_path.is_absolute():
+                            resolved_path = Path(media_path) / resolved_path
+                        if not resolved_path.exists():
+                            continue
+                        audio_paths.append(resolved_path.resolve().as_posix())
+
+                    if not audio_paths:
+                        continue
+
+                    import_events.append({
+                        "templateEventPath": f"{template_folder_path}/{tmpl['name']}",
+                        "newEventName": event_name,
+                        "destFolderPath": dest_folder_path,
+                        "audioFilePaths": audio_paths,
+                        "assetFolderPath": asset_folder,
+                        "bankName": bank_name,
+                        "busName": bus_path or bus_name,
+                        "isMulti": len(audio_paths) > 1,
+                    })
+
+            if not import_events:
+                # Debug: show what went wrong
+                debug_info = "No events matched templates.\n\n"
+                debug_info += f"Template keys (action, variation): {list(template_by_key.keys())}\n"
+                debug_info += f"Event keys (action, variation): {list(event_by_key.keys())}\n\n"
+                debug_info += f"Template names ({len(template_events)}):\n"
+                for tmpl in template_events[:5]:
+                    debug_info += f"  - {tmpl['name']}\n"
+                debug_info += f"\nEvent names from preview ({len(event_audio_map)}):\n"
+                for ev_name in list(event_audio_map.keys())[:5]:
+                    debug_info += f"  - {ev_name}\n"
+                if len(event_audio_map) > 5:
+                    debug_info += f"  ... and {len(event_audio_map) - 5} more\n"
+                messagebox.showerror("Error", debug_info)
+                return
+
+            # 6. Copy audio files to FMOD Assets folder
+            project_dir = self.project.project_path.parent
+            assets_dir = project_dir / "Assets"
+
+            for event in import_events:
+                # Create destination folder
+                dest_folder = assets_dir / event["assetFolderPath"]
+                dest_folder.mkdir(parents=True, exist_ok=True)
+
+                # Copy each audio file and update paths
+                copied_paths = []
+                for source_path in event["audioFilePaths"]:
+                    source = Path(source_path)
+                    dest = dest_folder / source.name
+
+                    # Copy file (overwrites automatically if exists)
+                    shutil.copy2(source, dest)
+                    copied_paths.append(str(dest.as_posix()))
+
+                # Update paths to point to copied files
+                event["audioFilePaths"] = copied_paths
+
+            # 7. Create JSON and auto-exec script
+            import tempfile
+            temp_dir = Path(tempfile.gettempdir())
+            json_path = temp_dir / f"fmod_import_data_{uuid.uuid4().hex}.json"
+            result_path = temp_dir / f"fmod_import_result_{uuid.uuid4().hex}.json"
+
+            import_payload = {
+                "projectPath": str(self.project.project_path),
+                "resultPath": str(result_path),
+                "bankName": bank_name,
+                "busName": bus_path or bus_name,  # Full path for hierarchical bus creation
+                "defaultDestFolderPath": dest_folder_path,
+                "events": import_events,
+            }
+
+            with open(json_path, "w", encoding="utf-8") as fh:
+                json.dump(import_payload, fh, indent=2)
+
+            # Write debug log for Python side
+            debug_log_path = temp_dir / f"fmod_import_python_debug_{uuid.uuid4().hex}.txt"
+            with open(debug_log_path, "w", encoding="utf-8") as fh:
+                fh.write("=" * 80 + "\n")
+                fh.write("PYTHON IMPORT GENERATION DEBUG\n")
+                fh.write("=" * 80 + "\n\n")
+                fh.write(f"Timestamp: {uuid.uuid4()}\n")
+                fh.write(f"Project: {self.project.project_path}\n")
+                fh.write(f"JSON Path: {json_path}\n")
+                fh.write(f"Result Path: {result_path}\n\n")
+
+                fh.write(f"[USER SELECTIONS]\n")
+                fh.write(f"  Prefix: {prefix}\n")
+                fh.write(f"  Feature Name: {feature}\n")
+                fh.write(f"  Media Path: {media_path}\n")
+                fh.write(f"  Asset Folder ID: {asset_id}\n")
+                fh.write(f"  Asset Folder Path: {asset_folder}\n")
+                fh.write(f"  Template Folder ID: {template_folder_id}\n")
+                fh.write(f"  Template Folder Path: {template_folder_path}\n")
+                fh.write(f"  Dest Folder ID: {dest_folder_id}\n")
+                fh.write(f"  Dest Folder Path: {dest_folder_path}\n")
+                fh.write(f"  Bank ID: {bank_id}\n")
+                fh.write(f"  Bank Name: {bank_name}\n")
+                fh.write(f"  Bus ID: {bus_id}\n")
+                fh.write(f"  Bus Name: {bus_name}\n")
+                fh.write(f"  Bus Path: {bus_path}\n\n")
+
+                fh.write(f"[EVENTS TO IMPORT] ({len(import_events)} total)\n")
+                for event in import_events:
+                    fh.write(f"\n  Event: {event['newEventName']}\n")
+                    fh.write(f"    Template: {event['templateEventPath']}\n")
+                    fh.write(f"    Dest Folder: {event['destFolderPath']}\n")
+                    fh.write(f"    Asset Folder: {event['assetFolderPath']}\n")
+                    fh.write(f"    Bank: {event['bankName']}\n")
+                    fh.write(f"    Bus Path: {event['busName']}\n")
+                    fh.write(f"    Is Multi: {event['isMulti']}\n")
+                    fh.write(f"    Audio Files: {len(event['audioFilePaths'])}\n")
+                    for i, path in enumerate(event['audioFilePaths'], 1):
+                        fh.write(f"      {i}. {path}\n")
+
+                fh.write(f"\n[JSON PAYLOAD]\n")
+                fh.write(json.dumps(import_payload, indent=2))
+
+            # 7. Execute import directly via FMOD Studio command line
+            num_events = len(import_events)
+
+            # Find FMOD Studio executable
+            fmod_exe = self._find_fmod_studio_exe()
+            if not fmod_exe:
+                msg = (f"Import JSON created for {num_events} event(s).\\n\\n"
+                       "Could not find FMOD Studio executable.\\n"
+                       "Please set it in Settings or import manually:\\n"
+                       "  Scripts > FMOD Importer: Import JSON")
+                messagebox.showwarning("Manual Import Required", msg)
+                return
+
+            # Execute the import script via FMOD Studio console
+            script_path = Path(__file__).resolve().parent.parent.parent / "Script" / "_Internal" / "FmodImportFromJson.js"
+
+            try:
+                # Create a temporary wrapper script that includes the JSON path
+                # This is needed because fmodstudiocl.exe doesn't pass arguments to scripts
+                wrapper_script_path = json_path.parent / "_temp_import_wrapper.js"
+
+                wrapper_script_content = f"""
+// Temporary wrapper script - auto-generated
+// Sets the JSON path as a global variable and runs the import script
+
+// Set JSON path as global variable
+var FMOD_IMPORTER_JSON_PATH = "{str(json_path).replace(chr(92), '/')}";
+
+// Load and execute the main import script
+var importScriptPath = "{str(script_path).replace(chr(92), '/')}";
+
+function readTextFile(path) {{
+    var file = studio.system.getFile(path);
+    file.open(studio.system.openMode.ReadOnly);
+    var size = file.size();
+    var text = file.readText(size);
+    file.close();
+    return text;
+}}
+
+var importScriptContent = readTextFile(importScriptPath);
+
+// Execute the import script (it will use FMOD_IMPORTER_JSON_PATH global variable)
+eval(importScriptContent);
+"""
+
+                with open(wrapper_script_path, 'w', encoding='utf-8') as f:
+                    f.write(wrapper_script_content)
+
+                # Build command: fmodstudiocl.exe -script wrapper.js project.fspro
+                cmd = [
+                    str(fmod_exe),
+                    "-script",
+                    str(wrapper_script_path),
+                    str(self.project.project_path)
+                ]
+
+                # Show progress message
+                progress_msg = f"Importing {num_events} event(s) to FMOD Studio...\n\nThis may take a moment."
+                print(f"Executing command: {' '.join(cmd)}")
+                messagebox.showinfo("Import Started", progress_msg)
+
+                # Execute the command
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=300  # 5 minute timeout
+                )
+
+                # Clean up wrapper script
+                try:
+                    if wrapper_script_path.exists():
+                        wrapper_script_path.unlink()
+                except:
+                    pass
+
+                # Print output for debugging
+                print("STDOUT:", result.stdout)
+                print("STDERR:", result.stderr)
+                print("Return code:", result.returncode)
+
+                # Check result file
+                if result_path.exists():
+                    with open(result_path, 'r', encoding='utf-8') as f:
+                        import_result = json.load(f)
+
+                    success_msg = (f"Import Complete!\n\n"
+                                 f"Imported: {import_result.get('imported', 0)}\n"
+                                 f"Failed: {import_result.get('failed', 0)}")
+
+                    if import_result.get('messages'):
+                        success_msg += "\n\nMessages:\n" + "\n".join(import_result['messages'][:5])
+
+                    # Show success message and ask if user wants to open the project
+                    if messagebox.askyesno("Import Complete", success_msg + "\n\nDo you want to open the project in FMOD Studio?"):
+                        self._open_fmod_project()
+                else:
+                    messagebox.showwarning("Import Status Unknown",
+                                         "Import executed but result file not found.\n"
+                                         "Check FMOD Studio console for details.")
+
+            except subprocess.TimeoutExpired:
+                messagebox.showerror("Import Timeout",
+                                   "Import operation timed out after 5 minutes.\n"
+                                   "The project may be too large.")
+            except Exception as e:
+                messagebox.showerror("Import Failed",
+                                   f"Failed to execute import:\n{str(e)}\n\n"
+                                   "You can try manual import:\n"
+                                   "Scripts > FMOD Importer: Import JSON")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to prepare import: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def _get_folder_path(self, folder_id):
+        """Get full path of an event folder (excluding master folder)"""
+        parts = []
+        current_id = folder_id
+        master_folder_id = self.project.workspace['masterEventFolder']
+
+        while current_id and current_id in self.project.event_folders:
+            # Don't include the master folder itself
+            if current_id == master_folder_id:
+                break
+
+            folder = self.project.event_folders[current_id]
+            parts.insert(0, folder['name'])
+            current_id = folder.get('parent')
+
+        return '/'.join(parts)
+
+    def _get_bus_path(self, bus_id):
+        """Get full path of a bus (excluding master bus)"""
+        parts = []
+        current_id = bus_id
+        master_bus_id = self.project._get_master_bus_id()
+
+        while current_id and current_id in self.project.buses:
+            # Don't include the master bus itself
+            if current_id == master_bus_id:
+                break
+
+            bus = self.project.buses[current_id]
+            parts.insert(0, bus['name'])
+            current_id = bus.get('parent')
+
+        return '/'.join(parts)
