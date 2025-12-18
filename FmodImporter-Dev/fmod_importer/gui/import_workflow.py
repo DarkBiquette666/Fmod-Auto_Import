@@ -53,6 +53,11 @@ class ImportMixin:
             for item in self.preview_tree.get_children():
                 event_name_raw = self.preview_tree.item(item, "text")
                 event_name = self._clean_event_name(event_name_raw)
+
+                # Get matched template from parent values (3rd column)
+                parent_values = self.preview_tree.item(item, "values") or []
+                matched_template = parent_values[2] if len(parent_values) > 2 else ''
+
                 audio_files = []
                 for child in self.preview_tree.get_children(item):
                     audio_label = self.preview_tree.item(child, "text") or ""
@@ -73,7 +78,10 @@ class ImportMixin:
                     audio_files.append((audio_label, audio_path))
 
                 if audio_files:
-                    event_audio_map[event_name] = audio_files
+                    event_audio_map[event_name] = {
+                        'audio_files': audio_files,
+                        'matched_template': matched_template
+                    }
 
             if not event_audio_map:
                 messagebox.showerror("Error", "No events in the preview tree to import.")
@@ -106,69 +114,12 @@ class ImportMixin:
                 messagebox.showerror("Error", "No template events found.")
                 return
 
-            # Normalize feature name (replace spaces with underscores)
-            normalized_feature = feature.replace(' ', '_')
-
-            # Get naming pattern for matching
-            pattern_str = self.pattern_var.get()
-            pattern = NamingPattern(pattern_str)
-            user_values = {'prefix': prefix, 'feature': normalized_feature}
-
-            # Build template map by action/variation extracted using pattern
-            # Key = (action, variation or '') for matching
-            template_by_key = {}
+            # Build template map by name for direct lookup
+            template_by_name = {}
             for tmpl in template_events:
-                # Extract template prefix and feature from first 2 parts
-                tmpl_parts = tmpl["name"].split("_", 2)
-                if len(tmpl_parts) >= 3:
-                    tmpl_prefix = tmpl_parts[0]
-                    tmpl_feature = tmpl_parts[1]
-                    tmpl_suffix = tmpl_parts[2]  # Everything after prefix_feature_
+                template_by_name[tmpl["name"]] = tmpl
 
-                    # Parse the suffix using the pattern's action/variation extraction
-                    # Build a synthetic name to parse: prefix_feature_suffix
-                    synthetic_name = f"{prefix}_{normalized_feature}_{tmpl_suffix}"
-                    parsed = pattern.parse_asset(synthetic_name, user_values)
-
-                    if parsed:
-                        action = parsed.get('action', tmpl_suffix)
-                        variation = parsed.get('variation', '')
-                        key = (action.lower(), variation)
-
-                        if key not in template_by_key:
-                            template_by_key[key] = []
-                        template_by_key[key].append((tmpl_suffix, tmpl))
-
-            # Sort each group for consistent pairing
-            for key in template_by_key:
-                template_by_key[key].sort(key=lambda x: x[0])
-
-            # Build event map by action/variation extracted using pattern
-            event_by_key = {}
-            for event_name, audio_entries in event_audio_map.items():
-                parsed = pattern.parse_asset(event_name, user_values)
-
-                if parsed:
-                    action = parsed.get('action', '')
-                    variation = parsed.get('variation', '')
-                    key = (action.lower(), variation)
-
-                    # Extract suffix for reference (everything after prefix_feature_)
-                    event_prefix_str = f"{prefix}_{normalized_feature}_"
-                    if event_name.startswith(event_prefix_str):
-                        suffix = event_name[len(event_prefix_str):]
-                    else:
-                        suffix = action + (f"_{variation}" if variation else "")
-
-                    if key not in event_by_key:
-                        event_by_key[key] = []
-                    event_by_key[key].append((suffix, event_name, audio_entries))
-
-            # Sort each group for consistent pairing
-            for key in event_by_key:
-                event_by_key[key].sort(key=lambda x: x[0])
-
-            # 5. Build import data using fuzzy matching
+            # 5. Build import data using direct template linkage from matched_template field
             import_events = []
             template_folder_path = self._get_folder_path(template_folder_id)
             dest_folder_path = self._get_folder_path(dest_folder_id)
@@ -176,52 +127,59 @@ class ImportMixin:
             bus_name = self.project.buses[bus_id]["name"]
             bus_path = self._get_bus_path(bus_id)  # Full path for hierarchical creation
 
-            # Match templates to events by (action, variation) key
-            matched_events = set()
-            for key, templates in template_by_key.items():
-                if key not in event_by_key:
+            skipped_count = 0
+            for event_name, event_data in event_audio_map.items():
+                audio_entries = event_data['audio_files']
+                matched_template = event_data['matched_template']
+
+                # Skip auto-created events (no matched template)
+                if not matched_template:
+                    skipped_count += 1
                     continue
-                events = event_by_key[key]
-                # Pair templates and events in order
-                for i in range(min(len(templates), len(events))):
-                    template_suffix, tmpl = templates[i]
-                    event_suffix, event_name, audio_entries = events[i]
-                    matched_events.add(event_name)
 
-                    audio_paths = []
-                    for label, path_str in audio_entries:
-                        resolved_path = Path(path_str)
-                        if not resolved_path.is_absolute():
-                            resolved_path = Path(media_path) / resolved_path
-                        if not resolved_path.exists():
-                            continue
-                        audio_paths.append(resolved_path.resolve().as_posix())
+                # Find the template by name
+                tmpl = template_by_name.get(matched_template)
+                if not tmpl:
+                    # Template not found - skip this event
+                    skipped_count += 1
+                    continue
 
-                    if not audio_paths:
+                # Resolve audio file paths
+                audio_paths = []
+                for label, path_str in audio_entries:
+                    resolved_path = Path(path_str)
+                    if not resolved_path.is_absolute():
+                        resolved_path = Path(media_path) / resolved_path
+                    if not resolved_path.exists():
                         continue
+                    audio_paths.append(resolved_path.resolve().as_posix())
 
-                    import_events.append({
-                        "templateEventPath": f"{template_folder_path}/{tmpl['name']}",
-                        "newEventName": event_name,
-                        "destFolderPath": dest_folder_path,
-                        "audioFilePaths": audio_paths,
-                        "assetFolderPath": asset_folder,
-                        "bankName": bank_name,
-                        "busName": bus_path or bus_name,
-                        "isMulti": len(audio_paths) > 1,
-                    })
+                if not audio_paths:
+                    continue
+
+                import_events.append({
+                    "templateEventPath": f"{template_folder_path}/{tmpl['name']}",
+                    "newEventName": event_name,
+                    "destFolderPath": dest_folder_path,
+                    "audioFilePaths": audio_paths,
+                    "assetFolderPath": asset_folder,
+                    "bankName": bank_name,
+                    "busName": bus_path or bus_name,
+                    "isMulti": len(audio_paths) > 1,
+                })
 
             if not import_events:
                 # Debug: show what went wrong
                 debug_info = "No events matched templates.\n\n"
-                debug_info += f"Template keys (action, variation): {list(template_by_key.keys())}\n"
-                debug_info += f"Event keys (action, variation): {list(event_by_key.keys())}\n\n"
+                debug_info += f"Total events in preview: {len(event_audio_map)}\n"
+                debug_info += f"Auto-created events (skipped): {skipped_count}\n\n"
                 debug_info += f"Template names ({len(template_events)}):\n"
                 for tmpl in template_events[:5]:
                     debug_info += f"  - {tmpl['name']}\n"
-                debug_info += f"\nEvent names from preview ({len(event_audio_map)}):\n"
-                for ev_name in list(event_audio_map.keys())[:5]:
-                    debug_info += f"  - {ev_name}\n"
+                debug_info += f"\nEvent -> Template mappings:\n"
+                for ev_name, ev_data in list(event_audio_map.items())[:5]:
+                    matched = ev_data['matched_template']
+                    debug_info += f"  - {ev_name} -> {matched or '(auto-created)'}\n"
                 if len(event_audio_map) > 5:
                     debug_info += f"  ... and {len(event_audio_map) - 5} more\n"
                 messagebox.showerror("Error", debug_info)

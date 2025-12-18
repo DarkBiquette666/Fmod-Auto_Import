@@ -150,11 +150,13 @@ class AnalysisMixin:
                 # Sort audio files by filename (A-Z)
                 sorted_files = sorted(files, key=lambda x: x['filename'])
 
+                # Get matched template (if any)
+                matched_template = match_data.get('matched_template', '')
+
                 # Format display based on whether it matches a template
                 if from_template:
                     matched_events.add(event_name)
                     # Track which template was matched
-                    matched_template = match_data.get('matched_template')
                     if matched_template:
                         matched_templates.add(matched_template)
                     # Format confidence indicator
@@ -172,9 +174,9 @@ class AnalysisMixin:
                     event_display = f"+ {event_name}"
                     auto_created_count += 1
 
-                # Insert parent item (event)
+                # Insert parent item (event) - store matched_template in values for import phase
                 parent = self.preview_tree.insert('', 'end', text=event_display,
-                                                   values=(bank_name, bus))
+                                                   values=(bank_name, bus, matched_template))
 
                 # Insert child items (audio files)
                 for file_info in sorted_files:
