@@ -1853,9 +1853,9 @@ class FmodImporterGUI:
         bus_frame.columnconfigure(0, weight=1)
 
         # Audio Asset Folder
-        ttk.Label(main_frame, text="Audio Asset Folder:").grid(row=6, column=0, sticky=tk.W, pady=5)
+        ttk.Label(main_frame, text="Audio Asset Folder:").grid(row=10, column=0, sticky=tk.W, pady=5)
         asset_frame = ttk.Frame(main_frame)
-        asset_frame.grid(row=6, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        asset_frame.grid(row=10, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.asset_var = tk.StringVar(value="(No asset folder selected)")
         self.asset_label = ttk.Label(asset_frame, textvariable=self.asset_var, relief="sunken", width=55)
@@ -1865,14 +1865,14 @@ class FmodImporterGUI:
 
         # Preview section - Events matched to media
         preview_header_frame = ttk.Frame(main_frame)
-        preview_header_frame.grid(row=10, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
+        preview_header_frame.grid(row=11, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
 
         ttk.Label(preview_header_frame, text="Preview - Matched Events:").pack(side=tk.LEFT)
         ttk.Label(preview_header_frame, text="  |  Confidence: ✓ High (≥95%)  ~ Good (≥85%)  ? Uncertain (≥70%)  |  + Auto-created (Double-click to rename)",
                  foreground="gray").pack(side=tk.LEFT, padx=(10, 0))
 
         preview_frame = ttk.Frame(main_frame)
-        preview_frame.grid(row=11, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+        preview_frame.grid(row=12, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
 
         # Create Treeview with 2 columns (removed 'Events → Assets' column)
         columns = ('bank', 'bus')
@@ -1913,10 +1913,10 @@ class FmodImporterGUI:
         self.preview_tree.bind('<Button-3>', self._show_preview_tree_context_menu)
 
         # Orphans section
-        ttk.Label(main_frame, text="Orphans:").grid(row=12, column=0, sticky=tk.NW, pady=10)
+        ttk.Label(main_frame, text="Orphans:").grid(row=13, column=0, sticky=tk.NW, pady=10)
 
         orphans_frame = ttk.Frame(main_frame)
-        orphans_frame.grid(row=13, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+        orphans_frame.grid(row=14, column=0, columnspan=3, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
 
         # Left side - Orphan Events
         orphan_events_frame = ttk.Frame(orphans_frame)
@@ -2010,7 +2010,7 @@ class FmodImporterGUI:
 
         # Buttons
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=14, column=0, columnspan=3, pady=10)
+        button_frame.grid(row=15, column=0, columnspan=3, pady=10)
 
         ttk.Button(button_frame, text="Analyze", command=self.analyze, width=15).grid(row=0, column=0, padx=5)
         ttk.Button(button_frame, text="Import", command=self.import_assets, width=15).grid(row=0, column=1, padx=5)
@@ -2021,8 +2021,8 @@ class FmodImporterGUI:
         self.root.columnconfigure(0, weight=1)
         self.root.rowconfigure(0, weight=1)
         main_frame.columnconfigure(1, weight=1)
-        main_frame.rowconfigure(11, weight=1)  # Preview row (was 10, now 11)
-        main_frame.rowconfigure(13, weight=1)  # Orphans row (was 12, now 13)
+        main_frame.rowconfigure(12, weight=1)  # Preview row
+        main_frame.rowconfigure(14, weight=1)  # Orphans row
         preview_frame.columnconfigure(0, weight=1)
         preview_frame.rowconfigure(0, weight=1)
 
