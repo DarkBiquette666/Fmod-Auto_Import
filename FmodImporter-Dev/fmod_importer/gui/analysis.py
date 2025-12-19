@@ -7,7 +7,7 @@ import os
 import tkinter as tk
 from tkinter import messagebox
 
-from ..naming import NamingPattern, format_template_name
+from ..naming import NamingPattern
 from ..matcher import AudioMatcher
 
 
@@ -108,17 +108,11 @@ class AnalysisMixin:
             normalized_feature = feature.replace(' ', '_')
 
             # Map template names to their event data
-            # Format template placeholder names with user values for matching
-            # e.g., "PrefixFeatureNameAlert" -> "MechafloraStrongRepairAlert"
+            # The matcher will handle matching by normalized suffix
             expected_events = {}
             for template_event in template_events:
-                placeholder_name = template_event['name']
-                # Format template name with user values for matching
-                formatted_name = format_template_name(placeholder_name, prefix, normalized_feature)
-                # Store with formatted name as key, keep original placeholder for import
-                template_event_copy = dict(template_event)
-                template_event_copy['original_placeholder'] = placeholder_name
-                expected_events[formatted_name] = template_event_copy
+                template_name = template_event['name']
+                expected_events[template_name] = template_event
 
             # Get asset pattern (optional - for parsing files with different separators)
             asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional - leave empty to use Event Pattern)")
@@ -156,20 +150,15 @@ class AnalysisMixin:
                 # Sort audio files by filename (A-Z)
                 sorted_files = sorted(files, key=lambda x: x['filename'])
 
-                # Get matched template (if any) - this is the FORMATTED name after our fix
-                matched_template_formatted = match_data.get('matched_template', '')
-
-                # Get the original placeholder name for import (FMOD needs the original name)
-                original_placeholder = ''
-                if matched_template_formatted and matched_template_formatted in expected_events:
-                    original_placeholder = expected_events[matched_template_formatted].get('original_placeholder', matched_template_formatted)
+                # Get matched template (if any)
+                matched_template = match_data.get('matched_template', '')
 
                 # Format display based on whether it matches a template
                 if from_template:
                     matched_events.add(event_name)
-                    # Track which template was matched (use formatted name for orphan tracking)
-                    if matched_template_formatted:
-                        matched_templates.add(matched_template_formatted)
+                    # Track which template was matched
+                    if matched_template:
+                        matched_templates.add(matched_template)
                     # Format confidence indicator
                     if confidence >= 0.95:
                         confidence_icon = "✓"  # High confidence
@@ -185,10 +174,9 @@ class AnalysisMixin:
                     event_display = f"+ {event_name}"
                     auto_created_count += 1
 
-                # Insert parent item (event) - store ORIGINAL placeholder for import phase
-                # Import needs the original FMOD template name, not the formatted one
+                # Insert parent item (event) - store matched_template in values for import phase
                 parent = self.preview_tree.insert('', 'end', text=event_display,
-                                                   values=(bank_name, bus, original_placeholder))
+                                                   values=(bank_name, bus, matched_template))
 
                 # Insert child items (audio files)
                 for file_info in sorted_files:

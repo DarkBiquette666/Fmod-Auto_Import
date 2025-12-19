@@ -26,32 +26,6 @@ def normalize_for_comparison(s: str) -> str:
     return s.replace('_', '').replace(' ', '').lower()
 
 
-def format_template_name(placeholder: str, prefix: str, feature: str) -> str:
-    """
-    Convert template placeholder name to formatted name with user values.
-
-    Templates in FMOD use placeholder names like "PrefixFeatureNameAlert".
-    This function replaces the placeholders with actual user values for matching.
-
-    Args:
-        placeholder: Template name with placeholders (e.g., "PrefixFeatureNameAlert")
-        prefix: User's prefix value (e.g., "Mechaflora")
-        feature: User's feature value (e.g., "StrongRepair")
-
-    Returns:
-        Formatted name (e.g., "MechafloraStrongRepairAlert")
-
-    Examples:
-        >>> format_template_name("PrefixFeatureNameAlert", "Mechaflora", "StrongRepair")
-        'MechafloraStrongRepairAlert'
-        >>> format_template_name("PrefixFeatureNameStunLoop", "Boss", "Phase1")
-        'BossPhase1StunLoop'
-    """
-    result = placeholder.replace("Prefix", prefix, 1)
-    result = result.replace("FeatureName", feature, 1)
-    return result
-
-
 class NamingPattern:
     """
     Parse and build event names according to a user-defined tag pattern.
