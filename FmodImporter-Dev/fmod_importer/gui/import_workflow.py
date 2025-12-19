@@ -64,9 +64,9 @@ class ImportMixin:
                 event_name_raw = self.preview_tree.item(item, "text")
                 event_name = self._clean_event_name(event_name_raw)
 
-                # Get matched template from parent values (3rd column)
+                # Get matched template from parent values (4th column, index 3)
                 parent_values = self.preview_tree.item(item, "values") or []
-                matched_template = parent_values[2] if len(parent_values) > 2 else ''
+                matched_template = parent_values[3] if len(parent_values) > 3 else ''
 
                 audio_files = []
                 for child in self.preview_tree.get_children(item):
@@ -114,15 +114,15 @@ class ImportMixin:
             bank_id = getattr(self, "selected_bank_id", None)
             bus_id = getattr(self, "selected_bus_id", None)
 
-            if not all([template_folder_id, dest_folder_id, bank_id, bus_id]):
-                messagebox.showerror("Error", "Please select template folder, destination folder, bank, and bus.")
+            if not all([dest_folder_id, bank_id, bus_id]):
+                messagebox.showerror("Error", "Please select destination folder, bank, and bus.")
                 return
 
-            # 4. Load templates
-            template_events = self.project.get_events_in_folder(template_folder_id)
-            if not template_events:
-                messagebox.showerror("Error", "No template events found.")
-                return
+            # 4. Load templates (OPTIONAL)
+            template_events = []
+            if template_folder_id:
+                template_events = self.project.get_events_in_folder(template_folder_id)
+                # Empty template folder is OK - events without matches will be created from scratch
 
             # Build template map by name for direct lookup
             template_by_name = {}
@@ -137,22 +137,33 @@ class ImportMixin:
             bus_name = self.project.buses[bus_id]["name"]
             bus_path = self._get_bus_path(bus_id)  # Full path for hierarchical creation
 
+            # Check if any events are selected
+            if not any(item in self.preview_checked_items for item in self.preview_tree.get_children()):
+                messagebox.showwarning("Warning", "No events selected for import. Please check at least one event in the preview.")
+                return
+
             skipped_count = 0
-            for event_name, event_data in event_audio_map.items():
+            for item in self.preview_tree.get_children():
+                # Skip unchecked items
+                if item not in self.preview_checked_items:
+                    skipped_count += 1
+                    continue
+
+                # Get event name from tree (clean it from checkbox/confidence symbols)
+                event_name_raw = self.preview_tree.item(item, "text")
+                event_name = self._clean_event_name(event_name_raw)
+
+                if event_name not in event_audio_map:
+                    continue
+
+                event_data = event_audio_map[event_name]
                 audio_entries = event_data['audio_files']
-                matched_template = event_data['matched_template']
+                matched_template = event_data.get('matched_template')
 
-                # Skip auto-created events (no matched template)
-                if not matched_template:
-                    skipped_count += 1
-                    continue
-
-                # Find the template by name
-                tmpl = template_by_name.get(matched_template)
-                if not tmpl:
-                    # Template not found - skip this event
-                    skipped_count += 1
-                    continue
+                # Find the template by name (may be None for auto-created events)
+                tmpl = None
+                if matched_template and matched_template in template_by_name:
+                    tmpl = template_by_name[matched_template]
 
                 # Resolve audio file paths
                 audio_paths = []
@@ -167,8 +178,8 @@ class ImportMixin:
                 if not audio_paths:
                     continue
 
-                import_events.append({
-                    "templateEventPath": f"{template_folder_path}/{tmpl['name']}",
+                # Build event payload
+                event_payload = {
                     "newEventName": event_name,
                     "destFolderPath": dest_folder_path,
                     "audioFilePaths": audio_paths,
@@ -176,7 +187,13 @@ class ImportMixin:
                     "bankName": bank_name,
                     "busName": bus_path or bus_name,
                     "isMulti": len(audio_paths) > 1,
-                })
+                }
+
+                # Add templateEventPath ONLY if template exists
+                if tmpl:
+                    event_payload["templateEventPath"] = f"{template_folder_path}/{tmpl['name']}"
+
+                import_events.append(event_payload)
 
             if not import_events:
                 # Debug: show what went wrong

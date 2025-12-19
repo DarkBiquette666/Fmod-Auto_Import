@@ -84,6 +84,9 @@ class FmodImporterGUI(
         # Media lookup for matching
         self.media_lookup: Dict[str, List[str]] = {}
 
+        # Checkbox state tracking for preview tree
+        self.preview_checked_items = set()  # IDs of checked items
+
         # Create widgets (from WidgetsMixin)
         self._create_widgets()
 

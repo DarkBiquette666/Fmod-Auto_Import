@@ -27,6 +27,47 @@ class UtilsMixin:
                 return event_name[len(icon):]
         return event_name
 
+    def _on_preview_tree_checkbox_click(self, event):
+        """Handle checkbox clicks in preview tree"""
+        # Determine which item and column was clicked
+        item = self.preview_tree.identify_row(event.y)
+        column = self.preview_tree.identify_column(event.x)
+
+        if not item:
+            return
+
+        # Only handle clicks on the checkbox column (#1)
+        if column != '#1':
+            return
+
+        # Only handle parent items (events), not children (audio files)
+        if self.preview_tree.parent(item):
+            return  # This is a child item
+
+        # Toggle checkbox state
+        if item in self.preview_checked_items:
+            self.preview_checked_items.remove(item)
+        else:
+            self.preview_checked_items.add(item)
+
+        # Update display
+        self._update_preview_tree_checkboxes()
+
+    def _update_preview_tree_checkboxes(self):
+        """Update checkbox symbols in preview tree checkbox column"""
+        for item in self.preview_tree.get_children():
+            # Get current values
+            values = list(self.preview_tree.item(item, 'values'))
+
+            # Update checkbox column (first column in values)
+            if item in self.preview_checked_items:
+                values[0] = '☑'
+            else:
+                values[0] = '☐'
+
+            # Update the item with new values
+            self.preview_tree.item(item, values=values)
+
     def _init_media_lookup(self, audio_files: List[Dict]):
         """Create lookup from filename to available file paths"""
         self.media_lookup = {}

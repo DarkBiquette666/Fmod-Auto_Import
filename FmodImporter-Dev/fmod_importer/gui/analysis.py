@@ -81,17 +81,15 @@ class AnalysisMixin:
             self.orphan_events_list.delete(0, tk.END)
             self.orphan_media_list.delete(0, tk.END)
 
-            # Get template folder
-            if not self.selected_template_id:
-                messagebox.showwarning("Warning", "Please select a template folder")
-                return
-
-            # Load events from template folder
-            template_events = self.project.get_events_in_folder(self.selected_template_id)
-
-            if not template_events:
-                messagebox.showwarning("Warning", "No events found in template folder")
-                return
+            # Get template folder (OPTIONAL)
+            template_events = []
+            if self.selected_template_id:
+                # Load events from template folder
+                template_events = self.project.get_events_in_folder(self.selected_template_id)
+                # Note: empty template folder is OK - just means all events will be auto-created
+            else:
+                # No template folder selected - all events will be auto-created
+                pass
 
             # Collect audio files
             audio_files = AudioMatcher.collect_audio_files(media_path)
@@ -194,14 +192,22 @@ class AnalysisMixin:
 
                 # Insert parent item (event) - store ORIGINAL placeholder for import phase
                 # Import needs the original FMOD template name, not the formatted one
+                # values = (checkbox, bank, bus, original_placeholder)
                 parent = self.preview_tree.insert('', 'end', text=event_display,
-                                                   values=(bank_name, bus, original_placeholder))
+                                                   values=('☑', bank_name, bus, original_placeholder))
+
+                # Auto-check all events by default
+                self.preview_checked_items.add(parent)
 
                 # Insert child items (audio files)
+                # values = (audio_path, '', '', '') - reuse checkbox column for audio path storage
                 for file_info in sorted_files:
                     self.preview_tree.insert(parent, 'end', text=f"  -> {file_info['filename']}",
-                                             values=('', ''))
+                                             values=('', '', '', ''))
                     assigned_media.add(file_info['filename'])
+
+            # Update checkbox display for all events
+            self._update_preview_tree_checkboxes()
 
             # Find orphan events (template events without matching media) - sorted A-Z
             # Use matched_templates (template names) instead of matched_events (constructed names)
@@ -221,12 +227,15 @@ class AnalysisMixin:
 
             # Build success message
             success_msg = f"Analysis complete!\n\n"
-            success_msg += f"Template events: {len(expected_events)}\n"
-            success_msg += f"Matched events: {matched_count}\n"
-            success_msg += f"Orphan events: {orphan_events_count}\n"
+            if len(expected_events) > 0:
+                success_msg += f"Template events: {len(expected_events)}\n"
+                success_msg += f"Matched events: {matched_count}\n"
+                success_msg += f"Orphan events: {orphan_events_count}\n"
             if auto_created_count > 0:
                 success_msg += f"Auto-created events: {auto_created_count}\n"
-            success_msg += f"\nAudio files found: {len(audio_files)}\n"
+            success_msg += f"\nTotal events ready to import: {matched_count + auto_created_count}\n"
+            success_msg += f"(Click checkboxes in preview to select which events to import)\n\n"
+            success_msg += f"Audio files found: {len(audio_files)}\n"
             success_msg += f"Audio files assigned: {len(assigned_media)}\n"
             success_msg += f"Orphan media files: {orphan_media_count}\n\n"
             success_msg += f"Destination: {dest_folder_name}\n"

@@ -59,15 +59,15 @@ class WidgetsMixin:
         # Fuzzy matching note
         note_label = ttk.Label(
             pattern_setup_frame,
-            text="NOTE: The system will try to fuzzy match depending on the Prefix and FeatureName, so be careful of typos",
-            foreground='#CC6600',
+            text="NOTE: Template folder is optional. Without templates, events will be created from scratch with minimal structure. The system will fuzzy match when templates are provided.",
+            foreground='#0066CC',
             font=('TkDefaultFont', 9, 'italic'),
             wraplength=900
         )
         note_label.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
 
-        # Template Folder
-        ttk.Label(pattern_setup_frame, text="Template Folder:").grid(row=1, column=0, sticky=tk.W, pady=5)
+        # Template Folder (OPTIONAL)
+        ttk.Label(pattern_setup_frame, text="Template Folder (Optional):").grid(row=1, column=0, sticky=tk.W, pady=5)
         template_frame = ttk.Frame(pattern_setup_frame)
         template_frame.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
@@ -237,23 +237,25 @@ class WidgetsMixin:
         preview_header_frame.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
 
         ttk.Label(preview_header_frame, text="Preview - Matched Events:").pack(side=tk.LEFT)
-        ttk.Label(preview_header_frame, text="  |  Confidence: ✓ High (≥95%)  ~ Good (≥85%)  ? Uncertain (≥70%)  |  + Auto-created (Double-click to rename)",
+        ttk.Label(preview_header_frame, text="  |  Click ☑ column to toggle import  |  Confidence: ✓ High (≥95%)  ~ Good (≥85%)  ? Uncertain (≥70%)  |  + Auto-created (Double-click to rename)",
                  foreground="gray").pack(side=tk.LEFT, padx=(10, 0))
 
         preview_frame = ttk.Frame(main_frame)
         preview_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
 
-        # Create Treeview with 2 columns (removed 'Events → Assets' column)
-        columns = ('bank', 'bus')
+        # Create Treeview with checkbox column + bank/bus columns
+        columns = ('checkbox', 'bank', 'bus')
         self.preview_tree = ttk.Treeview(preview_frame, columns=columns, show='tree headings', height=8)
 
         # Define headings
         self.preview_tree.heading('#0', text='Event Name')
+        self.preview_tree.heading('checkbox', text='☑', anchor='center')
         self.preview_tree.heading('bank', text='Bank')
         self.preview_tree.heading('bus', text='Bus')
 
         # Define column widths
-        self.preview_tree.column('#0', width=500)
+        self.preview_tree.column('#0', width=450)
+        self.preview_tree.column('checkbox', width=40, anchor='center', stretch=False)
         self.preview_tree.column('bank', width=150)
         self.preview_tree.column('bus', width=150)
 
@@ -270,6 +272,9 @@ class WidgetsMixin:
 
         # Delete key support for removing media files from preview tree
         self.preview_tree.bind('<Delete>', self._on_preview_tree_delete)
+
+        # Checkbox toggle on click (first column only)
+        self.preview_tree.bind('<Button-1>', self._on_preview_tree_checkbox_click, add='+')
 
         # Double-click to rename event
         self.preview_tree.bind('<Double-Button-1>', self._on_preview_tree_double_click)
