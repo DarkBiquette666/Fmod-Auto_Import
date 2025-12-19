@@ -248,28 +248,32 @@
                     // MODE A: Clone from template using UI action
                     var template = findEventByPath(eventData.templateEventPath);
                     if (template && template.isOfType("Event")) {
+                        // Get list of events BEFORE duplication to find the new one
+                        var eventsBefore = studio.project.model.Event.findInstances();
+                        var eventsBeforeIds = {};
+                        for (var eb = 0; eb < eventsBefore.length; eb++) {
+                            eventsBeforeIds[eventsBefore[eb].id] = true;
+                        }
+
                         // Use FMOD's UI action to duplicate (correct method per FMOD docs)
                         studio.window.navigateTo(template);
                         studio.window.triggerAction(studio.window.actions.Duplicate);
 
-                        // The duplicated event should now be selected - find it
-                        // It will have the same name as template + " copy" or similar
-                        var allEvents = studio.project.model.Event.findInstances();
+                        // Find the newly created event (the one that wasn't in the list before)
+                        var eventsAfter = studio.project.model.Event.findInstances();
                         var duplicatedEvent = null;
 
-                        // Find the newly created event (most recent one with similar name)
-                        for (var ev = 0; ev < allEvents.length; ev++) {
-                            var evName = allEvents[ev].name;
-                            if (evName.indexOf(template.name) === 0 && allEvents[ev] !== template) {
-                                // Check if this is the duplicate (has "copy" or number suffix)
-                                if (!duplicatedEvent || allEvents[ev].id > duplicatedEvent.id) {
-                                    duplicatedEvent = allEvents[ev];
-                                }
+                        for (var ea = 0; ea < eventsAfter.length; ea++) {
+                            // If this event ID wasn't in the before list, it's the new duplicate
+                            if (!eventsBeforeIds[eventsAfter[ea].id]) {
+                                duplicatedEvent = eventsAfter[ea];
+                                break;
                             }
                         }
 
                         if (duplicatedEvent) {
                             event = duplicatedEvent;
+                            result.messages.push("INFO: Duplicated template '" + template.name + "' -> found duplicate ID: " + duplicatedEvent.id);
 
                             // Clear existing audio from cloned template
                             var tracks = event.groupTracks;
@@ -282,7 +286,7 @@
                                 }
                             }
                         } else {
-                            result.messages.push("WARN: Duplicate action failed, creating from scratch");
+                            result.messages.push("WARN: Duplicate action failed (no new event found), creating from scratch");
                             event = studio.project.create("Event");
                         }
                     } else {
