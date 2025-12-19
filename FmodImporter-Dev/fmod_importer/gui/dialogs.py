@@ -480,20 +480,28 @@ class DialogsMixin:
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         tree['yscrollcommand'] = scrollbar.set
 
+        # Configure pending folder style
+        tree.tag_configure('pending', font=('TkDefaultFont', 9, 'italic'), foreground='gray')
+
         # Build tree hierarchy sorted A-Z
         def build_tree(parent_item, parent_folder_id):
-            # Get all child folders and sort them by name A-Z
-            child_folders = [(folder_id, folder_data) for folder_id, folder_data in self.project.event_folders.items()
+            # Get all child folders (committed + pending) and sort them by name A-Z
+            all_folders = self.project.get_all_event_folders()
+            child_folders = [(folder_id, folder_data) for folder_id, folder_data in all_folders.items()
                            if folder_data['parent'] == parent_folder_id]
             child_folders.sort(key=lambda x: x[1]['name'].lower())
 
             for folder_id, folder_data in child_folders:
-                item = tree.insert(parent_item, 'end', text=folder_data['name'], values=(folder_id,))
+                # Check if pending
+                tags = ('pending',) if self.project.is_folder_pending(folder_id) else ()
+                item = tree.insert(parent_item, 'end', text=folder_data['name'],
+                                  values=(folder_id,), tags=tags)
                 build_tree(item, folder_id)
 
         # Start with master folder
         master_id = self.project.workspace['masterEventFolder']
-        master_name = self.project.event_folders[master_id]['name']
+        all_folders = self.project.get_all_event_folders()
+        master_name = all_folders[master_id]['name']
         root_item = tree.insert('', 'end', text=master_name, values=(master_id,))
         build_tree(root_item, master_id)
 
@@ -566,7 +574,7 @@ class DialogsMixin:
                                           initialvalue=initial_value, parent=dialog)
             if name:
                 try:
-                    new_id = self.project.create_event_folder(name, parent_id)
+                    new_id = self.project.create_event_folder(name, parent_id, commit=False)
                     refresh_tree()
 
                     # Find and select the newly created folder in the tree

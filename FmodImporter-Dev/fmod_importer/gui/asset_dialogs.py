@@ -41,13 +41,17 @@ class AssetDialogsMixin:
         scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
         tree['yscrollcommand'] = scrollbar.set
 
+        # Configure pending folder style
+        tree.tag_configure('pending', font=('TkDefaultFont', 9, 'italic'), foreground='gray')
+
         def build_path_hierarchy():
             """Build a hierarchical structure from asset paths"""
             # Create a dict to store path components: path -> (asset_id, full_path)
             path_tree = {}
 
-            # First pass: collect all unique path components
-            for asset_id, asset_data in self.project.asset_folders.items():
+            # First pass: collect all unique path components (committed + pending)
+            all_asset_folders = self.project.get_all_asset_folders()
+            for asset_id, asset_data in all_asset_folders.items():
                 asset_path = asset_data['path']
                 if not asset_path:
                     continue
@@ -76,7 +80,8 @@ class AssetDialogsMixin:
 
             # Find master asset folder name (it should be in asset_folders)
             master_name = "Master Asset Folder"
-            for asset_id, asset_data in self.project.asset_folders.items():
+            all_asset_folders = self.project.get_all_asset_folders()
+            for asset_id, asset_data in all_asset_folders.items():
                 if asset_id == master_id:
                     master_name = asset_data['path'].rstrip('/') if asset_data['path'] else master_name
                     break
@@ -106,8 +111,10 @@ class AssetDialogsMixin:
                 # Get parent item
                 parent_item = item_map.get(parent_path, root_item)
 
-                # Insert item
-                item = tree.insert(parent_item, 'end', text=display_name, values=(asset_id or '', full_path))
+                # Insert item with pending tag if applicable
+                tags = ('pending',) if asset_id and self.project.is_folder_pending(asset_id) else ()
+                item = tree.insert(parent_item, 'end', text=display_name,
+                                  values=(asset_id or '', full_path), tags=tags)
                 item_map[path] = item
 
         build_tree()
@@ -180,49 +187,15 @@ class AssetDialogsMixin:
                                           initialvalue=initial_value, parent=dialog)
             if name:
                 # Remove any slashes from the name
-                name = name.replace('/', '')
+                name = name.replace('/', '').replace('\\', '')
                 if not name:
                     messagebox.showerror("Error", "Invalid folder name")
                     return
 
                 try:
-                    # Create new path
+                    # Use the new create_asset_folder method with commit=False
+                    asset_id = self.project.create_asset_folder(name, parent_path, commit=False)
                     new_path = parent_path + name + '/'
-
-                    # Check if path already exists
-                    for asset_data in self.project.asset_folders.values():
-                        if asset_data['path'] == new_path:
-                            messagebox.showerror("Error", "Asset folder with this path already exists")
-                            return
-
-                    # Create new asset folder
-                    asset_id = "{" + str(uuid.uuid4()) + "}"
-                    master_id = self.project.workspace['masterAssetFolder']
-
-                    # Create XML structure
-                    root_elem = ET.Element('objects', serializationModel="Studio.02.02.00")
-                    obj = ET.SubElement(root_elem, 'object', {'class': 'EncodableAsset', 'id': asset_id})
-
-                    # Add assetPath property
-                    prop = ET.SubElement(obj, 'property', name='assetPath')
-                    value = ET.SubElement(prop, 'value')
-                    value.text = new_path
-
-                    # Add masterAssetFolder relationship
-                    rel = ET.SubElement(obj, 'relationship', name='masterAssetFolder')
-                    dest = ET.SubElement(rel, 'destination')
-                    dest.text = master_id
-
-                    # Write to file
-                    asset_file = self.project.metadata_path / "Asset" / f"{asset_id}.xml"
-                    self.project._write_pretty_xml(root_elem, asset_file)
-
-                    # Update internal structure
-                    self.project.asset_folders[asset_id] = {
-                        'path': new_path,
-                        'xml_path': asset_file,
-                        'master_folder': master_id
-                    }
 
                     refresh_tree()
 

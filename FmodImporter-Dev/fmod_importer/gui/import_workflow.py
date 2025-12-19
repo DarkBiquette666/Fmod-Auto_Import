@@ -48,6 +48,15 @@ class ImportMixin:
             media_path_input = self.media_entry.get()
             media_root = Path(media_path_input) if media_path_input else None
 
+            # 1.5. Commit any pending folders before import
+            try:
+                event_count, asset_count = self.project.commit_pending_folders()
+                if event_count > 0 or asset_count > 0:
+                    print(f"Committed {event_count} event folder(s) and {asset_count} asset folder(s)")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to commit pending folders:\n{str(e)}")
+                return
+
             # 2. Get event-audio mapping from preview tree
             event_audio_map = {}
             for item in self.preview_tree.get_children():

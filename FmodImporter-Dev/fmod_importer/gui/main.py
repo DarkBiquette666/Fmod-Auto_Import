@@ -81,6 +81,9 @@ class FmodImporterGUI(
         # Load default settings (from SettingsMixin)
         self._load_default_settings()
 
+        # Set up window close handler
+        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+
     def browse_project(self):
         """Browse for FMOD project file"""
         filename = filedialog.askopenfilename(
@@ -333,3 +336,11 @@ class FmodImporterGUI(
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load project:\n{str(e)}")
+
+    def _on_closing(self):
+        """Handle window close event - clear pending folders"""
+        if self.project:
+            count = self.project.clear_pending_folders()
+            if count > 0:
+                print(f"Cleared {count} uncommitted folder(s)")
+        self.root.destroy()
