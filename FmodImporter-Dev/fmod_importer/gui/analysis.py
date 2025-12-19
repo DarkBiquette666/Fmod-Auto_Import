@@ -42,7 +42,8 @@ class AnalysisMixin:
 
             # Get and validate naming pattern
             pattern_str = self.pattern_var.get()
-            pattern = NamingPattern(pattern_str)
+            event_separator = self.event_separator_entry.get() if hasattr(self, 'event_separator_entry') else None
+            pattern = NamingPattern(pattern_str, separator=event_separator)
             valid, error = pattern.validate()
             if not valid:
                 messagebox.showerror("Invalid Pattern", f"The naming pattern is invalid:\n{error}")
@@ -122,14 +123,20 @@ class AnalysisMixin:
 
             # Get asset pattern (optional - for parsing files with different separators)
             asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional - leave empty to use Event Pattern)")
-            parse_pattern = pattern  # Default: use same pattern for parsing
+            asset_separator = self.asset_separator_entry.get() if hasattr(self, 'asset_separator_entry') else None
+
+            parse_pattern = pattern  # Default: use same pattern and separator for parsing
             if asset_pattern_str:
                 # User provided a different pattern for parsing assets
-                parse_pattern = NamingPattern(asset_pattern_str)
+                parse_pattern = NamingPattern(asset_pattern_str, separator=asset_separator)
                 valid, error = parse_pattern.validate()
                 if not valid:
                     messagebox.showerror("Invalid Asset Pattern", f"The asset pattern is invalid:\n{error}")
                     return
+            elif asset_separator and asset_separator != event_separator:
+                # Only asset separator provided (different from event separator)
+                # Use event pattern with asset separator
+                parse_pattern = NamingPattern(pattern_str, separator=asset_separator)
 
             # Match audio files to events using the naming patterns
             # parse_pattern: used to extract components from asset filenames

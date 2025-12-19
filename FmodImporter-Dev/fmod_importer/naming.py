@@ -97,15 +97,24 @@ class NamingPattern:
     # Pattern to detect iterator at end of filename (_01, _02, _1, _2, etc.)
     ITERATOR_PATTERN = re.compile(r'[_]?\d+$')
 
-    def __init__(self, pattern: str):
+    def __init__(self, pattern: str, separator: str = None):
         """
         Initialize with a pattern string.
 
         Args:
             pattern: Pattern string like "$prefix_$feature_$action_$variation"
+            separator: Optional explicit separator. If None, auto-detect from pattern.
+                      Can be empty string for CamelCase mode.
         """
         self.pattern = pattern
-        self.separator = '_'  # Default separator
+        self.explicit_separator = separator  # Store user's explicit choice
+
+        # Use explicit separator if provided, otherwise auto-detect
+        if separator is not None:
+            self.separator = separator
+        else:
+            self.separator = self._detect_separator()
+
         self.tags = self._extract_tags()
         self._regex_cache = {}
 
@@ -115,9 +124,9 @@ class NamingPattern:
         tag_regex = re.compile(r'\$[a-zA-Z]+')
         return tag_regex.findall(self.pattern)
 
-    def get_separator(self) -> str:
+    def _detect_separator(self) -> str:
         """
-        Detect the separator used in the pattern.
+        Detect the separator used in the pattern (internal method).
 
         Returns:
             '' (empty) for no separator (e.g., $prefix$feature$action)
@@ -136,6 +145,46 @@ class NamingPattern:
             return '-'
         else:
             return ''  # No separator (CamelCase)
+
+    def get_separator(self) -> str:
+        """
+        Get the separator used in the pattern.
+
+        Returns the explicit separator if provided, otherwise the detected separator.
+
+        Returns:
+            The separator character(s) or empty string for CamelCase
+        """
+        return self.separator
+
+    def _build_tag_patterns(self):
+        """
+        Build TAG_PATTERNS dynamically based on separator.
+
+        For separator='_', use [^_]+ to exclude underscores from capture.
+        For separator='-', use [^-]+ to exclude dashes.
+        For separator='', use appropriate pattern for CamelCase.
+        For custom separator, escape and exclude it.
+
+        Returns:
+            Dict mapping tag names to regex patterns
+        """
+        if self.separator == '':
+            # CamelCase mode - match word characters
+            single_part = r'[A-Za-z0-9]+'
+            multi_part = single_part  # No separator, so single and multi are same
+        else:
+            # Build pattern that excludes the separator
+            escaped_sep = re.escape(self.separator)
+            single_part = f'[^{escaped_sep}]+'
+            multi_part = f'{single_part}(?:{escaped_sep}{single_part})*?'
+
+        return {
+            '$prefix': f'(?P<prefix>{single_part})',
+            '$feature': f'(?P<feature>{multi_part})',
+            '$action': f'(?P<action>{multi_part})',
+            '$variation': r'(?P<variation>[A-Z])',
+        }
 
     def _normalize_action_separator(self, action: str, target_separator: str) -> str:
         """
@@ -178,7 +227,10 @@ class NamingPattern:
 
         regex_pattern = self.pattern
 
-        for tag in self.TAG_PATTERNS:
+        # Get dynamic tag patterns based on current separator
+        tag_patterns = self._build_tag_patterns()
+
+        for tag in tag_patterns:
             if tag in regex_pattern:
                 tag_name = tag[1:]  # Remove $ prefix
 
@@ -191,9 +243,9 @@ class NamingPattern:
                     # Use capture pattern
                     if tag in self.OPTIONAL_TAGS:
                         # Make optional tags... optional
-                        regex_pattern = regex_pattern.replace(tag, f'(?:{self.TAG_PATTERNS[tag]})?')
+                        regex_pattern = regex_pattern.replace(tag, f'(?:{tag_patterns[tag]})?')
                     else:
-                        regex_pattern = regex_pattern.replace(tag, self.TAG_PATTERNS[tag])
+                        regex_pattern = regex_pattern.replace(tag, tag_patterns[tag])
 
         # Handle separator between optional tag and end (e.g., "_$variation" at end)
         # If variation is optional, the preceding underscore should also be optional

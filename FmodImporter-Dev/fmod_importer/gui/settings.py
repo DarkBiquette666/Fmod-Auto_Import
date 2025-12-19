@@ -61,6 +61,16 @@ class SettingsMixin:
                 self.bus_var.set(self.project.buses[bus_id]['name'])
                 self.selected_bus_id = bus_id
 
+        # Apply default event separator
+        if settings.get('default_event_separator') and hasattr(self, 'event_separator_entry'):
+            self.event_separator_entry.delete(0, tk.END)
+            self.event_separator_entry.insert(0, settings['default_event_separator'])
+
+        # Apply default asset separator
+        if settings.get('default_asset_separator') and hasattr(self, 'asset_separator_entry'):
+            self.asset_separator_entry.delete(0, tk.END)
+            self.asset_separator_entry.insert(0, settings['default_asset_separator'])
+
     def load_settings(self):
         """Load settings from JSON file"""
         settings_file = Path.home() / ".fmod_importer_settings.json"
@@ -78,7 +88,9 @@ class SettingsMixin:
             'default_bank_id': '',
             'default_destination_folder_id': '',
             'default_bus_id': '',
-            'fmod_exe_path': ''
+            'fmod_exe_path': '',
+            'default_event_separator': '',
+            'default_asset_separator': ''
         }
 
     def save_settings(self, settings: dict):
@@ -282,6 +294,18 @@ class SettingsMixin:
 
         ttk.Button(frame, text="Select...", command=browse_bus).grid(row=6, column=2, padx=5)
 
+        # Default Event Separator
+        ttk.Label(frame, text="Default Event Separator:").grid(row=7, column=0, sticky=tk.W, pady=5)
+        event_sep_entry = ttk.Entry(frame, width=10)
+        event_sep_entry.insert(0, current_settings.get('default_event_separator', ''))
+        event_sep_entry.grid(row=7, column=1, sticky=tk.W, pady=5, padx=5)
+
+        # Default Asset Separator
+        ttk.Label(frame, text="Default Asset Separator:").grid(row=8, column=0, sticky=tk.W, pady=5)
+        asset_sep_entry = ttk.Entry(frame, width=10)
+        asset_sep_entry.insert(0, current_settings.get('default_asset_separator', ''))
+        asset_sep_entry.grid(row=8, column=1, sticky=tk.W, pady=5, padx=5)
+
         # Save button
         def save_and_close():
             new_settings = {
@@ -291,7 +315,9 @@ class SettingsMixin:
                 'default_bank_id': bank_id_var.get(),
                 'default_destination_folder_id': dest_folder_id_var.get(),
                 'default_bus_id': bus_id_var.get(),
-                'fmod_exe_path': fmod_entry.get()
+                'fmod_exe_path': fmod_entry.get(),
+                'default_event_separator': event_sep_entry.get(),
+                'default_asset_separator': asset_sep_entry.get()
             }
             if self.save_settings(new_settings):
                 # Apply settings to current UI
@@ -332,11 +358,20 @@ class SettingsMixin:
                             self.bus_var.set(self.project.buses[selected_bus_id]['name'])
                             self.selected_bus_id = selected_bus_id
 
+                # Apply separator settings to current UI
+                if new_settings.get('default_event_separator') and hasattr(self, 'event_separator_entry'):
+                    self.event_separator_entry.delete(0, tk.END)
+                    self.event_separator_entry.insert(0, new_settings['default_event_separator'])
+
+                if new_settings.get('default_asset_separator') and hasattr(self, 'asset_separator_entry'):
+                    self.asset_separator_entry.delete(0, tk.END)
+                    self.asset_separator_entry.insert(0, new_settings['default_asset_separator'])
+
                 messagebox.showinfo("Success", "Settings saved successfully!")
                 settings_window.destroy()
 
         button_frame = ttk.Frame(frame)
-        button_frame.grid(row=7, column=0, columnspan=3, pady=20)
+        button_frame.grid(row=9, column=0, columnspan=3, pady=20)
         ttk.Button(button_frame, text="Save", command=save_and_close, width=15).grid(row=0, column=0, padx=5)
         ttk.Button(button_frame, text="Cancel", command=settings_window.destroy, width=15).grid(row=0, column=1, padx=5)
 
