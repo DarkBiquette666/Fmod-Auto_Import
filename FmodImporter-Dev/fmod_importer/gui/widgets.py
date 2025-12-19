@@ -115,11 +115,12 @@ class WidgetsMixin:
         self.pattern_help_btn = ttk.Button(pattern_frame, text="?", width=2, command=self.show_pattern_help)
         self.pattern_help_btn.grid(row=0, column=3, padx=(0, 10))
 
-        # Preview
+        # Preview (wraps text at 600px to prevent column resize)
         ttk.Label(pattern_frame, text="Preview:").grid(row=0, column=4, padx=(10, 5))
         self.pattern_preview_var = tk.StringVar(value="[prefix][feature][action]")
         self.pattern_preview_label = ttk.Label(pattern_frame, textvariable=self.pattern_preview_var,
-                                                foreground='gray', font=('TkDefaultFont', 9, 'italic'))
+                                                foreground='gray', font=('TkDefaultFont', 9, 'italic'),
+                                                wraplength=600)
         self.pattern_preview_label.grid(row=0, column=5, sticky=tk.W)
 
         # Asset Pattern - ALL ON ONE LINE
@@ -145,11 +146,12 @@ class WidgetsMixin:
         asset_pattern_help_btn = ttk.Button(asset_pattern_frame, text="?", width=2, command=self.show_asset_pattern_help)
         asset_pattern_help_btn.grid(row=0, column=3, padx=(0, 10))
 
-        # Preview
+        # Preview (wraps text at 600px to prevent column resize)
         ttk.Label(asset_pattern_frame, text="Preview:").grid(row=0, column=4, padx=(10, 5))
         self.asset_pattern_preview_var = tk.StringVar(value="[same as Event Pattern]")
         self.asset_pattern_preview_label = ttk.Label(asset_pattern_frame, textvariable=self.asset_pattern_preview_var,
-                                                       foreground='gray', font=('TkDefaultFont', 9, 'italic'))
+                                                       foreground='gray', font=('TkDefaultFont', 9, 'italic'),
+                                                       wraplength=600)
         self.asset_pattern_preview_label.grid(row=0, column=5, sticky=tk.W)
 
         # Note on second row
