@@ -120,7 +120,7 @@ class AnalysisMixin:
                 expected_events[formatted_name] = template_event_copy
 
             # Get asset pattern (optional - for parsing files with different separators)
-            asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional - leave empty to use Event Pattern)")
+            asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional)")
             asset_separator = self.asset_separator_entry.get() if hasattr(self, 'asset_separator_entry') else None
 
             parse_pattern = pattern  # Default: use same pattern and separator for parsing
