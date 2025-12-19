@@ -52,7 +52,16 @@ class FmodImporterGUI(
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("FMOD Importer Tool - Asset Importer")
-        self.root.geometry("1000x800")
+
+        # Set window size to 4:3 ratio (1440x1080)
+        self.root.geometry("1440x1080")
+        # Center window on screen
+        self.root.update_idletasks()
+        width = self.root.winfo_width()
+        height = self.root.winfo_height()
+        x = (self.root.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.root.winfo_screenheight() // 2) - (height // 2)
+        self.root.geometry(f'{width}x{height}+{x}+{y}')
 
         self.project: Optional[FMODProject] = None
         self.config = {
