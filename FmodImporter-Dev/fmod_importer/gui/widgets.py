@@ -100,20 +100,20 @@ class WidgetsMixin:
         pattern_frame = ttk.Frame(pattern_setup_frame)
         pattern_frame.grid(row=4, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
-        # Pattern entry (reduced width)
+        # Pattern entry (fixed width)
         self.pattern_var = tk.StringVar(value="$prefix$feature$action")
-        self.pattern_entry = ttk.Entry(pattern_frame, textvariable=self.pattern_var, width=20)
-        self.pattern_entry.grid(row=0, column=0, padx=(0, 5))
+        self.pattern_entry = ttk.Entry(pattern_frame, textvariable=self.pattern_var, width=30)
+        self.pattern_entry.grid(row=0, column=0, padx=(0, 10))
 
         # Separator label + entry
-        ttk.Label(pattern_frame, text="Separator:").grid(row=0, column=1, padx=(10, 5))
+        ttk.Label(pattern_frame, text="Separator:").grid(row=0, column=1, padx=(0, 5))
         self.event_separator_entry = ttk.Entry(pattern_frame, width=8)
         self.event_separator_entry.insert(0, "")  # Empty by default (CamelCase)
-        self.event_separator_entry.grid(row=0, column=2, padx=(0, 5))
+        self.event_separator_entry.grid(row=0, column=2, padx=(0, 10))
 
         # Help button
         self.pattern_help_btn = ttk.Button(pattern_frame, text="?", width=2, command=self.show_pattern_help)
-        self.pattern_help_btn.grid(row=0, column=3, padx=5)
+        self.pattern_help_btn.grid(row=0, column=3, padx=(0, 10))
 
         # Preview
         ttk.Label(pattern_frame, text="Preview:").grid(row=0, column=4, padx=(10, 5))
@@ -127,34 +127,45 @@ class WidgetsMixin:
         asset_pattern_frame = ttk.Frame(pattern_setup_frame)
         asset_pattern_frame.grid(row=5, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
-        # Pattern entry with placeholder
-        self.asset_pattern_entry = ttk.Entry(asset_pattern_frame, width=20)
+        # Pattern entry with placeholder (fixed width)
+        self.asset_pattern_entry = ttk.Entry(asset_pattern_frame, width=30)
         self.asset_pattern_entry.insert(0, "(Optional)")
         self.asset_pattern_entry.config(foreground='gray')
         self.asset_pattern_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.asset_pattern_entry, "(Optional)"))
         self.asset_pattern_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.asset_pattern_entry, "(Optional)"))
-        self.asset_pattern_entry.grid(row=0, column=0, padx=(0, 5))
+        self.asset_pattern_entry.grid(row=0, column=0, padx=(0, 10))
 
         # Separator label + entry
-        ttk.Label(asset_pattern_frame, text="Separator:").grid(row=0, column=1, padx=(10, 5))
+        ttk.Label(asset_pattern_frame, text="Separator:").grid(row=0, column=1, padx=(0, 5))
         self.asset_separator_entry = ttk.Entry(asset_pattern_frame, width=8)
         self.asset_separator_entry.insert(0, "")  # Empty by default
-        self.asset_separator_entry.grid(row=0, column=2, padx=(0, 5))
+        self.asset_separator_entry.grid(row=0, column=2, padx=(0, 10))
 
         # Help button
         asset_pattern_help_btn = ttk.Button(asset_pattern_frame, text="?", width=2, command=self.show_asset_pattern_help)
-        asset_pattern_help_btn.grid(row=0, column=3, padx=5)
+        asset_pattern_help_btn.grid(row=0, column=3, padx=(0, 10))
+
+        # Preview
+        ttk.Label(asset_pattern_frame, text="Preview:").grid(row=0, column=4, padx=(10, 5))
+        self.asset_pattern_preview_var = tk.StringVar(value="[same as Event Pattern]")
+        self.asset_pattern_preview_label = ttk.Label(asset_pattern_frame, textvariable=self.asset_pattern_preview_var,
+                                                       foreground='gray', font=('TkDefaultFont', 9, 'italic'))
+        self.asset_pattern_preview_label.grid(row=0, column=5, sticky=tk.W)
 
         # Note on second row
-        asset_note_label = ttk.Label(asset_pattern_frame, text="Use this if your audio files have different separators than events",
+        asset_note_label = ttk.Label(asset_pattern_frame, text="Use this if your audio files have different pattern than events",
                                       foreground='gray', font=('TkDefaultFont', 8, 'italic'))
-        asset_note_label.grid(row=1, column=0, columnspan=4, sticky=tk.W, pady=(2, 0))
+        asset_note_label.grid(row=1, column=0, columnspan=6, sticky=tk.W, pady=(2, 0))
 
         # Bind pattern/prefix/feature changes to update preview
         self.pattern_var.trace_add('write', self._update_pattern_preview)
         self.prefix_entry.bind('<KeyRelease>', lambda e: self._update_pattern_preview())
         self.feature_entry.bind('<KeyRelease>', lambda e: self._update_pattern_preview())
         self.event_separator_entry.bind('<KeyRelease>', lambda e: self._update_pattern_preview())
+
+        # Bind asset pattern changes to update preview
+        self.asset_pattern_entry.bind('<KeyRelease>', lambda e: self._update_asset_pattern_preview())
+        self.asset_separator_entry.bind('<KeyRelease>', lambda e: self._update_asset_pattern_preview())
 
         pattern_setup_frame.columnconfigure(1, weight=1)
 
@@ -539,7 +550,6 @@ class WidgetsMixin:
             if hasattr(self, 'event_separator_entry'):
                 event_separator = self.event_separator_entry.get()
                 # Empty string is valid (CamelCase), so pass it as-is
-                # Only pass None if the field doesn't exist yet
 
             pattern = NamingPattern(pattern_str, separator=event_separator)
 
@@ -562,6 +572,57 @@ class WidgetsMixin:
                 self.pattern_preview_label.config(foreground='gray')
             else:
                 self.pattern_preview_label.config(foreground='red')
+        except Exception:
+            pass  # Silently ignore errors during initialization
+
+    def _update_asset_pattern_preview(self, *args):
+        """
+        Update the asset pattern preview label based on current values.
+        Similar to _update_pattern_preview but for asset pattern.
+        """
+        # Import here to avoid circular imports
+        from ..naming import NamingPattern
+
+        # Guard: skip if widgets not yet initialized
+        if not hasattr(self, 'asset_pattern_preview_label') or not hasattr(self, 'asset_pattern_preview_var'):
+            return
+
+        try:
+            asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional)")
+
+            # If empty or placeholder, show default message
+            if not asset_pattern_str:
+                self.asset_pattern_preview_var.set("[same as Event Pattern]")
+                self.asset_pattern_preview_label.config(foreground='gray')
+                return
+
+            # Get separator value if asset_separator_entry exists
+            asset_separator = None
+            if hasattr(self, 'asset_separator_entry'):
+                asset_separator = self.asset_separator_entry.get()
+                # Empty string is valid (CamelCase), so pass it as-is
+
+            pattern = NamingPattern(asset_pattern_str, separator=asset_separator)
+
+            # Get user values (excluding placeholders)
+            prefix = self._get_entry_value(self.prefix_entry, 'e.g. Sfx')
+            feature = self._get_entry_value(self.feature_entry, 'e.g. BlueEyesDragon')
+
+            user_values = {}
+            if prefix:
+                user_values['prefix'] = prefix
+            if feature:
+                user_values['feature'] = feature.replace(' ', '_')
+
+            preview = pattern.get_pattern_preview(user_values)
+            self.asset_pattern_preview_var.set(preview)
+
+            # Validate pattern and update color
+            valid, error = pattern.validate()
+            if valid:
+                self.asset_pattern_preview_label.config(foreground='gray')
+            else:
+                self.asset_pattern_preview_label.config(foreground='red')
         except Exception:
             pass  # Silently ignore errors during initialization
 

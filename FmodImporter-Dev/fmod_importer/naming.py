@@ -102,7 +102,7 @@ class NamingPattern:
         Initialize with a pattern string.
 
         Args:
-            pattern: Pattern string like "$prefix_$feature_$action_$variation"
+            pattern: Pattern string like "$prefix$feature$action"
             separator: Optional explicit separator. If None, auto-detect from pattern.
                       Can be empty string for CamelCase mode.
         """
@@ -685,7 +685,12 @@ class NamingPattern:
         Returns:
             Preview string showing the pattern with placeholders
         """
-        preview = self.pattern
+        # Rebuild pattern with separator between tags
+        if self.separator:
+            preview = self.separator.join(self.tags)
+        else:
+            # CamelCase mode - no separator
+            preview = ''.join(self.tags)
 
         if user_values:
             for key, value in user_values.items():
