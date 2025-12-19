@@ -152,11 +152,20 @@ class AnalysisMixin:
             # Sort matches by event name (A-Z) for consistent display
             sorted_matches = sorted(matches.items(), key=lambda x: x[0])
 
+            # Check if auto-create is enabled
+            auto_create_enabled = self.auto_create_var.get()
+
             # Populate preview tree
             for event_name, match_data in sorted_matches:
                 files = match_data['files']
                 confidence = match_data.get('confidence', 0.8)
                 from_template = match_data.get('from_template', False)
+
+                # Skip auto-created events if auto-create is disabled
+                if not from_template and not auto_create_enabled:
+                    # Add these files to unmatched for display in orphan media
+                    unmatched_files.extend(files)
+                    continue
 
                 # Sort audio files by filename (A-Z)
                 sorted_files = sorted(files, key=lambda x: x['filename'])

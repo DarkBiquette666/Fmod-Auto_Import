@@ -72,9 +72,19 @@ class WidgetsMixin:
         template_frame.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.template_var = tk.StringVar(value="(No folder selected)")
-        self.template_label = ttk.Label(template_frame, textvariable=self.template_var, relief="sunken", width=55)
+        self.template_label = ttk.Label(template_frame, textvariable=self.template_var, relief="sunken")
         self.template_label.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
         ttk.Button(template_frame, text="Select...", command=self.select_template_folder).grid(row=0, column=1, padx=5)
+
+        # Auto-create toggle checkbox
+        self.auto_create_var = tk.BooleanVar(value=True)
+        self.auto_create_checkbox = ttk.Checkbutton(
+            template_frame,
+            text="Auto-create events",
+            variable=self.auto_create_var
+        )
+        self.auto_create_checkbox.grid(row=0, column=2, padx=(10, 0))
+
         template_frame.columnconfigure(0, weight=1)
 
         # Prefix
