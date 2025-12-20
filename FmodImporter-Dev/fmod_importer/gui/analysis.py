@@ -29,7 +29,8 @@ class AnalysisMixin:
 
             # VERSION VALIDATION - Check for FMOD Studio version mismatch
             project_version = self.project.get_project_version()
-            exe_path = self.settings.get('fmod_exe_path', '')
+            settings = self.load_settings()
+            exe_path = settings.get('fmod_exe_path', '')
             exe_version = self.project.get_executable_version(exe_path)
 
             # Store versions for UI display
