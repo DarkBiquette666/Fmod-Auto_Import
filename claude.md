@@ -55,9 +55,11 @@ Global rules are in `.claude/skills/_protocol-rules.md`.
 ## Critical Files to Monitor
 
 Current file sizes (updated 2024-12-20):
-- ⚠️ **project.py**: 1075 lines - **CRITICAL** (cache disabled, consider removal)
-- ⚠️ **widgets.py**: 724 lines - 90% of threshold
+- ✅ **project.py**: 186 lines - OK (refactored, was 1075 lines)
+- ⚠️ **widgets.py**: 762 lines - 95% of threshold
+- ⚠️ **presets.py**: 757 lines - 95% of threshold
 - ⚠️ **naming.py**: 710 lines - 89% of threshold
+- ⚠️ **dialogs.py**: 699 lines - 87% of threshold
 
 ## Proactive Suggestions Format
 
