@@ -263,9 +263,9 @@ class WidgetsMixin:
         import_setup_frame.columnconfigure(1, weight=1)
 
         # ==================== ORPHANS CONTAINER (RIGHT SIDE) ====================
-        # Create container for orphans that spans rows 0-3 in column 1
+        # Create container for orphans that spans rows 0-4 in column 1
         orphans_container = ttk.Frame(main_frame, padding="0")
-        orphans_container.grid(row=0, column=1, rowspan=4, sticky=(tk.N, tk.S, tk.W, tk.E), padx=(10, 0))
+        orphans_container.grid(row=0, column=1, rowspan=5, sticky=(tk.N, tk.S, tk.W, tk.E), padx=(10, 0))
 
         # Configure orphans container to split vertically
         orphans_container.rowconfigure(0, weight=1)  # Orphan Events
@@ -454,7 +454,7 @@ class WidgetsMixin:
         main_frame.columnconfigure(1, weight=1)  # Right column (orphans, ~35-40%)
 
         # Main frame rows
-        main_frame.rowconfigure(4, weight=1)  # Preview row (expands)
+        main_frame.rowconfigure(5, weight=1)  # Preview row (expands)
 
         # Preview frame internal
         preview_frame.columnconfigure(0, weight=1)
