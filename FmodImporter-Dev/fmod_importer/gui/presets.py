@@ -686,10 +686,10 @@ class PresetsMixin:
             preset_names = [p['name'] for p in presets]
             self.preset_combobox['values'] = preset_names
 
-            # Keep current selection if still valid
+            # Keep current selection if still valid, otherwise clear selection
             current = self.preset_var.get()
-            if current not in preset_names and preset_names:
-                self.preset_var.set(preset_names[0])
+            if current not in preset_names:
+                self.preset_var.set("(No preset selected)")
 
     # ==================== VALIDATION ====================
 

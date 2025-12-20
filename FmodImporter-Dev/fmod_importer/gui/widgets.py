@@ -263,9 +263,9 @@ class WidgetsMixin:
         import_setup_frame.columnconfigure(1, weight=1)
 
         # ==================== ORPHANS CONTAINER (RIGHT SIDE) ====================
-        # Create container for orphans that spans rows 0-2 in column 1
+        # Create container for orphans that spans rows 0-3 in column 1
         orphans_container = ttk.Frame(main_frame, padding="0")
-        orphans_container.grid(row=0, column=1, rowspan=3, sticky=(tk.N, tk.S, tk.W, tk.E), padx=(10, 0))
+        orphans_container.grid(row=0, column=1, rowspan=4, sticky=(tk.N, tk.S, tk.W, tk.E), padx=(10, 0))
 
         # Configure orphans container to split vertically
         orphans_container.rowconfigure(0, weight=1)  # Orphan Events
@@ -275,14 +275,14 @@ class WidgetsMixin:
         # ==================== PREVIEW SECTION (FULL WIDTH) ====================
         # Preview section - Events matched to media
         preview_header_frame = ttk.Frame(main_frame)
-        preview_header_frame.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
+        preview_header_frame.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
 
         ttk.Label(preview_header_frame, text="Preview - Matched Events:").pack(side=tk.LEFT)
         ttk.Label(preview_header_frame, text="  |  Click ☑ column to toggle import  |  Confidence: ✓ High (≥95%)  ~ Good (≥85%)  ? Uncertain (≥70%)  |  + Auto-created (Double-click to rename)",
                  foreground="gray").pack(side=tk.LEFT, padx=(10, 0))
 
         preview_frame = ttk.Frame(main_frame)
-        preview_frame.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
+        preview_frame.grid(row=5, column=0, columnspan=2, sticky=(tk.W, tk.E, tk.N, tk.S), pady=5)
 
         # Create Treeview with checkbox column + bank/bus columns
         columns = ('checkbox', 'bank', 'bus')
