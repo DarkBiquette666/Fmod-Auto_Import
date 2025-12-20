@@ -232,10 +232,6 @@ class UtilsMixin:
             # Use event pattern with asset separator
             parse_pattern = NamingPattern(pattern_str, separator=asset_separator)
 
-        # Extract action from first file using parse pattern
-        first_file = selected_media[0]
-        basename = Path(first_file).stem
-
         # Normalize feature for matching
         normalized_feature = feature.replace(' ', '_')
         user_values = {
@@ -243,50 +239,84 @@ class UtilsMixin:
             'feature': normalized_feature
         }
 
-        # Parse the asset to extract the action
-        parsed = parse_pattern.parse_asset_fuzzy(basename, user_values)
+        # Parse all selected files and group by action
+        action_groups = {}  # {action: [file1, file2, ...]}
+        failed_files = []
 
-        if not parsed or 'action' not in parsed:
-            # Show helpful error message with expected format
+        for media_file in selected_media:
+            basename = Path(media_file).stem
+
+            # Parse the asset to extract the action
+            parsed = parse_pattern.parse_asset_fuzzy(basename, user_values)
+
+            if parsed and 'action' in parsed:
+                action = parsed['action']
+                if action not in action_groups:
+                    action_groups[action] = []
+                action_groups[action].append(media_file)
+            else:
+                # File doesn't match pattern
+                failed_files.append(media_file)
+
+        # Show warning if some files failed to parse
+        if failed_files:
             expected_format = parse_pattern.get_pattern_preview(user_values)
             messagebox.showwarning("Warning",
-                f"Could not determine event name from '{first_file}'.\n"
-                f"Expected format: {expected_format}")
+                f"{len(failed_files)} file(s) could not be parsed:\n" +
+                "\n".join(failed_files[:5]) +
+                (f"\n... and {len(failed_files) - 5} more" if len(failed_files) > 5 else "") +
+                f"\n\nExpected format: {expected_format}")
+
+        # If no files could be parsed, return
+        if not action_groups:
             return
-
-        action = parsed['action']
-
-        # Build event name using the naming pattern
-        event_name = pattern.build(prefix=prefix, feature=normalized_feature, action=action)
 
         # Get bank and bus from current selection
         bank_name = self.bank_var.get()
         bus_name = self.bus_var.get()
 
-        # Check if event already exists in preview tree
-        event_item = None
-        for item in self.preview_tree.get_children():
-            item_text = self.preview_tree.item(item, 'text')
-            if self._clean_event_name(item_text) == event_name:
-                event_item = item
-                break
+        # Create one event per action group
+        events_created = 0
+        total_files_assigned = 0
 
-        # If event doesn't exist in tree, create it with auto-created indicator
-        if event_item is None:
-            event_item = self.preview_tree.insert('', 'end', text=f"+ {event_name}",
-                                                   values=(bank_name, bus_name))
+        for action, files in action_groups.items():
+            # Build event name using the naming pattern
+            event_name = pattern.build(prefix=prefix, feature=normalized_feature, action=action)
 
-        # Add media files as children of the event (sorted)
-        sorted_media = sorted(selected_media)
-        for media_filename in sorted_media:
-            self.preview_tree.insert(event_item, 'end', text=f"  → {media_filename}",
-                                     values=('', ''))
+            # Check if event already exists in preview tree
+            event_item = None
+            for item in self.preview_tree.get_children():
+                item_text = self.preview_tree.item(item, 'text')
+                if self._clean_event_name(item_text) == event_name:
+                    event_item = item
+                    break
+
+            # If event doesn't exist in tree, create it with auto-created indicator
+            if event_item is None:
+                event_item = self.preview_tree.insert('', 'end', text=f"+ {event_name}",
+                                                       values=(bank_name, bus_name))
+                events_created += 1
+
+            # Add media files as children of the event (sorted)
+            sorted_files = sorted(files)
+            for media_filename in sorted_files:
+                self.preview_tree.insert(event_item, 'end', text=f"  → {media_filename}",
+                                         values=('', ''))
+            total_files_assigned += len(files)
 
         # Remove from orphan media list (in reverse order to maintain indices)
         for idx in reversed(selected_indices):
             self.orphan_media_list.delete(idx)
 
-        messagebox.showinfo("Success", f"Created event: {event_name}\nAssigned {len(selected_media)} file(s)")
+        # Success message
+        if events_created == 1:
+            messagebox.showinfo("Success",
+                f"Created 1 event\n"
+                f"Assigned {total_files_assigned} file(s)")
+        else:
+            messagebox.showinfo("Success",
+                f"Created {events_created} events\n"
+                f"Assigned {total_files_assigned} file(s)")
 
     def _show_preview_tree_context_menu(self, event):
         """Show context menu for preview tree"""
@@ -295,8 +325,11 @@ class UtilsMixin:
         if not item:
             return
 
-        # Select the item
-        self.preview_tree.selection_set(item)
+        # Preserve selection if item is already selected (for multi-select operations)
+        # Otherwise, replace selection with this item (standard Windows behavior)
+        current_selection = self.preview_tree.selection()
+        if item not in current_selection:
+            self.preview_tree.selection_set(item)
 
         # Check if it's a parent (event) or child (media file)
         parent = self.preview_tree.parent(item)
