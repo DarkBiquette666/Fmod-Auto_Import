@@ -11,6 +11,8 @@ from .bus_manager import BusManager
 from .bank_manager import BankManager
 from .event_folder_manager import EventFolderManager
 from .asset_folder_manager import AssetFolderManager
+from .event_creator import EventCreator
+from .audio_file_manager import AudioFileManager
 
 __all__ = [
     'XMLLoader',
