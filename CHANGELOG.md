@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2024-12-20
+
 ### Refactored
 - **Core Architecture**: Extracted project.py business logic into 8 specialized core modules
   - Reduced project.py from 1137 lines to 186 lines (84% reduction)
