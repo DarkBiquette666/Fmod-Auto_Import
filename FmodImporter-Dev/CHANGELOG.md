@@ -5,6 +5,14 @@ All notable changes to the FMOD Importer Tool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2024-12-20
+
+### Fixed
+- Remove incorrect GUI vs console version detection that blocked imports
+  - FMOD Studio.exe works fine for imports (used successfully in v0.2.x-v0.5.x)
+  - Added fallback to search for most recent result file if path mismatch occurs
+  - Removed proactive warnings about using Studio.exe instead of fmodstudiocl.exe
+
 ## [0.6.1] - 2024-12-20
 
 ### Fixed
