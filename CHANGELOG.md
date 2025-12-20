@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2024-12-20
+
+### Fixed
+- **UI Layout**: Corrected grid layout after preset system addition
+  - Fixed orphans container to span rows 0-4 (rowspan=5) to cover full height up to preview header
+  - Corrected row weight configuration to row 5 (preview tree) for proper vertical expansion
+  - Moved button frame to row 6 to prevent overlap with preview tree content
+
 ## [0.3.0] - 2024-12-20
 
 ### Added
