@@ -1,6 +1,6 @@
 # FMOD Importer Tool - Automatic Audio Asset Importer for FMOD Studio
 
-**Version:** 1.0
+**Version:** 0.2.0
 **Description:** Standalone Windows application for intelligently importing audio assets into FMOD Studio projects
 
 ---
@@ -75,6 +75,8 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
    - Click "Browse..." next to "Media Files Directory"
    - Select the folder containing your audio files (.wav, .mp3, etc.)
 
+**Note:** If FMOD Studio is not installed in standard paths (`C:\Program Files\FMOD SoundSystem`), you may need to configure the FMOD executable path in Settings (click "Settings" button at bottom).
+
 ### 2. Configuration
 
 **Required fields:**
@@ -82,13 +84,13 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 - **Event Folder (Destination)**: FMOD folder where events will be created
 - **Bank**: FMOD bank to assign to events
 - **Bus**: Mixing bus for events
+- **Asset Folder**: Audio asset folder
+- **Prefix**: Prefix to add to event names (e.g., "Mechaflora")
+- **FeatureName**: Feature or character name (e.g., "Weak_Ranged")
 
 **Optional fields:**
 
 - **Template Folder**: Existing template folder to copy from
-- **Prefix**: Prefix to add to event names (e.g., "Mechaflora")
-- **Character Name**: Character name (e.g., "Weak_Ranged")
-- **Asset Folder**: Audio asset folder
 
 ### 3. Recommended Workflow
 
@@ -142,11 +144,15 @@ Access via the **"Settings"** button at the bottom of the interface.
 ### Default Values
 
 You can save your favorite selections:
+- Default FMOD Project
+- FMOD Studio Executable
+- Default Media Directory
 - Default Template Folder
-- Default Destination Folder
 - Default Bank
+- Default Destination Folder
 - Default Bus
-- Default Asset Folder
+- Default Event Separator
+- Default Asset Separator
 
 These values will be pre-filled on next launch.
 
@@ -159,7 +165,7 @@ These values will be pre-filled on next launch.
 **Scenario:** You have a "Weak_Template" template and want to create "Mechaflora Weak Ranged"
 
 1. **Prefix:** `Mechaflora`
-2. **Character Name:** `Weak_Ranged`
+2. **FeatureName:** `Weak_Ranged`
 3. **Template Folder:** Select "Weak_Template" folder
 4. **Destination Folder:** Select/create "Mechaflora Weak Ranged"
 5. **Media Files:** Point to new audio files
@@ -189,6 +195,25 @@ These values will be pre-filled on next launch.
 ---
 
 ## Troubleshooting
+
+### "Could not find FMOD Studio executable"
+
+**Cause:** FMOD Studio not found in standard installation paths
+**Solution:**
+1. Click "Settings" button at bottom of window
+2. Click "Browse..." next to "FMOD Studio Executable"
+3. Select `fmodstudiocl.exe` or `FMOD Studio.exe` from your FMOD installation
+4. Click "Save"
+
+### "Please specify prefix and feature name"
+
+**Cause:** Prefix or FeatureName fields are empty or contain placeholder text
+**Solution:** Fill in both required fields with actual values (not "e.g. Sfx" or "e.g. BlueEyesDragon")
+
+### "Please select an audio asset folder"
+
+**Cause:** No asset folder selected
+**Solution:** Click "Select..." next to "Asset Folder" and choose a folder
 
 ### "Please select a destination folder"
 
@@ -295,5 +320,5 @@ Full license: [docs/LICENSE.txt](docs/LICENSE.txt)
 
 ---
 
-**Version:** 0.9.0
-**Last update:** November 2025
+**Version:** 0.2.0
+**Last update:** December 2025
