@@ -31,6 +31,11 @@ class ImportMixin:
                 messagebox.showerror("Error", "No FMOD Studio project is loaded.")
                 return
 
+            # Check for version mismatch (should have been caught during analysis)
+            if getattr(self, '_version_mismatch', False):
+                messagebox.showerror("Error", "Cannot import due to FMOD Studio version mismatch. Please run Analysis again with matching versions.")
+                return
+
             asset_id = getattr(self, "selected_asset_id", None)
             if not asset_id:
                 messagebox.showerror("Error", "Please select an audio asset folder.")

@@ -5,6 +5,48 @@ All notable changes to the FMOD Importer Tool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2024-12-20
+
+### Added
+- **FMOD Studio version mismatch detection** during analysis phase
+  - Extracts project version from Workspace.xml `serializationModel` attribute
+  - Extracts executable version from FMOD Studio executable path
+  - Compares major.minor versions (e.g., 2.03 vs 2.02)
+  - Shows error dialog with version details if mismatch detected
+  - Blocks import until versions match
+  - Added Version Info section to UI (Paths section) showing:
+    - Project version
+    - Executable version
+    - Color-coded status indicator (✓ green or ✗ red)
+
+### Changed
+- Analysis now validates FMOD Studio version compatibility before template analysis
+- Import workflow now blocks execution if version mismatch detected
+
+### Technical Details
+**Version Detection Flow:**
+```
+1. User clicks "Analyze"
+2. Extract project version from Workspace.xml (e.g., "2.03.00")
+3. Extract exe version from path (e.g., "2.02.30")
+4. Compare major.minor only (ignore patch differences)
+5. If mismatch → show error, block analysis/import
+6. Update UI with detected versions and status
+```
+
+**Example Error:**
+```
+FMOD Studio Version Mismatch
+
+Project Version: 2.03
+Executable Version: 2.02
+
+Import will fail with mismatched versions.
+
+Please update the FMOD Studio Executable path in the Paths section
+to use FMOD Studio 2.03.xx
+```
+
 ## [0.6.3] - 2024-12-20
 
 ### Fixed

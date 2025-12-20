@@ -27,6 +27,51 @@ class AnalysisMixin:
                 messagebox.showwarning("Warning", "Please load a FMOD project first")
                 return
 
+            # VERSION VALIDATION - Check for FMOD Studio version mismatch
+            project_version = self.project.get_project_version()
+            exe_path = self.settings.get('fmod_exe_path', '')
+            exe_version = self.project.get_executable_version(exe_path)
+
+            # Store versions for UI display
+            self._project_version = project_version
+            self._exe_version = exe_version
+
+            if project_version and exe_version:
+                versions_match = self.project.compare_versions(project_version, exe_version)
+
+                if not versions_match:
+                    # Extract major.minor for display (e.g., "2.03.00" -> "2.03")
+                    project_ver_short = '.'.join(project_version.split('.')[:2])
+                    exe_ver_short = '.'.join(exe_version.split('.')[:2])
+
+                    error_msg = (
+                        f"FMOD Studio Version Mismatch\n\n"
+                        f"Project Version: {project_ver_short}\n"
+                        f"Executable Version: {exe_ver_short}\n\n"
+                        f"Import will fail with mismatched versions.\n\n"
+                        f"Please update the FMOD Studio Executable path in the Paths section "
+                        f"to use FMOD Studio {project_ver_short}.xx"
+                    )
+
+                    messagebox.showerror("Version Mismatch", error_msg)
+
+                    # Mark mismatch for UI state management
+                    self._version_mismatch = True
+
+                    # Update version display
+                    if hasattr(self, 'update_version_display'):
+                        self.update_version_display()
+
+                    # Import button will be disabled by update_import_button_state()
+                    return  # BLOCK ANALYSIS - don't continue
+            else:
+                # Version detection failed - allow import but don't mark as mismatch
+                self._version_mismatch = False
+
+            # Update version display if versions were detected
+            if hasattr(self, 'update_version_display'):
+                self.update_version_display()
+
             media_path = self.media_entry.get()
             if not media_path or not os.path.exists(media_path):
                 messagebox.showwarning("Warning", "Please select a valid media directory")

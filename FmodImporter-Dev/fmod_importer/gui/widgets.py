@@ -94,6 +94,24 @@ class WidgetsMixin:
         # Bind change event to save to settings
         self.fmod_exe_entry.bind('<FocusOut>', self._on_fmod_exe_changed)
 
+        # VERSION INFO SECTION
+        version_frame = ttk.LabelFrame(paths_frame, text="Version Info")
+        version_frame.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(10,0))
+
+        # Project version
+        ttk.Label(version_frame, text="Project:").grid(row=0, column=0, sticky="w", padx=5, pady=2)
+        self.project_version_label = ttk.Label(version_frame, text="(not loaded)", foreground="gray")
+        self.project_version_label.grid(row=0, column=1, sticky="w", padx=5, pady=2)
+
+        # Executable version
+        ttk.Label(version_frame, text="Executable:").grid(row=1, column=0, sticky="w", padx=5, pady=2)
+        self.exe_version_label = ttk.Label(version_frame, text="(not detected)", foreground="gray")
+        self.exe_version_label.grid(row=1, column=1, sticky="w", padx=5, pady=2)
+
+        # Status indicator
+        self.version_status_label = ttk.Label(version_frame, text="")
+        self.version_status_label.grid(row=2, column=0, columnspan=2, sticky="w", padx=5, pady=2)
+
         paths_frame.columnconfigure(1, weight=1)
 
         # ==================== SECTION 3: PATTERN SETUP ====================
@@ -773,3 +791,33 @@ LEAVE EMPTY if your files already match your event pattern.
             return ''
 
         return f"{prefix}{feature}"
+
+    def update_version_display(self):
+        """Update version info labels."""
+        project_version = getattr(self, '_project_version', None)
+        exe_version = getattr(self, '_exe_version', None)
+
+        # Update project version label
+        if project_version:
+            ver_short = '.'.join(project_version.split('.')[:2])  # "2.03"
+            self.project_version_label.config(text=ver_short, foreground="black")
+        else:
+            self.project_version_label.config(text="(not loaded)", foreground="gray")
+
+        # Update exe version label
+        if exe_version:
+            ver_short = '.'.join(exe_version.split('.')[:2])  # "2.02"
+            self.exe_version_label.config(text=ver_short, foreground="black")
+        else:
+            self.exe_version_label.config(text="(not detected)", foreground="gray")
+
+        # Update status indicator
+        if project_version and exe_version:
+            if hasattr(self, 'project') and self.project:
+                versions_match = self.project.compare_versions(project_version, exe_version)
+                if versions_match:
+                    self.version_status_label.config(text="✓ Versions match", foreground="green")
+                else:
+                    self.version_status_label.config(text="✗ Mismatch - import blocked", foreground="red")
+        else:
+            self.version_status_label.config(text="", foreground="gray")

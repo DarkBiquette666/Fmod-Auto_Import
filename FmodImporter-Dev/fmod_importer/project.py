@@ -184,3 +184,76 @@ class FMODProject:
             audio_file_path, asset_relative_path,
             self.metadata_path, self.workspace
         )
+
+    def get_project_version(self) -> Optional[str]:
+        """
+        Extract FMOD Studio version from project metadata.
+
+        Returns:
+            Version string (e.g., "2.03.00") or None if not found
+        """
+        try:
+            workspace_file = self.metadata_path / "Workspace.xml"
+            if not workspace_file.exists():
+                return None
+
+            tree = ET.parse(workspace_file)
+            root = tree.getroot()
+            serialization_model = root.get('serializationModel')
+
+            if serialization_model:
+                # Format: "Studio.02.03.00" -> "2.03.00"
+                version = serialization_model.replace('Studio.', '')
+                return version
+
+            return None
+        except Exception:
+            return None
+
+    def get_executable_version(self, exe_path: str) -> Optional[str]:
+        """
+        Extract FMOD Studio version from executable path.
+
+        Args:
+            exe_path: Path to FMOD Studio executable
+
+        Returns:
+            Version string (e.g., "2.02.30") or None if not found
+        """
+        if not exe_path:
+            return None
+
+        try:
+            # Parse from directory path
+            # Example: "C:/Program Files/FMOD SoundSystem/FMOD Studio 2.02.30/FMOD Studio.exe"
+            import re
+            match = re.search(r'FMOD Studio (\d+\.\d+(?:\.\d+)?)', exe_path)
+            if match:
+                return match.group(1)
+
+            return None
+        except Exception:
+            return None
+
+    def compare_versions(self, version1: str, version2: str) -> bool:
+        """
+        Compare two FMOD Studio versions (major.minor only).
+
+        Args:
+            version1: First version string (e.g., "2.03.00")
+            version2: Second version string (e.g., "2.02.30")
+
+        Returns:
+            True if major.minor match, False otherwise
+        """
+        if not version1 or not version2:
+            return False
+
+        try:
+            # Extract major.minor from "2.03.00" -> ["2", "03"]
+            v1_parts = version1.split('.')[:2]
+            v2_parts = version2.split('.')[:2]
+
+            return v1_parts == v2_parts
+        except Exception:
+            return False
