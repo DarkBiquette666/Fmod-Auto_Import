@@ -1,39 +1,39 @@
 # Skill: /fmod-review
 
-Revue complète du code pour qualité, adhérence aux principes et identification d'opportunités d'amélioration.
+Complete code review for quality, adherence to principles, and identification of improvement opportunities.
 
-## Objectif
+## Objective
 
-Analyser systématiquement le code pour identifier problèmes, violations de principes et opportunités d'amélioration.
+Systematically analyze code to identify problems, principle violations, and improvement opportunities.
 
-## Quand Utiliser Ce Skill
+## When to Use This Skill
 
-- ✅ Utilisateur demande "review", "vérifier code", "audit", "analyser"
-- ✅ Avant release majeure
-- ✅ Après ajout de features importantes
-- ✅ Périodiquement pour maintenir qualité
-- ✅ Quand qualité du code est incertaine
-- ❌ Pas pour fixer bugs (utiliser `/fmod-debug`)
-- ❌ Pas pour implémenter features (utiliser `/fmod-feature`)
+- ✅ User requests "review", "check code", "audit", "analyze"
+- ✅ Before major release
+- ✅ After adding important features
+- ✅ Periodically to maintain quality
+- ✅ When code quality is uncertain
+- ❌ Not for fixing bugs (use `/fmod-debug`)
+- ❌ Not for implementing features (use `/fmod-feature`)
 
 ## Workflow
 
-### Étape 1: Définition du Scope
+### Step 1: Scope Definition
 
 **Actions**:
 
-1. **Déterminer étendue de la review**:
-   - **Single file**: Reviewer un fichier spécifique
-   - **Module**: Reviewer tous fichiers d'un module (ex: gui/)
-   - **Codebase entier**: Review complète de tout le projet
-   - **Recent changes**: Review des commits récents
+1. **Determine review scope**:
+   - **Single file**: Review a specific file
+   - **Module**: Review all files in a module (e.g., gui/)
+   - **Entire codebase**: Complete project review
+   - **Recent changes**: Review recent commits
 
-2. **Définir profondeur de review**:
-   - **Quick scan** (5-10 min): Métriques de base, violations évidentes
-   - **Standard review** (20-30 min): Checks complets, SOLID, documentation
-   - **Deep analysis** (1+ heure): Analyse architecturale détaillée
+2. **Define review depth**:
+   - **Quick scan** (5-10 min): Basic metrics, obvious violations
+   - **Standard review** (20-30 min): Complete checks, SOLID, documentation
+   - **Deep analysis** (1+ hour): Detailed architectural analysis
 
-3. **Identifier concerns spécifiques** (si applicable):
+3. **Identify specific concerns** (if applicable):
    - Security vulnerabilities?
    - Performance issues?
    - Architecture compliance?
@@ -41,11 +41,11 @@ Analyser systématiquement le code pour identifier problèmes, violations de pri
    - Test coverage?
 
 **Checklist**:
-- [ ] Scope défini (fichier, module, codebase, recent changes)
-- [ ] Profondeur sélectionnée (quick, standard, deep)
-- [ ] Concerns spécifiques identifiés
+- [ ] Scope defined (file, module, codebase, recent changes)
+- [ ] Depth selected (quick, standard, deep)
+- [ ] Specific concerns identified
 
-**Exemples de Scope**:
+**Scope Examples**:
 ```bash
 # Single file
 /review fmod_importer/project.py
@@ -53,7 +53,7 @@ Analyser systématiquement le code pour identifier problèmes, violations de pri
 # Module
 /review fmod_importer/gui/
 
-# Codebase entier
+# Entire codebase
 /review
 
 # Recent changes
@@ -62,7 +62,7 @@ Analyser systématiquement le code pour identifier problèmes, violations de pri
 
 ---
 
-### Étape 2: Automated Checks
+### Step 2: Automated Checks
 
 #### 2.1 Line Count Analysis
 
@@ -75,11 +75,11 @@ wc -l fmod_importer/**/*.py | sort -rn
 wc -l fmod_importer/**/*.py | awk '$1 > 800 {print $0}'
 ```
 
-**Thresholds** (voir `_protocol-rules.md`):
-- 750 lignes → `[INFO]` Planifier refactoring
-- 800 lignes → `[RECOMMEND]` Refactorer maintenant
-- 900 lignes (mixin) → `[RECOMMEND]` Urgent
-- 1000 lignes → `[CRITICAL]` Maximum absolu
+**Thresholds** (see `_protocol-rules.md`):
+- 750 lines → `[INFO]` Plan refactoring
+- 800 lines → `[RECOMMEND]` Refactor now
+- 900 lines (mixin) → `[RECOMMEND]` Urgent
+- 1000 lines → `[CRITICAL]` Absolute maximum
 
 **Output Template**:
 ```markdown
@@ -105,7 +105,7 @@ wc -l fmod_importer/**/*.py | awk '$1 > 800 {print $0}'
 
 **Actions**:
 
-1. **Vérifier pattern mixin GUI**:
+1. **Check GUI mixin pattern**:
    ```bash
    # Check FmodImporterGUI inherits from mixins
    grep -n "class FmodImporterGUI" fmod_importer/gui/main.py
@@ -114,7 +114,7 @@ wc -l fmod_importer/**/*.py | awk '$1 > 800 {print $0}'
    # class FmodImporterGUI(UtilsMixin, WidgetsMixin, ...)
    ```
 
-2. **Vérifier séparation core/GUI**:
+2. **Check core/GUI separation**:
    ```bash
    # Core modules should NOT import GUI
    grep -r "import tkinter\|from tkinter" fmod_importer/project.py fmod_importer/naming.py fmod_importer/matcher.py
@@ -122,7 +122,7 @@ wc -l fmod_importer/**/*.py | awk '$1 > 800 {print $0}'
    # Should be empty (no GUI imports in core)
    ```
 
-3. **Vérifier circular dependencies**:
+3. **Check circular dependencies**:
    ```bash
    # Check for circular imports
    # Manually trace import chains
@@ -150,7 +150,7 @@ wc -l fmod_importer/**/*.py | awk '$1 > 800 {print $0}'
 
 **Actions**:
 
-1. **Rechercher fonctions similaires**:
+1. **Search for similar functions**:
    ```bash
    # Find duplicate function names
    grep -rh "^    def " fmod_importer/ | sort | uniq -c | sort -rn | awk '$1 > 1'
@@ -159,13 +159,13 @@ wc -l fmod_importer/**/*.py | awk '$1 > 800 {print $0}'
    # Look for patterns like normalize, validate, parse
    ```
 
-2. **Rechercher string literals répétés**:
+2. **Search for repeated string literals**:
    ```bash
    # Find repeated string literals (potential constants)
    grep -roh '"[^"]\{10,\}"' fmod_importer/ | sort | uniq -c | sort -rn | head -20
    ```
 
-3. **Identifier patterns répétés**:
+3. **Identify repeated patterns**:
    - Similar try/except blocks
    - Similar validation logic
    - Similar widget creation
@@ -189,14 +189,14 @@ wc -l fmod_importer/**/*.py | awk '$1 > 800 {print $0}'
 
 ---
 
-### Étape 3: SOLID Principles Review
+### Step 3: SOLID Principles Review
 
 #### 3.1 Single Responsibility Principle (SRP)
 
-**Questions à Poser**:
-- Chaque classe a-t-elle UNE responsabilité claire?
-- Les méthodes font-elles UNE chose cohérente?
-- Les mixins addressent-ils UN aspect de fonctionnalité?
+**Questions to Ask**:
+- Does each class have ONE clear responsibility?
+- Do methods do ONE coherent thing?
+- Do mixins address ONE aspect of functionality?
 
 **Checks**:
 ```python
@@ -225,9 +225,9 @@ class FMODProject:
 
 #### 3.2 Open/Closed Principle (OCP)
 
-**Questions à Poser**:
-- Nouvelles features ajoutées par composition/extension?
-- Modification de code existant évitée?
+**Questions to Ask**:
+- Are new features added by composition/extension?
+- Is modification of existing code avoided?
 
 **Checks**:
 ```python
@@ -258,9 +258,9 @@ class FmodGUI:
 
 #### 3.3 Liskov Substitution Principle (LSP)
 
-**Questions à Poser**:
-- Les mixins sont-ils composables sans conflits?
-- Les hierarchies d'héritage sont-elles logiques?
+**Questions to Ask**:
+- Are mixins composable without conflicts?
+- Are inheritance hierarchies logical?
 
 **Checks**:
 ```python
@@ -285,9 +285,9 @@ class FmodGUI(MixinB, MixinA):  # Breaks!
 
 #### 3.4 Interface Segregation Principle (ISP)
 
-**Questions à Poser**:
-- Y a-t-il des "god classes" avec méthodes non-reliées?
-- Les interfaces sont-elles focalisées?
+**Questions to Ask**:
+- Are there "god classes" with unrelated methods?
+- Are interfaces focused?
 
 **Checks**:
 ```python
@@ -320,9 +320,9 @@ class EmailService:
 
 #### 3.5 Dependency Inversion Principle (DIP)
 
-**Questions à Poser**:
-- Core logic dépend-il d'abstractions?
-- GUI dépend de core, pas l'inverse?
+**Questions to Ask**:
+- Does core logic depend on abstractions?
+- Does GUI depend on core, not the reverse?
 
 **Checks**:
 ```bash
@@ -346,7 +346,7 @@ grep "from fmod_importer.project import FMODProject" fmod_importer/gui/
 
 ---
 
-### Étape 4: DRY/KISS/SSOT Analysis
+### Step 4: DRY/KISS/SSOT Analysis
 
 #### 4.1 DRY (Don't Repeat Yourself)
 
@@ -430,7 +430,7 @@ grep -rn "VERSION\s*=" fmod_importer/
 
 ---
 
-### Étape 5: Documentation Review
+### Step 5: Documentation Review
 
 #### 5.1 Docstring Completeness
 
@@ -471,13 +471,13 @@ documented=$(grep -rc '"""' fmod_importer/ | awk -F: '{sum+=$2} END {print sum}'
 #### 5.2 README Accuracy
 
 **Checks**:
-- README features match code reality?
-- Usage instructions current?
-- Troubleshooting comprehensive?
+- Do README features match code reality?
+- Are usage instructions current?
+- Is troubleshooting comprehensive?
 
 **Manual Review**:
 - Test examples from README
-- Verify all features mentioned exist
+- Verify all mentioned features exist
 - Check for undocumented features
 
 **Output Template**:
@@ -540,13 +540,13 @@ grep "\[0.1." CHANGELOG.md  # Versions in changelog
 
 ---
 
-### Étape 6: Code Quality Metrics
+### Step 6: Code Quality Metrics
 
 #### 6.1 Complexity Indicators
 
 **Checks**:
 
-1. **Long Functions** (>50 lignes):
+1. **Long Functions** (>50 lines):
    ```bash
    # Find long functions (manual or script)
    # Count lines between "def" and next "def" or class end
@@ -647,9 +647,9 @@ grep -rn "^\s*#" fmod_importer/ | grep -v '"""'  # Commented-out code
 
 ---
 
-### Étape 7: Génération du Rapport
+### Step 7: Report Generation
 
-**Structure du Rapport**:
+**Report Structure**:
 
 ```markdown
 # Code Review Report - [Scope]
@@ -766,17 +766,17 @@ Reviewer: Claude Sonnet 4.5
 
 ---
 
-### Étape 8: Action Items et Prioritization
+### Step 8: Action Items and Prioritization
 
 **Actions**:
 
-1. **Catégoriser findings par priorité**:
+1. **Categorize findings by priority**:
    - **CRITICAL**: Must fix (security, data loss, crashes)
    - **HIGH**: Should fix soon (violations, tech debt)
    - **MEDIUM**: Plan to fix (improvements, optimizations)
    - **LOW**: Nice to have (style, minor improvements)
 
-2. **Créer action items avec skills recommandés**:
+2. **Create action items with recommended skills**:
    ```markdown
    ## Action Items
 
@@ -798,32 +798,32 @@ Reviewer: Claude Sonnet 4.5
    - [ ] Remove commented-out code (manual)
    ```
 
-3. **Estimer effort pour chaque item**:
+3. **Estimate effort for each item**:
    - **Low**: < 1 hour
    - **Medium**: 1-4 hours
    - **High**: 4+ hours
 
-4. **Recommander ordre d'exécution**:
+4. **Recommend execution order**:
    1. Critical issues first
    2. High priority refactorings that unlock features
    3. Documentation gaps
    4. Medium/low priority improvements
 
 **Checklist**:
-- [ ] Findings catégorisés par priorité
-- [ ] Action items créés avec skills
-- [ ] Effort estimé pour chaque item
-- [ ] Ordre d'exécution recommandé
+- [ ] Findings categorized by priority
+- [ ] Action items created with skills
+- [ ] Effort estimated for each item
+- [ ] Execution order recommended
 
 ---
 
-## Exemples Complets
+## Complete Examples
 
-### Exemple 1: Review d'un Fichier Unique (project.py)
+### Example 1: Single File Review (project.py)
 
-**Demande**: `/review fmod_importer/project.py`
+**Request**: `/review fmod_importer/project.py`
 
-**Exécution**:
+**Execution**:
 
 ```markdown
 # Code Review Report - project.py
@@ -951,11 +951,11 @@ excellent documentation and error handling practices.
 
 ---
 
-### Exemple 2: Review du Codebase Complet
+### Example 2: Full Codebase Review
 
-**Demande**: `/review` (entire codebase)
+**Request**: `/review` (entire codebase)
 
-**Exécution** (abbreviated):
+**Execution** (abbreviated):
 
 ```markdown
 # Code Review Report - FMOD Importer Codebase
@@ -1136,15 +1136,15 @@ Main issue is project.py size. Once refactored, will be exemplary Python project
 
 ---
 
-## Anti-Patterns à Éviter
+## Anti-Patterns to Avoid
 
-### ❌ BAD: Review Sans Contexte
+### ❌ BAD: Review Without Context
 ```markdown
 # Bad review
 File too big. Fix it.
 ```
 
-### ✅ GOOD: Review avec Contexte et Recommendations
+### ✅ GOOD: Review with Context and Recommendations
 ```markdown
 # Good review
 ## Issue: File Size
@@ -1195,13 +1195,13 @@ Everything is wrong. Needs complete rewrite.
 
 ---
 
-## Référence Rapide
+## Quick Reference
 
-### Checklist Complète
+### Complete Checklist
 
 ```
 Phase 1: Scope Definition
-□ Scope défini (file/module/codebase/recent)
+□ Scope defined (file/module/codebase/recent)
 □ Depth selected (quick/standard/deep)
 □ Specific concerns identified
 

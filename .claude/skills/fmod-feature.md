@@ -1,71 +1,71 @@
 # Skill: /fmod-feature
 
-Implémente une nouvelle fonctionnalité pour le FMOD Importer en suivant les principes SOLID, DRY, KISS et l'architecture mixin du projet.
+Implement a new feature for the FMOD Importer following SOLID, DRY, KISS principles and the project's mixin architecture.
 
-## Objectif
+## Objective
 
-Créer des fonctionnalités robustes, bien documentées et maintenables avec des commits structurés par milestone.
+Create robust, well-documented and maintainable features with structured commits by milestone.
 
-## Quand Utiliser Ce Skill
+## When to Use This Skill
 
-- ✅ L'utilisateur demande une nouvelle fonctionnalité
-- ✅ Ajout de features user-facing ou internes
-- ✅ Extension des capacités existantes
-- ❌ Pas pour les bugs (utiliser `/fmod-debug`)
-- ❌ Pas pour restructuration (utiliser `/fmod-refactor`)
+- ✅ User requests a new feature
+- ✅ Adding user-facing or internal features
+- ✅ Extending existing capabilities
+- ❌ Not for bugs (use `/fmod-debug`)
+- ❌ Not for restructuring (use `/fmod-refactor`)
 
 ## Workflow
 
-### Étape 1: Analyse des Requirements
+### Step 1: Requirements Analysis
 
 **Actions**:
-1. Lire et comprendre complètement la demande utilisateur
-2. Identifier les modules affectés:
-   - GUI seulement?
-   - Core logic seulement?
+1. Read and fully understand the user request
+2. Identify affected modules:
+   - GUI only?
+   - Core logic only?
    - GUI + Core?
-   - Nouveau module nécessaire?
-3. Rechercher features similaires existantes pour réutiliser patterns
-4. Vérifier si des dépendances externes sont nécessaires (éviter si possible - stdlib only!)
-5. Poser questions de clarification si requirements ambigus
+   - New module needed?
+3. Search for similar existing features to reuse patterns
+4. Check if external dependencies are needed (avoid if possible - stdlib only!)
+5. Ask clarification questions if requirements are ambiguous
 
 **Checklist**:
-- [ ] Requirements clairs et complets
-- [ ] Modules affectés identifiés
-- [ ] Patterns existants recherchés
-- [ ] Pas de nouvelles dépendances externes (ou justifiées)
+- [ ] Requirements clear and complete
+- [ ] Affected modules identified
+- [ ] Existing patterns researched
+- [ ] No new external dependencies (or justified)
 
-**Questions à Poser** (via AskUserQuestion si nécessaire):
-- Comment cette feature s'intègre-t-elle au workflow existant?
-- Y a-t-il des cas d'usage edge cases spécifiques?
-- Quelle est la priorité (MVP vs feature complète)?
-- Comment tester cette feature manuellement?
+**Questions to Ask** (via AskUserQuestion if needed):
+- How does this feature integrate with the existing workflow?
+- Are there specific edge cases?
+- What's the priority (MVP vs complete feature)?
+- How to test this feature manually?
 
 ---
 
-### Étape 2: Planification Architecture
+### Step 2: Architecture Planning
 
 **Actions**:
-1. **Déterminer le placement**:
-   - Nouveau mixin? → Si nouvelle responsabilité GUI distincte
-   - Étendre mixin existant? → Si extension responsabilité existante
-   - Nouveau module core? → Si nouvelle logique métier
-   - Étendre module core existant? → Si extension logique existante
+1. **Determine placement**:
+   - New mixin? → If new distinct GUI responsibility
+   - Extend existing mixin? → If extending existing responsibility
+   - New core module? → If new business logic
+   - Extend existing core module? → If extending existing logic
 
-2. **Vérifier line counts des fichiers cibles**:
+2. **Check line counts of target files**:
    ```bash
    # Check current line count
    wc -l fmod_importer/gui/[target_mixin].py
    ```
-   - Si >700 lignes → Planifier extraction AVANT d'ajouter feature
-   - Si >800 lignes → BLOCKER: Refactorer d'abord avec `/fmod-refactor`
+   - If >700 lines → Plan extraction BEFORE adding feature
+   - If >800 lines → BLOCKER: Refactor first with `/fmod-refactor`
 
-3. **Identifier composants réutilisables à créer**:
-   - Widgets réutilisables
-   - Fonctions utilitaires
-   - Classes/patterns partagés
+3. **Identify reusable components to create**:
+   - Reusable widgets
+   - Utility functions
+   - Shared classes/patterns
 
-4. **Designer les interfaces** (signatures fonctions, APIs classes):
+4. **Design interfaces** (function signatures, class APIs):
    ```python
    # Example interface design
    class NewFeatureMixin:
@@ -74,54 +74,54 @@ Créer des fonctionnalités robustes, bien documentées et maintenables avec des
            pass
    ```
 
-5. **Vérifier compliance SOLID**:
-   - **SRP**: Feature a-t-elle une responsabilité unique et bien définie?
-   - **OCP**: Peut-on étendre code existant sans le modifier?
-   - **LSP**: Les nouveaux mixins sont-ils composables?
-   - **ISP**: L'interface est-elle focalisée (pas god class)?
-   - **DIP**: Dépend-on d'abstractions, pas d'implémentations?
+5. **Verify SOLID compliance**:
+   - **SRP**: Does the feature have a single, well-defined responsibility?
+   - **OCP**: Can we extend existing code without modifying it?
+   - **LSP**: Are the new mixins composable?
+   - **ISP**: Is the interface focused (not a god class)?
+   - **DIP**: Do we depend on abstractions, not implementations?
 
 **Checklist**:
-- [ ] Placement déterminé (mixin/module)
-- [ ] Line counts vérifiés (< 800 lignes après ajout)
-- [ ] Composants réutilisables identifiés
-- [ ] Interfaces designées avec type hints
-- [ ] SOLID compliance vérifiée
+- [ ] Placement determined (mixin/module)
+- [ ] Line counts verified (< 800 lines after addition)
+- [ ] Reusable components identified
+- [ ] Interfaces designed with type hints
+- [ ] SOLID compliance verified
 
-**Décision Tree - Placement**:
+**Decision Tree - Placement**:
 ```
 Feature Description
     │
-    ├─ Logique métier pure (XML, parsing, matching)
-    │  └─ Ajouter/étendre module core (project.py, naming.py, matcher.py)
+    ├─ Pure business logic (XML, parsing, matching)
+    │  └─ Add/extend core module (project.py, naming.py, matcher.py)
     │
-    ├─ Interface utilisateur (widgets, dialogs)
-    │  └─ Ajouter/étendre GUI mixin
+    ├─ User interface (widgets, dialogs)
+    │  └─ Add/extend GUI mixin
     │     │
-    │     ├─ Extension de responsabilité existante
-    │     │  └─ Étendre mixin existant (ex: WidgetsMixin pour nouveau widget)
+    │     ├─ Extension of existing responsibility
+    │     │  └─ Extend existing mixin (ex: WidgetsMixin for new widget)
     │     │
-    │     └─ Nouvelle responsabilité distincte
-    │        └─ Créer nouveau mixin
+    │     └─ New distinct responsibility
+    │        └─ Create new mixin
     │
-    └─ Les deux (logique + UI)
-       └─ Commencer par core, puis GUI
+    └─ Both (logic + UI)
+       └─ Start with core, then GUI
 ```
 
 ---
 
-### Étape 3: Implémentation par Milestones
+### Step 3: Implementation by Milestones
 
-#### Milestone 1: Core Logic (sans GUI)
+#### Milestone 1: Core Logic (no GUI)
 
 **Actions**:
-1. Implémenter logique métier dans module core approprié
-2. Écrire docstrings complètes (suivre standard `_protocol-rules.md`)
-3. Ajouter type hints pour tous paramètres et returns
-4. Implémenter error handling approprié
-5. Tester manuellement dans Python REPL si possible
+1. Implement business logic in appropriate core module
+2. Write complete docstrings (follow standard `_protocol-rules.md`)
+3. Add type hints for all parameters and returns
+4. Implement appropriate error handling
+5. Test manually in Python REPL if possible
 
-**Exemple**:
+**Example**:
 ```python
 # fmod_importer/project.py
 def filter_events_by_bank(self, bank_id: str) -> List[Dict]:
@@ -156,23 +156,23 @@ def filter_events_by_bank(self, bank_id: str) -> List[Dict]:
 ```
 
 **Checklist M1**:
-- [ ] Logique core implémentée
-- [ ] Docstrings complètes avec Args/Returns/Raises/Examples
-- [ ] Type hints sur tous paramètres
-- [ ] Error handling présent
-- [ ] Testé manuellement si possible
+- [ ] Core logic implemented
+- [ ] Complete docstrings with Args/Returns/Raises/Examples
+- [ ] Type hints on all parameters
+- [ ] Error handling present
+- [ ] Manually tested if possible
 
-#### Milestone 2: Intégration GUI
+#### Milestone 2: GUI Integration
 
 **Actions**:
-1. Créer/étendre mixin approprié
-2. Connecter logique core aux événements GUI
-3. Ajouter placeholder management si nécessaire
-4. Suivre patterns widgets existants (voir `widgets.py`)
-5. Implémenter error handling avec messagebox user-friendly
-6. Tester interaction end-to-end
+1. Create/extend appropriate mixin
+2. Connect core logic to GUI events
+3. Add placeholder management if necessary
+4. Follow existing widget patterns (see `widgets.py`)
+5. Implement error handling with user-friendly messagebox
+6. Test end-to-end interaction
 
-**Exemple**:
+**Example**:
 ```python
 # fmod_importer/gui/widgets.py (WidgetsMixin)
 def _create_bank_filter(self, parent):
@@ -249,21 +249,21 @@ def _apply_bank_filter(self):
 ```
 
 **Checklist M2**:
-- [ ] Mixin créé/étendu
-- [ ] Core logic connecté à GUI events
-- [ ] Error handling avec messagebox user-friendly
-- [ ] Patterns existants suivis
-- [ ] Testé end-to-end
+- [ ] Mixin created/extended
+- [ ] Core logic connected to GUI events
+- [ ] Error handling with user-friendly messagebox
+- [ ] Existing patterns followed
+- [ ] Tested end-to-end
 
-#### Milestone 3: Documentation Complète
+#### Milestone 3: Complete Documentation
 
 **Actions**:
-1. **README.md**: Ajouter feature documentation
-   - Section "Description": Mentionner nouvelle feature
-   - Section "Usage": Instructions utilisation
-   - Section "Troubleshooting": Erreurs potentielles
+1. **README.md**: Add feature documentation
+   - "Description" section: Mention new feature
+   - "Usage" section: Usage instructions
+   - "Troubleshooting" section: Potential errors
 
-2. **CHANGELOG.md**: Ajouter entrée sous "Added"
+2. **CHANGELOG.md**: Add entry under "Added"
    ```markdown
    ## [Unreleased]
    ### Added
@@ -276,11 +276,11 @@ def _apply_bank_filter(self):
    VERSION = "0.2.0"  # Was "0.1.8"
    ```
 
-4. **Docstrings**: Vérifier toutes les nouvelles fonctions/classes ont docstrings complètes
+4. **Docstrings**: Verify all new functions/classes have complete docstrings
 
-5. **Inline comments**: Ajouter uniquement pour logique non-évidente
+5. **Inline comments**: Add only for non-obvious logic
 
-**Template README.md Addition**:
+**README.md Addition Template**:
 ```markdown
 ### Bank Filtering
 
@@ -302,86 +302,86 @@ Select "SFX_Bank" to see only sound effect events assigned to that bank.
 
 **Checklist M3**:
 - [ ] README.md updated (Description, Usage, Troubleshooting)
-- [ ] CHANGELOG.md updated sous "Added"
-- [ ] VERSION bumped (minor pour feat)
-- [ ] Toutes docstrings complètes
-- [ ] Inline comments uniquement si nécessaire
+- [ ] CHANGELOG.md updated under "Added"
+- [ ] VERSION bumped (minor for feat)
+- [ ] All docstrings complete
+- [ ] Inline comments only if necessary
 
 ---
 
-### Étape 4: Quality Checks
+### Step 4: Quality Checks
 
-**Avant de committer, vérifier**:
+**Before committing, verify**:
 
 #### Architecture
 - [ ] **SOLID compliance**:
-  - [ ] SRP: Une responsabilité par classe/fonction
-  - [ ] OCP: Extension par composition
-  - [ ] DIP: Pas de dépendances concrètes GUI↔Core
+  - [ ] SRP: One responsibility per class/function
+  - [ ] OCP: Extension through composition
+  - [ ] DIP: No concrete GUI↔Core dependencies
 
-- [ ] **Séparation des responsabilités**:
-  - [ ] Logique métier dans core modules
-  - [ ] Interface dans GUI mixins
-  - [ ] Pas de code GUI dans core
-  - [ ] Pas de logique métier complexe dans GUI
+- [ ] **Separation of responsibilities**:
+  - [ ] Business logic in core modules
+  - [ ] Interface in GUI mixins
+  - [ ] No GUI code in core
+  - [ ] No complex business logic in GUI
 
 #### Code Quality
-- [ ] **DRY**: Pas de duplication code
-  - Si code similaire existe, extraire fonction réutilisable
-  - Vérifier duplication entre nouveaux et anciens modules
+- [ ] **DRY**: No code duplication
+  - If similar code exists, extract reusable function
+  - Check duplication between new and old modules
 
 - [ ] **Line Counts**:
   ```bash
   wc -l fmod_importer/gui/*.py fmod_importer/*.py
   ```
-  - [ ] Aucun fichier >800 lignes
-  - [ ] Si approche 750, suggérer refactoring futur
+  - [ ] No file >800 lines
+  - [ ] If approaching 750, suggest future refactoring
 
 - [ ] **Error Handling**:
-  - [ ] try/except autour d'opérations risquées
-  - [ ] Messages d'erreur user-friendly (messagebox)
-  - [ ] Pas de bare except clauses
+  - [ ] try/except around risky operations
+  - [ ] User-friendly error messages (messagebox)
+  - [ ] No bare except clauses
 
 - [ ] **Type Hints**:
-  - [ ] Tous paramètres et returns typés
-  - [ ] Import typing si nécessaire
+  - [ ] All parameters and returns typed
+  - [ ] Import typing if necessary
 
 - [ ] **Naming**:
-  - [ ] Noms clairs et descriptifs
+  - [ ] Clear and descriptive names
   - [ ] Follow Python conventions (snake_case)
-  - [ ] Pas d'abréviations obscures
+  - [ ] No obscure abbreviations
 
 #### Documentation
 - [ ] **Docstrings**:
-  - [ ] Toutes fonctions/classes publiques documentées
-  - [ ] Format standard (Args, Returns, Raises, Examples)
-  - [ ] Expliquent WHY, pas juste WHAT
+  - [ ] All public functions/classes documented
+  - [ ] Standard format (Args, Returns, Raises, Examples)
+  - [ ] Explain WHY, not just WHAT
 
 - [ ] **README.md**:
-  - [ ] Feature mentionnée dans Description
-  - [ ] Instructions usage ajoutées
-  - [ ] Troubleshooting mis à jour
+  - [ ] Feature mentioned in Description
+  - [ ] Usage instructions added
+  - [ ] Troubleshooting updated
 
 - [ ] **CHANGELOG.md**:
-  - [ ] Entrée sous "Added" pour nouvelle version
-  - [ ] Description claire de la feature
+  - [ ] Entry under "Added" for new version
+  - [ ] Clear feature description
 
 - [ ] **VERSION**:
-  - [ ] Bumped correctement (feat = minor bump)
+  - [ ] Bumped correctly (feat = minor bump)
 
-#### Testing Manuel
-- [ ] Feature fonctionne end-to-end
-- [ ] Edge cases testés
-- [ ] Error handling vérifié (provoquer erreurs)
-- [ ] Pas de regressions sur features existantes
+#### Manual Testing
+- [ ] Feature works end-to-end
+- [ ] Edge cases tested
+- [ ] Error handling verified (trigger errors)
+- [ ] No regressions on existing features
 
 ---
 
-### Étape 5: Commits par Milestone
+### Step 5: Commits by Milestone
 
-**Stratégie**: Commits groupés par milestone (config utilisateur)
+**Strategy**: Commits grouped by milestone (user configuration)
 
-#### Option 1: Commits Séparés par Milestone
+#### Option 1: Separate Commits per Milestone
 ```bash
 # Milestone 1: Core
 git add fmod_importer/project.py
@@ -389,36 +389,24 @@ git commit -m "feat(core): Add event filtering by bank name (v0.2.0)
 
 Implements filter_events_by_bank() method to filter events
 belonging to a specific bank. Includes comprehensive error
-handling and validation.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+handling and validation."
 
 # Milestone 2: GUI
 git add fmod_importer/gui/widgets.py
 git commit -m "feat(gui): Add bank filter widget to UI
 
 Adds dropdown filter to allow users to filter events by bank.
-Integrates with core filtering logic from project module.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+Integrates with core filtering logic from project module."
 
 # Milestone 3: Documentation
 git add README.md CHANGELOG.md fmod_importer/__init__.py
 git commit -m "docs: Document bank filtering feature
 
 Updates README with usage instructions, adds CHANGELOG entry,
-and bumps version to 0.2.0.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+and bumps version to 0.2.0."
 ```
 
-#### Option 2: Commit Unique (pour features simples)
+#### Option 2: Single Commit (for simple features)
 ```bash
 git add fmod_importer/project.py fmod_importer/gui/widgets.py README.md CHANGELOG.md fmod_importer/__init__.py
 git commit -m "feat: Add bank filtering feature (v0.2.0)
@@ -426,18 +414,14 @@ git commit -m "feat: Add bank filtering feature (v0.2.0)
 Implements event filtering by bank name:
 - Core filtering logic in project module
 - GUI dropdown filter widget
-- Full documentation and troubleshooting
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+- Full documentation and troubleshooting"
 ```
 
-**Règle de Choix**:
-- 3 commits si milestones bien distinctes et feature complexe
-- 1 commit si feature simple et cohérente
+**Choice Rule**:
+- 3 commits if milestones are distinct and feature is complex
+- 1 commit if feature is simple and coherent
 
-**Format commit** (voir `_protocol-rules.md`):
+**Commit format** (see `_protocol-rules.md`):
 ```
 feat(scope): Brief description (vX.Y.Z)
 
@@ -445,135 +429,131 @@ Detailed explanation:
 - What was added
 - Why it was added
 - How it works
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
 ---
 
-### Étape 6: Post-Implémentation
+### Step 6: Post-Implementation
 
-**Actions proactives**:
+**Proactive actions**:
 
-1. **Vérifier seuils** et suggérer si nécessaire:
+1. **Check thresholds** and suggest if necessary:
    ```bash
    wc -l fmod_importer/gui/*.py | sort -rn | head -5
    ```
 
-   Si fichiers approchent seuils, suggérer:
+   If files approach thresholds, suggest:
    ```
    [INFO] widgets.py approaching 750 lines
 
-   État actuel:
+   Current state:
    - widgets.py: 745 lines
 
-   Amélioration suggérée:
+   Suggested improvement:
    - Consider planning refactoring before hitting 800-line threshold
    - Possible extraction: widget factory functions to separate module
 
-   Bénéfice:
-   - Maintient modularité
+   Benefit:
+   - Maintains modularity
    - Prevent future violations
 
-   Effort estimé: Low
-   Skill à utiliser: /fmod-refactor
+   Estimated effort: Low
+   Skill to use: /fmod-refactor
    ```
 
-2. **Identifier améliorations connexes** (optionnel):
-   - Features similaires qui pourraient bénéficier du même pattern
-   - Code existant qui pourrait être refactoré avec nouveau pattern
-   - Documentation qui pourrait être améliorée
+2. **Identify related improvements** (optional):
+   - Similar features that could benefit from the same pattern
+   - Existing code that could be refactored with new pattern
+   - Documentation that could be improved
 
-3. **Noter technical debt** (si créé):
-   - TODOs pour améliorations futures
-   - Limitations connues
-   - Optimisations potentielles
+3. **Note technical debt** (if created):
+   - TODOs for future improvements
+   - Known limitations
+   - Potential optimizations
 
-**Checklist Post-Implementation**:
-- [ ] Seuils ligne vérifiés, suggestions faites si approchent limites
-- [ ] Améliorations connexes identifiées
-- [ ] Technical debt documenté si applicable
+**Post-Implementation Checklist**:
+- [ ] Line thresholds checked, suggestions made if approaching limits
+- [ ] Related improvements identified
+- [ ] Technical debt documented if applicable
 
 ---
 
-## Triggers Automatiques
+## Automatic Triggers
 
-### Pendant Planification
+### During Planning
 
-#### Fichier Approche 800 Lignes
+#### File Approaching 800 Lines
 ```
 [RECOMMEND] Threshold: Target file approaching 800-line limit
 
-État actuel:
+Current state:
 - [filename].py: [current] lines
 - Adding [feature] will add ~[estimated] lines
 
-Amélioration suggérée:
+Suggested improvement:
 - Refactor [filename].py BEFORE adding new feature
 - Use /refactor to split into smaller modules
 
-Bénéfice:
+Benefit:
 - Maintain modularity
 - Prevent exceeding 800-line threshold
 - Easier to add feature after refactoring
 
-Effort estimé: Medium
-Skill à utiliser: /fmod-refactor
+Estimated effort: Medium
+Skill to use: /fmod-refactor
 ```
 
-### Pendant Implémentation
+### During Implementation
 
-#### Duplication Détectée
+#### Duplication Detected
 ```
 [SUGGEST] Pattern: Similar code found in existing module
 
-État actuel:
+Current state:
 - New code similar to [existing_module.py:line_range]
 
-Amélioration suggérée:
+Suggested improvement:
 - Extract common logic to shared utility function
 - Location: fmod_importer/gui/utils.py or fmod_importer/utils.py
 
-Bénéfice:
+Benefit:
 - DRY principle
 - Single source of truth
 - Easier maintenance
 
-Effort estimé: Low
+Estimated effort: Low
 ```
 
-#### GUI Code dans Core Module
+#### GUI Code in Core Module
 ```
 [VIOLATION] Architecture: GUI code in core module
 
-État actuel:
+Current state:
 - [core_module.py] imports tkinter or uses GUI components
 
-Amélioration suggérée:
+Suggested improvement:
 - Move GUI logic to appropriate mixin
 - Core module should be GUI-agnostic
 - Pass data to GUI layer, don't create widgets in core
 
-Bénéfice:
+Benefit:
 - Respect Dependency Inversion Principle
 - Testability
 - Separation of concerns
 
-Effort estimé: Low
-Skill à utiliser: /fmod-refactor
+Estimated effort: Low
+Skill to use: /fmod-refactor
 ```
 
 ---
 
-## Exemples Complets
+## Complete Examples
 
-### Exemple 1: Simple Feature (1 Milestone)
+### Example 1: Simple Feature (1 Milestone)
 
-**Demande**: "Add a 'Clear All' button to reset all fields"
+**Request**: "Add a 'Clear All' button to reset all fields"
 
-**Exécution**:
+**Execution**:
 
 1. **Analysis**:
    - GUI-only feature
@@ -617,11 +597,11 @@ Skill à utiliser: /fmod-refactor
    git commit -m "feat(gui): Add Clear All button to reset form (v0.1.9)"
    ```
 
-### Exemple 2: Complex Feature (3 Milestones)
+### Example 2: Complex Feature (3 Milestones)
 
-**Demande**: "Add ability to export import results to JSON file"
+**Request**: "Add ability to export import results to JSON file"
 
-**Exécution**:
+**Execution**:
 
 1. **Analysis**:
    - Core + GUI feature
@@ -750,15 +730,15 @@ Skill à utiliser: /fmod-refactor
 
 ---
 
-## Anti-Patterns à Éviter
+## Anti-Patterns to Avoid
 
-### ❌ BAD: Tout dans un Seul Commit
+### ❌ BAD: Everything in One Commit
 ```bash
 # Commits 1000 lines of changes without structure
 git commit -m "Add feature"
 ```
 
-### ✅ GOOD: Commits Structurés par Milestone
+### ✅ GOOD: Structured Commits by Milestone
 ```bash
 git commit -m "feat(core): Add core logic (v0.2.0)"
 git commit -m "feat(gui): Add UI components"
@@ -767,14 +747,14 @@ git commit -m "docs: Document new feature"
 
 ---
 
-### ❌ BAD: Pas de Documentation
+### ❌ BAD: No Documentation
 ```python
 def filter_events(self, bank_id):
     # No docstring
     return [e for e in self.events if e['bank'] == bank_id]
 ```
 
-### ✅ GOOD: Documentation Complète
+### ✅ GOOD: Complete Documentation
 ```python
 def filter_events_by_bank(self, bank_id: str) -> List[Dict]:
     """
@@ -797,7 +777,7 @@ def filter_events_by_bank(self, bank_id: str) -> List[Dict]:
 
 ---
 
-### ❌ BAD: GUI Logic dans Core Module
+### ❌ BAD: GUI Logic in Core Module
 ```python
 # project.py
 import tkinter as tk
@@ -807,7 +787,7 @@ def create_event(self):
     messagebox.showinfo("Success", "Event created")  # GUI in core!
 ```
 
-### ✅ GOOD: Séparation Core/GUI
+### ✅ GOOD: Core/GUI Separation
 ```python
 # project.py (core)
 def create_event(self, name: str) -> Dict:
@@ -830,14 +810,14 @@ def create_event_dialog(self):
 
 ---
 
-### ❌ BAD: Pas de Error Handling
+### ❌ BAD: No Error Handling
 ```python
 def load_file(self, path):
     with open(path) as f:  # What if file doesn't exist?
         return f.read()
 ```
 
-### ✅ GOOD: Error Handling Approprié
+### ✅ GOOD: Appropriate Error Handling
 ```python
 def load_file(self, path: str) -> str:
     """Load file with proper error handling"""
@@ -854,44 +834,44 @@ def load_file(self, path: str) -> str:
 
 ---
 
-## Référence Rapide
+## Quick Reference
 
-### Checklist Complète
+### Complete Checklist
 
 ```
 Phase 1: Analysis
-□ Requirements compris
-□ Modules affectés identifiés
-□ Patterns existants recherchés
-□ Questions posées si ambigu
+□ Requirements understood
+□ Affected modules identified
+□ Existing patterns researched
+□ Questions asked if ambiguous
 
 Phase 2: Planning
-□ Placement déterminé
-□ Line counts vérifiés (<800)
-□ Composants réutilisables identifiés
-□ Interfaces designées
-□ SOLID compliance vérifiée
+□ Placement determined
+□ Line counts verified (<800)
+□ Reusable components identified
+□ Interfaces designed
+□ SOLID compliance verified
 
 Phase 3: Implementation
 M1 - Core Logic:
-  □ Logique implémentée
-  □ Docstrings complètes
+  □ Logic implemented
+  □ Complete docstrings
   □ Type hints
   □ Error handling
-  □ Testé manuellement
+  □ Manually tested
 
 M2 - GUI Integration:
-  □ Mixin créé/étendu
-  □ Core connecté à GUI
-  □ Error handling user-friendly
-  □ Patterns suivis
-  □ Testé end-to-end
+  □ Mixin created/extended
+  □ Core connected to GUI
+  □ User-friendly error handling
+  □ Patterns followed
+  □ Tested end-to-end
 
 M3 - Documentation:
   □ README.md updated
   □ CHANGELOG.md updated
   □ VERSION bumped
-  □ Docstrings complètes
+  □ Docstrings complete
 
 Phase 4: Quality Checks
 □ SOLID compliance
@@ -899,20 +879,20 @@ Phase 4: Quality Checks
 □ Line counts <800
 □ Error handling
 □ Type hints
-□ Naming clear
-□ Documentation complète
-□ Testing manuel
+□ Clear naming
+□ Complete documentation
+□ Manual testing
 
 Phase 5: Commits
-□ Commits par milestone ou unique
-□ Format Conventional Commits
-□ Messages descriptifs
-□ Version bump incluse
+□ Commits per milestone or single
+□ Conventional Commits format
+□ Descriptive messages
+□ Version bump included
 
 Phase 6: Post-Implementation
-□ Seuils vérifiés
-□ Suggestions faites si nécessaire
-□ Améliorations connexes notées
+□ Thresholds verified
+□ Suggestions made if necessary
+□ Related improvements noted
 ```
 
 ### Decision Trees

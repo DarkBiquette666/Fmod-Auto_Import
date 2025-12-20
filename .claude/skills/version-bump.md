@@ -1,45 +1,45 @@
 # Version Bump Skill
 
-**Trigger**: Automatiquement après validation de `feat` ou `fix` commits, ou manuellement via `/version-bump`
+**Trigger**: Automatically after validated `feat` or `fix` commits, or manually via `/version-bump`
 
-**Purpose**: Automatiser le processus de version bump selon Semantic Versioning en analysant les commits et en mettant à jour tous les fichiers nécessaires.
+**Purpose**: Automate version bump process according to Semantic Versioning by analyzing commits and updating all necessary files.
 
 ---
 
 ## Workflow
 
-### Phase 1: Analyse des Commits
+### Phase 1: Commit Analysis
 
-1. **Vérifier l'état Git**
+1. **Check Git status**
    ```bash
    git status
    ```
-   - S'assurer qu'il n'y a pas de modifications non commitées
-   - Si des modifications existent, avertir l'utilisateur
+   - Ensure no uncommitted modifications exist
+   - If modifications exist, warn the user
 
-2. **Récupérer la version actuelle**
-   - Lire `FmodImporter-Dev/fmod_importer/__init__.py`
-   - Parser la ligne `VERSION = "X.Y.Z"`
-   - Stocker: `current_version`
+2. **Retrieve current version**
+   - Read `FmodImporter-Dev/fmod_importer/__init__.py`
+   - Parse the line `VERSION = "X.Y.Z"`
+   - Store: `current_version`
 
-3. **Analyser les commits depuis la dernière version**
+3. **Analyze commits since last version**
    ```bash
    git log v{current_version}..HEAD --oneline
    ```
-   - Si la version actuelle n'a pas de tag, utiliser le dernier tag disponible
-   - Parser chaque commit pour détecter le type:
-     - `feat` → MINOR bump requis
-     - `fix` → PATCH bump requis
-     - `BREAKING CHANGE` → MAJOR bump requis
+   - If current version has no tag, use last available tag
+   - Parse each commit to detect type:
+     - `feat` → MINOR bump required
+     - `fix` → PATCH bump required
+     - `BREAKING CHANGE` → MAJOR bump required
 
-4. **Déterminer le type de bump**
-   - Priorité: MAJOR > MINOR > PATCH
-   - Si aucun commit feat/fix/breaking, demander confirmation à l'utilisateur
-   - Calculer `new_version` basé sur les règles Semantic Versioning
+4. **Determine bump type**
+   - Priority: MAJOR > MINOR > PATCH
+   - If no feat/fix/breaking commits, ask user for confirmation
+   - Calculate `new_version` based on Semantic Versioning rules
 
-### Phase 2: Validation avec l'Utilisateur
+### Phase 2: User Validation
 
-5. **Présenter le plan de version bump**
+5. **Present version bump plan**
    ```
    📊 Version Bump Analysis
 
@@ -59,25 +59,25 @@
    Proceed with version bump? [Y/n]
    ```
 
-6. **Attendre confirmation utilisateur**
-   - Si refus, arrêter le processus
-   - Si acceptation, continuer
+6. **Wait for user confirmation**
+   - If declined, stop the process
+   - If accepted, continue
 
-### Phase 3: Mise à Jour des Fichiers
+### Phase 3: File Updates
 
-7. **Mettre à jour VERSION dans le code**
-   - Fichier: `FmodImporter-Dev/fmod_importer/__init__.py`
-   - Remplacer: `VERSION = "{current_version}"` → `VERSION = "{new_version}"`
-   - Utiliser Edit tool pour préserver la formatting exacte
+7. **Update VERSION in code**
+   - File: `FmodImporter-Dev/fmod_importer/__init__.py`
+   - Replace: `VERSION = "{current_version}"` → `VERSION = "{new_version}"`
+   - Use Edit tool to preserve exact formatting
 
-8. **Mettre à jour CHANGELOG.md**
-   - Lire le fichier actuel
-   - Identifier la section `## [Unreleased]`
-   - Opérations:
-     a. Renommer `[Unreleased]` → `[{new_version}] - {YYYY-MM-DD}`
-     b. Ajouter une nouvelle section `[Unreleased]` vide en haut
+8. **Update CHANGELOG.md**
+   - Read current file
+   - Identify `## [Unreleased]` section
+   - Operations:
+     a. Rename `[Unreleased]` → `[{new_version}] - {YYYY-MM-DD}`
+     b. Add new empty `[Unreleased]` section at top
 
-   **Template de nouvelle section**:
+   **New section template**:
    ```markdown
    ## [Unreleased]
 
@@ -89,22 +89,22 @@
 
    ## [{new_version}] - {date}
 
-   {contenu existant de [Unreleased]}
+   {existing content from [Unreleased]}
    ```
 
-9. **Vérifier que CHANGELOG contient les commits**
-   - S'assurer que les commits feat/fix sont documentés sous [new_version]
-   - Si manquants, avertir l'utilisateur
-   - Rappel: Les commits doivent déjà être dans CHANGELOG selon le protocole
+9. **Verify CHANGELOG contains commits**
+   - Ensure feat/fix commits are documented under [new_version]
+   - If missing, warn the user
+   - Reminder: Commits should already be in CHANGELOG per protocol
 
 ### Phase 4: Git Operations
 
-10. **Stager les modifications**
+10. **Stage modifications**
     ```bash
     git add FmodImporter-Dev/fmod_importer/__init__.py CHANGELOG.md
     ```
 
-11. **Créer le commit de version bump**
+11. **Create version bump commit**
     ```bash
     git commit -m "$(cat <<'EOF'
     chore(release): Bump version to {new_version}
@@ -118,12 +118,12 @@
     )"
     ```
 
-12. **Créer le tag Git**
+12. **Create Git tag**
     ```bash
     git tag -a v{new_version} -m "Release version {new_version}"
     ```
 
-13. **Afficher le résumé**
+13. **Display summary**
     ```
     ✅ Version bump completed successfully!
 
@@ -140,20 +140,20 @@
 
 ## Automatic Triggering
 
-Ce skill est **automatiquement déclenché** dans les cas suivants:
+This skill is **automatically triggered** in the following cases:
 
-### Trigger 1: Après un commit feat/fix validé
-- Détecté par le protocole après création d'un commit
-- Si le dernier commit est de type `feat` ou `fix`
-- ET qu'il n'y a pas déjà eu un bump pour ce commit
-- ALORS: Proposer automatiquement un version bump
+### Trigger 1: After validated feat/fix commit
+- Detected by protocol after commit creation
+- If last commit is type `feat` or `fix`
+- AND there hasn't already been a bump for this commit
+- THEN: Automatically propose version bump
 
-### Trigger 2: Avant un push vers remote
-- Hook Git pre-push pourrait vérifier
-- Si des commits feat/fix non-versionnés existent
-- Proposer un bump avant le push
+### Trigger 2: Before push to remote
+- Git pre-push hook could verify
+- If unversioned feat/fix commits exist
+- Propose bump before push
 
-### Trigger 3: Manuel via commande
+### Trigger 3: Manual via command
 ```
 /version-bump
 ```
@@ -162,19 +162,19 @@ Ce skill est **automatiquement déclenché** dans les cas suivants:
 
 ## Error Handling
 
-### Erreur: Working directory not clean
+### Error: Working directory not clean
 ```
 ❌ Cannot perform version bump with uncommitted changes.
 Please commit or stash your changes first.
 ```
 
-### Erreur: No commits since last version
+### Error: No commits since last version
 ```
 ⚠️  No new commits found since v{current_version}.
 Nothing to bump. Create feat/fix commits first.
 ```
 
-### Erreur: CHANGELOG not updated
+### Error: CHANGELOG not updated
 ```
 ⚠️  Warning: CHANGELOG.md may not reflect recent commits.
 Found commits that are not documented:
@@ -184,7 +184,7 @@ Please update CHANGELOG.md before version bump.
 Continue anyway? [y/N]
 ```
 
-### Erreur: Tag already exists
+### Error: Tag already exists
 ```
 ❌ Tag v{new_version} already exists.
 Please use a different version or delete the existing tag.
@@ -197,24 +197,24 @@ Please use a different version or delete the existing tag.
 ### Semantic Versioning Rules
 
 **MAJOR (X.0.0)** - Breaking Changes
-- Commit body/footer contient `BREAKING CHANGE:`
+- Commit body/footer contains `BREAKING CHANGE:`
 - API incompatible changes
 - Architectural rewrites
 
 **MINOR (0.X.0)** - New Features (Backward Compatible)
-- Commits de type `feat`
+- Commits of type `feat`
 - New user-facing functionality
 - Significant refactoring (non-breaking)
 
 **PATCH (0.0.X)** - Bug Fixes
-- Commits de type `fix`
+- Commits of type `fix`
 - Performance improvements
-- Documentation fixes (optionnel)
+- Documentation fixes (optional)
 
 ### Version Format
 - Format: `MAJOR.MINOR.PATCH`
-- Exemples: `0.1.8`, `1.0.0`, `2.3.1`
-- Préfixe tag Git: `v` (ex: `v0.1.9`)
+- Examples: `0.1.8`, `1.0.0`, `2.3.1`
+- Git tag prefix: `v` (e.g., `v0.1.9`)
 
 ---
 
@@ -267,22 +267,22 @@ Proposed: 0.2.0 → 1.0.0
 
 ---
 
-## Integration avec Protocole
+## Integration with Protocol
 
-### Dans _protocol-rules.md
+### In _protocol-rules.md
 
-Ajouter la règle suivante dans la section "After Commit":
+Add the following rule in the "After Commit" section:
 
 ```markdown
 ## Post-Commit Version Check
 
-Après chaque commit de type `feat` ou `fix`:
+After each `feat` or `fix` type commit:
 
-1. **Vérifier si version bump nécessaire**
-   - Analyser les commits non-versionnés depuis dernier tag
-   - Si au moins 1 commit feat/fix existe
+1. **Check if version bump necessary**
+   - Analyze unversioned commits since last tag
+   - If at least 1 feat/fix commit exists
 
-2. **Proposer automatiquement le version bump**
+2. **Automatically propose version bump**
    ```
    📦 New feature/fix detected!
 
@@ -294,8 +294,8 @@ Après chaque commit de type `feat` ou `fix`:
    Run version bump now? [Y/n]
    ```
 
-3. **Si accepté**: Exécuter `/version-bump` skill
-4. **Si refusé**: Ajouter note dans TODO pour bump ultérieur
+3. **If accepted**: Execute `/version-bump` skill
+4. **If declined**: Add note in TODO for later bump
 ```
 
 ### Workflow Integration
@@ -343,8 +343,8 @@ Commit (Conventional Commits)
 
 ## Notes
 
-- **SSOT**: `fmod_importer/__init__.py` est la single source of truth pour VERSION
-- **Idempotence**: Réexécuter le skill avec même version ne doit pas causer d'erreurs
-- **Atomic**: Toutes les modifications doivent être dans un seul commit
-- **Reversible**: Utilisateur peut toujours faire `git reset HEAD~1` pour annuler
-- **Tag safety**: Ne jamais forcer un tag existant, demander confirmation
+- **SSOT**: `fmod_importer/__init__.py` is the single source of truth for VERSION
+- **Idempotence**: Re-running skill with same version should not cause errors
+- **Atomic**: All modifications must be in a single commit
+- **Reversible**: User can always `git reset HEAD~1` to undo
+- **Tag safety**: Never force an existing tag, ask for confirmation

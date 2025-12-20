@@ -1,37 +1,35 @@
 # Skill: /fmod-refactor
 
-Améliore la structure du code, réduit la complexité et enforce les principes SOLID sans changer le comportement fonctionnel.
+Improves code structure, reduces complexity, and enforces SOLID principles without changing functional behavior.
 
-## Objectif
+## Objective
 
-Restructurer le code pour améliorer la maintenabilité, la lisibilité et la modular
+Restructure code to improve maintainability, readability, and modularity while preserving existing behavior.
 
-ité tout en préservant le comportement existant.
+## When to Use This Skill
 
-## Quand Utiliser Ce Skill
-
-- ✅ Code smell détecté (duplication, complexité, taille excessive)
-- ✅ Fichier dépasse 800 lignes
-- ✅ Violation principes SOLID/DRY/KISS
-- ✅ Utilisateur demande "refactor", "clean up", "restructure", "améliorer code"
-- ❌ Pas pour bugs (utiliser `/fmod-debug`)
-- ❌ Pas pour nouvelles features (utiliser `/fmod-feature`)
+- ✅ Code smell detected (duplication, complexity, excessive size)
+- ✅ File exceeds 800 lines
+- ✅ SOLID/DRY/KISS principle violations
+- ✅ User requests "refactor", "clean up", "restructure", "improve code"
+- ❌ Not for bugs (use `/fmod-debug`)
+- ❌ Not for new features (use `/fmod-feature`)
 
 ## Workflow
 
-### Étape 1: Identification du Target de Refactoring
+### Step 1: Refactoring Target Identification
 
 **Actions**:
 
-1. **Identifier le code smell ou problème architectural**:
-   - Fichier trop grand (>800 lignes)?
-   - Fonction trop complexe (>50 lignes, nesting >3)?
-   - Code dupliqué (3+ occurrences)?
-   - Violation SOLID (responsabilités mixées)?
-   - God class (trop de méthodes non reliées)?
-   - Tight coupling entre modules?
+1. **Identify code smell or architectural problem**:
+   - File too large (>800 lines)?
+   - Function too complex (>50 lines, nesting >3)?
+   - Duplicated code (3+ occurrences)?
+   - SOLID violation (mixed responsibilities)?
+   - God class (too many unrelated methods)?
+   - Tight coupling between modules?
 
-2. **Mesurer l'état actuel**:
+2. **Measure current state**:
    ```bash
    # Line counts
    wc -l fmod_importer/**/*.py
@@ -44,25 +42,25 @@ ité tout en préservant le comportement existant.
    grep -n "^    def " fmod_importer/project.py | wc -l
    ```
 
-3. **Définir critères de succès**:
-   - Target line count pour fichiers
+3. **Define success criteria**:
+   - Target line count for files
    - Maximum complexity metrics
    - SOLID principles improved
    - Specific duplications eliminated
 
-4. **Déterminer scope**:
+4. **Determine scope**:
    - Single file?
    - Multiple files?
    - Entire module?
    - Specific class/function?
 
 **Checklist**:
-- [ ] Code smell identifié et documenté
-- [ ] État actuel mesuré (line counts, complexity)
-- [ ] Success criteria définis
-- [ ] Scope déterminé
+- [ ] Code smell identified and documented
+- [ ] Current state measured (line counts, complexity)
+- [ ] Success criteria defined
+- [ ] Scope determined
 
-**Triggers de Refactoring** (voir `_protocol-rules.md`):
+**Refactoring Triggers** (see `_protocol-rules.md`):
 - File >800 lines
 - Function >50 lines
 - Nesting depth >3 levels
@@ -73,11 +71,11 @@ ité tout en préservant le comportement existant.
 
 ---
 
-### Étape 2: Analyse d'Impact
+### Step 2: Impact Analysis
 
 **Actions**:
 
-1. **Identifier tous les dépendants du code à refactorer**:
+1. **Identify all dependents of code to be refactored**:
    ```bash
    # Find imports of target module
    grep -r "from fmod_importer.project import" fmod_importer/
@@ -87,33 +85,33 @@ ité tout en préservant le comportement existant.
    grep -r "FMODProject" fmod_importer/
    ```
 
-2. **Vérifier pour breaking changes potentiels**:
-   - API publique va changer?
-   - Signatures de fonctions modifiées?
-   - Structure de données changée?
-   - Comportement externe affecté?
+2. **Check for potential breaking changes**:
+   - Will public API change?
+   - Are function signatures modified?
+   - Data structure changed?
+   - External behavior affected?
 
-3. **Planifier approche backward-compatible si possible**:
-   - Garder old API temporairement avec deprecation warnings?
-   - Créer adapter/wrapper pour compatibilité?
-   - Migration graduelle possible?
+3. **Plan backward-compatible approach if possible**:
+   - Keep old API temporarily with deprecation warnings?
+   - Create adapter/wrapper for compatibility?
+   - Gradual migration possible?
 
-4. **Évaluer niveau de risque**:
-   - **Low**: Changements internes uniquement, no API changes
-   - **Medium**: API changes mais backward-compatible possible
-   - **High**: Breaking changes nécessaires
+4. **Assess risk level**:
+   - **Low**: Internal changes only, no API changes
+   - **Medium**: API changes but backward-compatible possible
+   - **High**: Breaking changes necessary
 
 **Checklist**:
-- [ ] Tous dépendants identifiés
-- [ ] Breaking changes potentiels listés
-- [ ] Approche backward-compatible planifiée si possible
-- [ ] Niveau de risque évalué
+- [ ] All dependents identified
+- [ ] Potential breaking changes listed
+- [ ] Backward-compatible approach planned if possible
+- [ ] Risk level assessed
 
 **Risk Assessment Template**:
 ```
 Refactoring: [Description]
 
-Dépendants:
+Dependents:
 - [Module1]: Uses [API/class/function]
 - [Module2]: Uses [API/class/function]
 - ...
@@ -130,12 +128,12 @@ Risk level: [Low/Medium/High]
 
 ---
 
-### Étape 3: Sélection de Stratégie de Refactoring
+### Step 3: Refactoring Strategy Selection
 
-**Stratégies Communes**:
+**Common Strategies**:
 
 #### Strategy 1: Extract Function
-**Quand**: Fonction trop longue (>50 lignes) ou logique répétée
+**When**: Function too long (>50 lines) or repeated logic
 
 **Pattern**:
 ```python
@@ -167,12 +165,12 @@ def format_results(data):
     # 10 lines of formatting
 ```
 
-**Bénéfices**: Lisibilité, testabilité, réutilisabilité
+**Benefits**: Readability, testability, reusability
 
 ---
 
 #### Strategy 2: Extract Class
-**Quand**: Groupe cohésif de fonctions et données
+**When**: Cohesive group of functions and data
 
 **Pattern**:
 ```python
@@ -201,12 +199,12 @@ class CacheManager:
         # ...
 ```
 
-**Bénéfices**: Encapsulation, state management, SRP
+**Benefits**: Encapsulation, state management, SRP
 
 ---
 
 #### Strategy 3: Extract Mixin
-**Quand**: Large GUI class avec responsabilités distinctes
+**When**: Large GUI class with distinct responsibilities
 
 **Pattern**:
 ```python
@@ -220,7 +218,7 @@ class FmodGUI:
     # - import
     # - settings
 
-# After: Mixin pattern (déjà utilisé dans projet!)
+# After: Mixin pattern (already used in project!)
 class FmodGUI(WidgetsMixin, DialogsMixin, DragDropMixin,
               AnalysisMixin, ImportMixin, SettingsMixin):
     # 200 lines - just coordination
@@ -234,12 +232,12 @@ class DialogsMixin:
 # ... etc
 ```
 
-**Bénéfices**: Séparation responsabilités, maintainabilité, modularité
+**Benefits**: Separation of responsibilities, maintainability, modularity
 
 ---
 
 #### Strategy 4: Extract Module
-**Quand**: Fichier >800 lignes avec responsabilités distinctes
+**When**: File >800 lines with distinct responsibilities
 
 **Pattern**:
 ```python
@@ -256,12 +254,12 @@ class DialogsMixin:
 # cache.py (240 lines) - Cache management
 ```
 
-**Bénéfices**: Fichiers plus petits, SRP, modularité
+**Benefits**: Smaller files, SRP, modularity
 
 ---
 
 #### Strategy 5: Introduce Parameter Object
-**Quand**: Fonction avec >5 paramètres
+**When**: Function with >5 parameters
 
 **Pattern**:
 ```python
@@ -295,12 +293,12 @@ config = EventConfig(
 project.create_event(config)
 ```
 
-**Bénéfices**: Lisibilité, extensibilité, validation centralisée
+**Benefits**: Readability, extensibility, centralized validation
 
 ---
 
 #### Strategy 6: Move Method
-**Quand**: Méthode dans la mauvaise classe
+**When**: Method in wrong class
 
 **Pattern**:
 ```python
@@ -320,12 +318,12 @@ class FmodGUI:
         result = self.pattern.parse_event_name(name)
 ```
 
-**Bénéfices**: Séparation of concerns, testabilité, DIP
+**Benefits**: Separation of concerns, testability, DIP
 
 ---
 
 #### Strategy 7: Consolidate Duplicate Code
-**Quand**: Même code apparaît 3+ fois
+**When**: Same code appears 3+ times
 
 **Pattern**:
 ```python
@@ -352,12 +350,12 @@ def normalize_string(s: str) -> str:
 from fmod_importer.utils import normalize_string
 ```
 
-**Bénéfices**: DRY, SSOT, easier maintenance
+**Benefits**: DRY, SSOT, easier maintenance
 
 ---
 
 #### Strategy 8: Replace Conditional with Polymorphism
-**Quand**: Long if/elif chains (>5 conditions)
+**When**: Long if/elif chains (>5 conditions)
 
 **Pattern**:
 ```python
@@ -388,23 +386,23 @@ def process(item_type, data):
     return processor.process(data)
 ```
 
-**Bénéfices**: Extensibilité (OCP), lisibilité, maintainabilité
+**Benefits**: Extensibility (OCP), readability, maintainability
 
 ---
 
 **Checklist**:
-- [ ] Stratégie de refactoring sélectionnée
-- [ ] Pattern approprié choisi
-- [ ] Bénéfices clairs
+- [ ] Refactoring strategy selected
+- [ ] Appropriate pattern chosen
+- [ ] Benefits clear
 
 ---
 
-### Étape 4: Implémentation par Milestones
+### Step 4: Implementation by Milestones
 
-#### Milestone 1: Préparation
+#### Milestone 1: Preparation
 
 **Actions**:
-1. **Créer nouvelle structure en parallèle** (sans supprimer l'ancienne):
+1. **Create new structure in parallel** (without deleting old):
    ```python
    # Create new module/class ALONGSIDE existing code
    # Example: Extracting XML handler from project.py
@@ -424,12 +422,12 @@ def process(item_type, data):
            pass
    ```
 
-2. **Implémenter nouvelle structure avec docstrings complètes**:
+2. **Implement new structure with complete docstrings**:
    - All new functions/classes fully documented
    - Type hints on all parameters
    - Examples in docstrings
 
-3. **Tester nouvelle structure isolément** (si possible):
+3. **Test new structure in isolation** (if possible):
    ```python
    # Manual testing in REPL
    from fmod_importer.xml_handler import XMLHandler
@@ -438,19 +436,19 @@ def process(item_type, data):
    ```
 
 **Checklist M1**:
-- [ ] Nouvelle structure créée (fichiers/classes)
-- [ ] Logique copiée et adaptée
-- [ ] Docstrings complètes
-- [ ] Type hints ajoutés
-- [ ] Testé isolément si possible
-- [ ] Code ancien INTACT (pas encore supprimé)
+- [ ] New structure created (files/classes)
+- [ ] Logic copied and adapted
+- [ ] Complete docstrings
+- [ ] Type hints added
+- [ ] Tested in isolation if possible
+- [ ] Old code INTACT (not yet deleted)
 
 ---
 
 #### Milestone 2: Migration
 
 **Actions**:
-1. **Mettre à jour références pour utiliser nouvelle structure**:
+1. **Update references to use new structure**:
    ```python
    # project.py - before
    class FMODProject:
@@ -471,7 +469,7 @@ def process(item_type, data):
            tree = self.xml_handler.parse_workspace(self.workspace_path)
    ```
 
-2. **Garder old code temporairement avec deprecation warnings** (si breaking change):
+2. **Keep old code temporarily with deprecation warnings** (if breaking change):
    ```python
    # Old API kept temporarily
    def old_method(self):
@@ -484,30 +482,30 @@ def process(item_type, data):
        return self.new_method()
    ```
 
-3. **Tester chaque étape de migration**:
+3. **Test each migration step**:
    - Test after each file migration
    - Verify behavior unchanged
    - Check for regressions
 
 **Checklist M2**:
-- [ ] Références mises à jour vers nouvelle structure
-- [ ] Old code gardé temporairement si nécessaire
-- [ ] Chaque migration testée
-- [ ] Pas de regressions détectées
-- [ ] Comportement externe inchangé
+- [ ] References updated to new structure
+- [ ] Old code kept temporarily if necessary
+- [ ] Each migration tested
+- [ ] No regressions detected
+- [ ] External behavior unchanged
 
 ---
 
 #### Milestone 3: Cleanup
 
 **Actions**:
-1. **Supprimer old code une fois migration complète**:
+1. **Remove old code once migration complete**:
    ```python
    # Remove old methods/classes that are no longer used
    # Remove deprecation warnings if all usages migrated
    ```
 
-2. **Mettre à jour tous imports**:
+2. **Update all imports**:
    ```python
    # Update __init__.py exports
    # fmod_importer/__init__.py
@@ -516,31 +514,31 @@ def process(item_type, data):
    from .cache import CacheManager      # New export
    ```
 
-3. **Nettoyer imports inutiles**:
+3. **Clean up unused imports**:
    ```bash
    # Remove unused imports from refactored files
    # Check with grep that nothing breaks
    ```
 
-4. **Vérifier comportement final**:
+4. **Verify final behavior**:
    - Test all workflows end-to-end
    - Verify no regressions
    - Check error handling still works
 
 **Checklist M3**:
-- [ ] Old code supprimé
-- [ ] Imports mis à jour
-- [ ] Imports inutiles nettoyés
-- [ ] Comportement final vérifié
-- [ ] Tests end-to-end passed
+- [ ] Old code removed
+- [ ] Imports updated
+- [ ] Unused imports cleaned up
+- [ ] Final behavior verified
+- [ ] End-to-end tests passed
 
 ---
 
-### Étape 5: Quality Checks
+### Step 5: Quality Checks
 
-**Avant de committer, vérifier**:
+**Before committing, verify**:
 
-#### Métriques Améliorées
+#### Improved Metrics
 ```bash
 # Check new line counts
 wc -l fmod_importer/*.py fmod_importer/gui/*.py
@@ -551,43 +549,43 @@ wc -l fmod_importer/*.py fmod_importer/gui/*.py
 # cache.py: 0 → 240 lines (new)
 ```
 
-- [ ] **Line counts** réduits ou mieux distribués
-- [ ] **Complexity** réduite (moins de nesting, fonctions plus courtes)
-- [ ] **Duplication** éliminée
+- [ ] **Line counts** reduced or better distributed
+- [ ] **Complexity** reduced (less nesting, shorter functions)
+- [ ] **Duplication** eliminated
 
-#### Comportement Inchangé
+#### Behavior Unchanged
 ```
 CRITICAL: Behavior must be identical before/after refactoring
 ```
 
-- [ ] **Tests manuels** identiques au comportement pré-refactoring
-- [ ] **Pas de regressions** dans fonctionnalités existantes
+- [ ] **Manual tests** identical to pre-refactoring behavior
+- [ ] **No regressions** in existing functionality
 - [ ] **Error handling** preserved
 - [ ] **Edge cases** still handled correctly
 
-#### SOLID Amélioré
-- [ ] **SRP**: Chaque classe/module a responsabilité unique claire
-- [ ] **OCP**: Code plus extensible
-- [ ] **LSP**: Hierarchies logiques
-- [ ] **ISP**: Interfaces focalisées
-- [ ] **DIP**: Dépendances vers abstractions
+#### SOLID Improved
+- [ ] **SRP**: Each class/module has clear single responsibility
+- [ ] **OCP**: Code more extensible
+- [ ] **LSP**: Logical hierarchies
+- [ ] **ISP**: Focused interfaces
+- [ ] **DIP**: Dependencies towards abstractions
 
 #### Documentation
-- [ ] **Docstrings** complètes sur nouveau code
-- [ ] **Inline comments** pour logique non-évidente
-- [ ] **Module docstrings** expliquent purpose
+- [ ] **Complete docstrings** on new code
+- [ ] **Inline comments** for non-obvious logic
+- [ ] **Module docstrings** explain purpose
 
-**Checklist Quality**:
-- [ ] Métriques améliorées (line counts, complexity)
-- [ ] Comportement strictement identique
-- [ ] SOLID principles améliorés
-- [ ] Documentation complète
+**Quality Checklist**:
+- [ ] Metrics improved (line counts, complexity)
+- [ ] Behavior strictly identical
+- [ ] SOLID principles improved
+- [ ] Complete documentation
 
 ---
 
-### Étape 6: Commits par Milestone
+### Step 6: Commits by Milestone
 
-**Stratégie**: Commits par milestone pour tracking clair
+**Strategy**: Commits by milestone for clear tracking
 
 ```bash
 # Milestone 1: Preparation
@@ -634,7 +632,7 @@ All tests passing, no behavior changes.
 Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
 ```
 
-**Format** (voir `_protocol-rules.md`):
+**Format** (see `_protocol-rules.md`):
 ```
 refactor: Brief description of refactoring
 
@@ -650,17 +648,17 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
 **Version Bumping**:
-- Refactoring généralement = **NO version bump**
-- SAUF si changement architectural majeur = **Minor bump**
-- Breaking change = **Major bump** (éviter avec backward compatibility)
+- Refactoring generally = **NO version bump**
+- EXCEPT if major architectural change = **Minor bump**
+- Breaking change = **Major bump** (avoid with backward compatibility)
 
 ---
 
-### Étape 7: Documentation Technique
+### Step 7: Technical Documentation
 
 **Actions**:
 
-1. **Créer/Mettre à jour ARCHITECTURE.md** (si changement majeur):
+1. **Create/Update ARCHITECTURE.md** (if major change):
    ```markdown
    # FMOD Importer Architecture
 
@@ -683,7 +681,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
    - Easier to maintain and extend
    ```
 
-2. **Mettre à jour CHANGELOG.md** (si refactoring significatif):
+2. **Update CHANGELOG.md** (if significant refactoring):
    ```markdown
    ## [Unreleased]
    ### Changed
@@ -692,7 +690,7 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
    - No behavior changes
    ```
 
-3. **Documenter design decisions** (pour refactorings majeurs):
+3. **Document design decisions** (for major refactorings):
    ```markdown
    # docs/ADR/001-split-project-module.md
 
@@ -723,30 +721,30 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
    - Extract only XML handling
    ```
 
-**Checklist Documentation**:
-- [ ] ARCHITECTURE.md créé/mis à jour si changement majeur
-- [ ] CHANGELOG.md updated si refactoring significatif
-- [ ] ADR (Architecture Decision Record) créé si décision importante
-- [ ] README.md mis à jour si impact user-facing
+**Documentation Checklist**:
+- [ ] ARCHITECTURE.md created/updated if major change
+- [ ] CHANGELOG.md updated if significant refactoring
+- [ ] ADR (Architecture Decision Record) created if important decision
+- [ ] README.md updated if user-facing impact
 
 ---
 
-## Exemples Complets
+## Complete Examples
 
-### Exemple 1: Extract Module (project.py → split)
+### Example 1: Extract Module (project.py → split)
 
-**Problème**: project.py = 1075 lignes (dépasse 800)
+**Problem**: project.py = 1075 lines (exceeds 800)
 
-**Analyse**:
-- Responsabilités mixées: Core FMODProject + XML parsing + Cache management
-- Dépendants: Tous les GUI mixins importent FMODProject
-- Risk: Medium (API publique doit rester compatible)
+**Analysis**:
+- Mixed responsibilities: Core FMODProject + XML parsing + Cache management
+- Dependents: All GUI mixins import FMODProject
+- Risk: Medium (public API must remain compatible)
 
-**Stratégie**: Extract Module
+**Strategy**: Extract Module
 
 **Implementation**:
 
-**M1 - Préparation**:
+**M1 - Preparation**:
 ```python
 # Create fmod_importer/xml_handler.py
 """
@@ -952,11 +950,11 @@ git commit -m "refactor: Finalize module extraction and update exports"
 
 ---
 
-### Exemple 2: Consolidate Duplicate Code
+### Example 2: Consolidate Duplicate Code
 
-**Problème**: `normalize_string()` dupliqué dans naming.py et matcher.py
+**Problem**: `normalize_string()` duplicated in naming.py and matcher.py
 
-**Analyse**:
+**Analysis**:
 ```python
 # naming.py:245
 def normalize_string(s: str) -> str:
@@ -967,7 +965,7 @@ def normalize_string(s: str) -> str:
     return s.lower().replace('_', '').replace('-', '')
 ```
 
-**Stratégie**: Consolidate Duplicate Code
+**Strategy**: Consolidate Duplicate Code
 
 **Implementation**:
 
@@ -1037,15 +1035,15 @@ git commit -m "refactor: Update naming and matcher to use shared normalize_strin
 
 ---
 
-## Anti-Patterns à Éviter
+## Anti-Patterns to Avoid
 
-### ❌ BAD: Mélanger Refactoring avec Feature/Bug Fix
+### ❌ BAD: Mixing Refactoring with Feature/Bug Fix
 ```bash
 git commit -m "refactor: Split module AND add new feature AND fix bug"
 # ← Doing too much!
 ```
 
-### ✅ GOOD: Refactoring Séparé
+### ✅ GOOD: Separate Refactoring
 ```bash
 git commit -m "refactor: Split project module into focused sub-modules"
 # Later, separate commits:
@@ -1055,7 +1053,7 @@ git commit -m "fix: Handle null values"
 
 ---
 
-### ❌ BAD: Changer Comportement Pendant Refactoring
+### ❌ BAD: Changing Behavior During Refactoring
 ```python
 # Refactoring + changing logic
 def process_data(data):
@@ -1064,7 +1062,7 @@ def process_data(data):
     return {item['id']: item for item in data}
 ```
 
-### ✅ GOOD: Comportement Identique
+### ✅ GOOD: Identical Behavior
 ```python
 # Refactoring without behavior change
 def process_data(data):
@@ -1077,13 +1075,13 @@ def process_data(data):
 
 ---
 
-### ❌ BAD: Supprimer Old Code Immédiatement
+### ❌ BAD: Deleting Old Code Immediately
 ```python
 # Delete old code before migration complete
 # Breaks all dependents!
 ```
 
-### ✅ GOOD: Migration Graduelle
+### ✅ GOOD: Gradual Migration
 ```python
 # Keep old code during migration
 def old_method(self):
@@ -1095,65 +1093,65 @@ def old_method(self):
 
 ---
 
-## Référence Rapide
+## Quick Reference
 
-### Checklist Complète
+### Complete Checklist
 
 ```
 Phase 1: Identification
-□ Code smell identifié
-□ État actuel mesuré
-□ Success criteria définis
-□ Scope déterminé
+□ Code smell identified
+□ Current state measured
+□ Success criteria defined
+□ Scope determined
 
 Phase 2: Impact Analysis
-□ Dépendants identifiés
-□ Breaking changes listés
-□ Backward compatibility planifiée
-□ Risk level évalué
+□ Dependents identified
+□ Breaking changes listed
+□ Backward compatibility planned
+□ Risk level assessed
 
 Phase 3: Strategy Selection
-□ Stratégie choisie (Extract Function/Class/Module, etc.)
-□ Pattern approprié
-□ Bénéfices clairs
+□ Strategy chosen (Extract Function/Class/Module, etc.)
+□ Appropriate pattern
+□ Clear benefits
 
 Phase 4: Implementation
 M1 - Preparation:
-  □ Nouvelle structure créée
-  □ Logique implémentée
-  □ Docstrings complètes
-  □ Testé isolément
+  □ New structure created
+  □ Logic implemented
+  □ Complete docstrings
+  □ Tested in isolation
   □ Old code intact
 
 M2 - Migration:
-  □ Références updated
-  □ Old code gardé si nécessaire
-  □ Testé par étapes
-  □ Pas de regressions
+  □ References updated
+  □ Old code kept if necessary
+  □ Tested step by step
+  □ No regressions
 
 M3 - Cleanup:
-  □ Old code supprimé
+  □ Old code removed
   □ Imports updated
-  □ Comportement vérifié
+  □ Behavior verified
 
 Phase 5: Quality Checks
-□ Métriques améliorées
-□ Comportement identique (CRITICAL)
-□ SOLID amélioré
-□ Documentation complète
+□ Metrics improved
+□ Behavior identical (CRITICAL)
+□ SOLID improved
+□ Complete documentation
 
 Phase 6: Commits
-□ Commits par milestone
-□ Messages descriptifs
-□ Format correct
+□ Commits per milestone
+□ Descriptive messages
+□ Correct format
 
 Phase 7: Documentation
-□ ARCHITECTURE.md updated si majeur
+□ ARCHITECTURE.md updated if major
 □ CHANGELOG.md updated
-□ ADR créé si décision importante
+□ ADR created if important decision
 ```
 
-### Decision Tree - Quelle Stratégie?
+### Decision Tree - Which Strategy?
 
 ```
 Code Smell
@@ -1185,8 +1183,8 @@ Code Smell
 
 ### Version Bumping for Refactoring
 
-| Changement | Version Bump |
-|------------|--------------|
+| Change | Version Bump |
+|--------|--------------|
 | Internal refactoring, no API change | None |
 | Significant architectural change | Minor |
 | Breaking API change | Major (avoid with compatibility layer) |

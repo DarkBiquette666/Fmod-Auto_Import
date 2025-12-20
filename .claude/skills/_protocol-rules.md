@@ -1,48 +1,48 @@
-# Règles du Protocole FMOD Importer
+# FMOD Importer Protocol Rules
 
-Ce fichier contient les règles globales partagées par tous les skills du projet FMOD Importer.
+This file contains global rules shared by all skills in the FMOD Importer project.
 
-## Principes d'Architecture
+## Architecture Principles
 
 ### SOLID
 
 #### Single Responsibility Principle (SRP)
-- Chaque classe/fonction a UNE responsabilité claire
-- Les méthodes effectuent UNE tâche cohérente
-- Les mixins addressent UN aspect de la fonctionnalité GUI
+- Each class/function has ONE clear responsibility
+- Methods perform ONE coherent task
+- Mixins address ONE aspect of GUI functionality
 
-**Vérification**:
-- La classe peut-elle être décrite en une phrase sans "et" ?
-- Le changement d'une exigence métier n'affecte-t-il qu'une seule raison de modifier cette classe ?
+**Verification**:
+- Can the class be described in one sentence without "and"?
+- Does changing a business requirement affect only one reason to modify this class?
 
 #### Open/Closed Principle (OCP)
-- Étendre le comportement via composition (mixins) non modification
-- Utiliser héritage/patterns pour ajouter features sans changer code existant
+- Extend behavior via composition (mixins) not modification
+- Use inheritance/patterns to add features without changing existing code
 
-**Vérification**:
-- Les nouvelles features sont-elles ajoutées via nouveaux mixins/classes plutôt que modifier l'existant ?
+**Verification**:
+- Are new features added via new mixins/classes rather than modifying existing ones?
 
 #### Liskov Substitution Principle (LSP)
-- Les mixins peuvent être composés sans casser FmodImporterGUI
-- Les sous-classes préservent les contrats des classes de base
+- Mixins can be composed without breaking FmodImporterGUI
+- Subclasses preserve base class contracts
 
-**Vérification**:
-- Les mixins peuvent-ils être ajoutés/retirés sans casser le GUI ?
+**Verification**:
+- Can mixins be added/removed without breaking the GUI?
 
 #### Interface Segregation Principle (ISP)
-- Les mixins exposent uniquement les méthodes pertinentes
-- Pas de "god classes" avec méthodes non-reliées
+- Mixins expose only relevant methods
+- No "god classes" with unrelated methods
 
-**Vérification**:
-- Les classes utilisent-elles toutes les méthodes des interfaces qu'elles implémentent ?
+**Verification**:
+- Do classes use all methods of the interfaces they implement?
 
 #### Dependency Inversion Principle (DIP)
-- Dépendre d'abstractions (NamingPattern, AudioMatcher) non d'implémentations concrètes
-- Les modules core (project, naming, matcher) sont indépendants du GUI
+- Depend on abstractions (NamingPattern, AudioMatcher) not concrete implementations
+- Core modules (project, naming, matcher) are independent of GUI
 
-**Vérification**:
-- Les modules core importent-ils des modules GUI ? (NON!)
-- Les dépendances pointent-elles vers des abstractions ?
+**Verification**:
+- Do core modules import GUI modules? (NO!)
+- Do dependencies point to abstractions?
 
 ### Code Language Standards
 
@@ -103,46 +103,46 @@ def creer_evenement_depuis_selection(fichiers_audio: list[str]) -> Event:
 ```
 
 ### DRY (Don't Repeat Yourself)
-- Extraire logique répétée dans fonctions utilitaires
-- Créer composants réutilisables à la 3ème occurrence de code similaire
-- Vérifier duplication entre modules
+- Extract repeated logic into utility functions
+- Create reusable components on the 3rd occurrence of similar code
+- Check for duplication between modules
 
 **Triggers**:
-- Code bloc identique/similaire apparaît 3+ fois → EXTRAIRE
+- Identical/similar code block appears 3+ times → EXTRACT
 
 ### KISS (Keep It Simple, Stupid)
-- Préférer solutions simples aux solutions clever
-- Éviter optimisation prématurée
-- Noms de variables/fonctions clairs
+- Prefer simple solutions to clever ones
+- Avoid premature optimization
+- Clear variable/function names
 
-**Vérification**:
-- Le code est-il facile à comprendre pour quelqu'un qui ne connaît pas le projet ?
-- Y a-t-il une solution plus simple ?
+**Verification**:
+- Is the code easy to understand for someone unfamiliar with the project?
+- Is there a simpler solution?
 
 ### WYSIWYG (What You See Is What You Get)
-- Le comportement du code correspond à son apparence
-- Pas d'effets secondaires cachés
-- Explicite vaut mieux qu'implicite
+- Code behavior matches its appearance
+- No hidden side effects
+- Explicit is better than implicit
 
-**Vérification**:
-- Les fonctions font-elles exactement ce que leur nom suggère ?
-- Y a-t-il des effets secondaires non documentés ?
+**Verification**:
+- Do functions do exactly what their name suggests?
+- Are there undocumented side effects?
 
 ### SSOT (Single Source of Truth)
-- VERSION dans `__init__.py` uniquement
-- Configuration en un seul endroit
-- Éviter duplication structures de données
+- VERSION in `__init__.py` only
+- Configuration in one place
+- Avoid data structure duplication
 
-**Vérification**:
-- Les données sont-elles dupliquées quelque part ?
-- Y a-t-il plusieurs sources pour la même information ?
+**Verification**:
+- Is data duplicated somewhere?
+- Are there multiple sources for the same information?
 
-### Modularité
-- Frontières de modules claires
-- Couplage minimal entre modules
-- Haute cohésion à l'intérieur des modules
+### Modularity
+- Clear module boundaries
+- Minimal coupling between modules
+- High cohesion within modules
 
-**Architecture cible**:
+**Target architecture**:
 ```
 fmod_importer/
 ├── __init__.py           # Exports, VERSION
@@ -157,141 +157,141 @@ fmod_importer/
 
 ---
 
-## Seuils et Métriques
+## Thresholds and Metrics
 
-### Seuils de Ligne de Code
+### Line Count Thresholds
 
-| Seuil | Action | Niveau |
-|-------|--------|--------|
-| 750 lignes | Planifier refactoring avant 800 | `[INFO]` |
-| 800 lignes | Refactoring recommandé | `[RECOMMEND]` |
-| 900 lignes (mixin) | Splitter mixin ou extraire utilities | `[RECOMMEND]` |
-| 1000 lignes | Maximum absolu pour mixins | `[CRITICAL]` |
+| Threshold | Action | Level |
+|-----------|--------|-------|
+| 750 lines | Plan refactoring before 800 | `[INFO]` |
+| 800 lines | Refactoring recommended | `[RECOMMEND]` |
+| 900 lines (mixin) | Split mixin or extract utilities | `[RECOMMEND]` |
+| 1000 lines | Absolute maximum for mixins | `[CRITICAL]` |
 
-### Seuils de Complexité
+### Complexity Thresholds
 
-| Métrique | Seuil | Action |
-|----------|-------|--------|
-| Lignes fonction | 40 lignes | Splitter fonction |
-| Lignes fonction | 50 lignes | Refactoring requis |
-| Profondeur nesting | 3 niveaux | Extraire nested logic |
-| Nombre paramètres | 5 paramètres | Parameter object ou config dict |
-| Chaîne if/elif | 5 conditions | Dict dispatch ou polymorphisme |
-| Bloc try/except | 20 lignes | Extraire dans fonction séparée |
+| Metric | Threshold | Action |
+|--------|-----------|--------|
+| Function lines | 40 lines | Split function |
+| Function lines | 50 lines | Refactoring required |
+| Nesting depth | 3 levels | Extract nested logic |
+| Parameter count | 5 parameters | Parameter object or config dict |
+| if/elif chain | 5 conditions | Dict dispatch or polymorphism |
+| try/except block | 20 lines | Extract into separate function |
 
 ---
 
-## Triggers Automatiques
+## Automatic Triggers
 
 ### Pattern Triggers
 
-#### Duplication de Code
+#### Code Duplication
 ```
-[SUGGEST] Pattern: Code dupliqué détecté
+[SUGGEST] Pattern: Code duplication detected
 
-État actuel:
-- [Bloc de code] apparaît dans [N] fichiers
+Current state:
+- [Code block] appears in [N] files
 
-Amélioration suggérée:
-- Extraire dans fonction réutilisable dans [module approprié]
+Suggested improvement:
+- Extract into reusable function in [appropriate module]
 
-Bénéfice:
+Benefit:
 - Single Source of Truth
-- Plus facile à maintenir
-- Réduit taille codebase
+- Easier to maintain
+- Reduces codebase size
 
-Effort estimé: Low
-Skill à utiliser: /fmod-refactor
+Estimated effort: Low
+Skill to use: /fmod-refactor
 ```
 
-#### Structures Similaires
+#### Similar Structures
 ```
-[SUGGEST] Pattern: Classes avec structures similaires
+[SUGGEST] Pattern: Classes with similar structures
 
-État actuel:
-- [ClassA] et [ClassB] ont [N] méthodes similaires
+Current state:
+- [ClassA] and [ClassB] have [N] similar methods
 
-Amélioration suggérée:
-- Créer abstract base class ou mixin partagé
+Suggested improvement:
+- Create abstract base class or shared mixin
 
-Bénéfice:
-- Réutilisabilité
-- Cohérence
-- Facilite maintenance
+Benefit:
+- Reusability
+- Consistency
+- Easier maintenance
 
-Effort estimé: Medium
-Skill à utiliser: /fmod-refactor
+Estimated effort: Medium
+Skill to use: /fmod-refactor
 ```
 
 ### Architecture Triggers
 
-#### GUI Code dans Core
+#### GUI Code in Core
 ```
-[VIOLATION] Architecture: Code GUI dans module core
+[VIOLATION] Architecture: GUI code in core module
 
-État actuel:
-- [core_module.py] importe/utilise tkinter ou GUI components
+Current state:
+- [core_module.py] imports/uses tkinter or GUI components
 
-Amélioration suggérée:
-- Déplacer logique GUI vers mixin approprié
-- Garder core modules GUI-agnostic
+Suggested improvement:
+- Move GUI logic to appropriate mixin
+- Keep core modules GUI-agnostic
 
-Bénéfice:
-- Respect Dependency Inversion Principle
-- Testabilité améliorée
-- Séparation des responsabilités
+Benefit:
+- Respects Dependency Inversion Principle
+- Improved testability
+- Separation of responsibilities
 
-Effort estimé: Medium
-Skill à utiliser: /fmod-refactor
-```
-
-#### Business Logic dans GUI
-```
-[RECOMMEND] Architecture: Logique métier dans GUI
-
-État actuel:
-- [gui_mixin.py] contient logique métier complexe
-
-Amélioration suggérée:
-- Extraire vers module core approprié
-- GUI appelle module core
-
-Bénéfice:
-- Réutilisabilité logique métier
-- Plus facile à tester
-- Séparation claire des responsabilités
-
-Effort estimé: Medium
-Skill à utiliser: /fmod-refactor
+Estimated effort: Medium
+Skill to use: /fmod-refactor
 ```
 
-#### Dépendance Circulaire
+#### Business Logic in GUI
 ```
-[CRITICAL] Architecture: Dépendance circulaire détectée
+[RECOMMEND] Architecture: Business logic in GUI
 
-État actuel:
-- [ModuleA] importe [ModuleB] qui importe [ModuleA]
+Current state:
+- [gui_mixin.py] contains complex business logic
 
-Amélioration suggérée:
-- Refactorer pour éliminer cycle
+Suggested improvement:
+- Extract to appropriate core module
+- GUI calls core module
+
+Benefit:
+- Business logic reusability
+- Easier to test
+- Clear separation of responsibilities
+
+Estimated effort: Medium
+Skill to use: /fmod-refactor
+```
+
+#### Circular Dependency
+```
+[CRITICAL] Architecture: Circular dependency detected
+
+Current state:
+- [ModuleA] imports [ModuleB] which imports [ModuleA]
+
+Suggested improvement:
+- Refactor to eliminate cycle
 - Options: Dependency Injection, Event System, Extract Common Module
 
-Bénéfice:
-- Code maintenable
-- Évite bugs subtils
-- Architecture plus claire
+Benefit:
+- Maintainable code
+- Avoids subtle bugs
+- Clearer architecture
 
-Effort estimé: High
-Skill à utiliser: /fmod-refactor
+Estimated effort: High
+Skill to use: /fmod-refactor
 ```
 
 ---
 
-## Standards de Documentation
+## Documentation Standards
 
 ### Docstrings
 
-#### Format Standard
+#### Standard Format
 ```python
 def function_name(param1: Type1, param2: Type2) -> ReturnType:
     """
@@ -321,7 +321,7 @@ def function_name(param1: Type1, param2: Type2) -> ReturnType:
     """
 ```
 
-#### Docstrings de Classe
+#### Class Docstrings
 ```python
 class ClassName:
     """
@@ -342,7 +342,7 @@ class ClassName:
     """
 ```
 
-#### Docstrings de Module
+#### Module Docstrings
 ```python
 """
 Module Name
@@ -364,55 +364,55 @@ Dependencies:
 
 ### README.md Updates
 
-#### Quand Mettre à Jour
-- ✅ Nouvelle feature user-facing → Update "Description" et "Usage"
-- ✅ Nouveau workflow → Add "Recommended Workflow"
-- ✅ Nouvelle erreur possible → Add "Troubleshooting"
-- ✅ Changement UI → Update descriptions/screenshots
-- ✅ Version bump → Update version en bas
+#### When to Update
+- ✅ New user-facing feature → Update "Description" and "Usage"
+- ✅ New workflow → Add "Recommended Workflow"
+- ✅ New possible error → Add "Troubleshooting"
+- ✅ UI change → Update descriptions/screenshots
+- ✅ Version bump → Update version at bottom
 
-#### Template Section Feature
+#### Feature Section Template
 ```markdown
-### [Nom de la Feature]
+### [Feature Name]
 
-[Description de ce que fait la feature et pourquoi elle est utile]
+[Description of what the feature does and why it's useful]
 
-**Comment utiliser**:
-1. [Étape 1]
-2. [Étape 2]
-3. [Étape 3]
+**How to use**:
+1. [Step 1]
+2. [Step 2]
+3. [Step 3]
 
-**Exemple**:
-[Exemple concret d'utilisation]
+**Example**:
+[Concrete usage example]
 
 **Notes**:
-- [Point important 1]
-- [Point important 2]
+- [Important point 1]
+- [Important point 2]
 ```
 
-#### Template Troubleshooting
+#### Troubleshooting Template
 ```markdown
-### [Problème]
+### [Problem]
 
-**Symptômes**:
-- [Symptôme 1]
-- [Symptôme 2]
+**Symptoms**:
+- [Symptom 1]
+- [Symptom 2]
 
 **Cause**:
-[Explication de la cause]
+[Explanation of the cause]
 
 **Solution**:
-1. [Étape de résolution 1]
-2. [Étape de résolution 2]
+1. [Resolution step 1]
+2. [Resolution step 2]
 
 **Alternative**:
-[Solution alternative si applicable]
+[Alternative solution if applicable]
 ```
 
 ### CHANGELOG.md
 
 #### Format
-Suivre [Keep a Changelog](https://keepachangelog.com/):
+Follow [Keep a Changelog](https://keepachangelog.com/):
 
 ```markdown
 # Changelog
@@ -444,15 +444,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [Security fix]
 ```
 
-#### Triggers Update
-- `feat` commit → Ajouter sous "Added"
-- `fix` commit → Ajouter sous "Fixed"
-- `refactor` majeur → Ajouter sous "Changed"
-- Breaking change → Note sous section appropriée + mention BREAKING CHANGE
+#### Update Triggers
+- `feat` commit → Add under "Added"
+- `fix` commit → Add under "Fixed"
+- Major `refactor` → Add under "Changed"
+- Breaking change → Note under appropriate section + mention BREAKING CHANGE
 
 ---
 
-## Conventions de Commit
+## Commit Conventions
 
 ### Format (Conventional Commits)
 ```
@@ -465,53 +465,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 **Note**: Do NOT include Claude/Anthropic signatures in commits.
 
-### Types de Commit
+### Commit Types
 
-| Type | Description | Version Bump | Exemple |
+| Type | Description | Version Bump | Example |
 |------|-------------|--------------|---------|
-| `feat` | Nouvelle feature | Minor (0.1.0→0.2.0) | `feat(gui): Add bank filter widget` |
+| `feat` | New feature | Minor (0.1.0→0.2.0) | `feat(gui): Add bank filter widget` |
 | `fix` | Bug fix | Patch (0.1.0→0.1.1) | `fix: Handle empty template folders` |
-| `refactor` | Restructuration code | None* | `refactor: Extract XML handler module` |
-| `docs` | Documentation seule | None | `docs: Update README troubleshooting` |
-| `test` | Ajout/update tests | None | `test: Add matcher unit tests` |
+| `refactor` | Code restructuring | None* | `refactor: Extract XML handler module` |
+| `docs` | Documentation only | None | `docs: Update README troubleshooting` |
+| `test` | Add/update tests | None | `test: Add matcher unit tests` |
 | `chore` | Maintenance | None | `chore: Update build script` |
-| `perf` | Performance | Patch si significatif | `perf: Optimize event matching` |
+| `perf` | Performance | Patch if significant | `perf: Optimize event matching` |
 | `style` | Formatting | None | `style: Fix PEP8 violations` |
 
-*Refactor = Minor bump si changement architectural majeur
+*Refactor = Minor bump if major architectural change
 
-### Scopes (optionnel)
+### Scopes (optional)
 
-| Scope | Utilisation |
-|-------|-------------|
-| `gui` | Changements GUI (mixins, widgets) |
-| `core` | Modules core (project, naming, matcher) |
-| `build` | Système de build (PyInstaller, CI/CD) |
-| `deps` | Dépendances |
+| Scope | Usage |
+|-------|-------|
+| `gui` | GUI changes (mixins, widgets) |
+| `core` | Core modules (project, naming, matcher) |
+| `build` | Build system (PyInstaller, CI/CD) |
+| `deps` | Dependencies |
 
-### Règles de Subject
-- Maximum 72 caractères
+### Subject Rules
+- Maximum 72 characters
 - Imperative mood (Add, Fix, Refactor, not Added, Fixed, Refactored)
-- Pas de point final
-- Commencer par minuscule après le type
+- No final period
+- Start with lowercase after type
 
-### Body (optionnel mais recommandé pour changements complexes)
-- Expliquer POURQUOI, pas QUOI (le diff montre le quoi)
-- Wrapper à 72 caractères
-- Séparer subject et body par ligne blanche
+### Body (optional but recommended for complex changes)
+- Explain WHY, not WHAT (the diff shows what)
+- Wrap at 72 characters
+- Separate subject and body with blank line
 
-### Footer (optionnel)
+### Footer (optional)
 - Breaking changes: `BREAKING CHANGE: description`
-- Issue references: `Fixes #123` ou `Closes #456`
+- Issue references: `Fixes #123` or `Closes #456`
 
-### Exemples
+### Examples
 
 #### Simple Feature
 ```
 feat(gui): Add event preview panel
 ```
 
-#### Bug Fix avec Détails
+#### Bug Fix with Details
 ```
 fix: Prevent crash when loading empty projects
 
@@ -522,7 +522,7 @@ defensive checks and user-friendly error message.
 Fixes #42
 ```
 
-#### Refactoring Majeur
+#### Major Refactoring
 ```
 refactor: Split project.py into focused modules
 
@@ -554,31 +554,31 @@ Migration: Add separator='_' to all NamingPattern calls.
 
 ### ⚡ Automatic Version Bump System
 
-**Le version bump est AUTOMATIQUEMENT déclenché après chaque commit `feat` ou `fix` validé.**
+**Version bump is AUTOMATICALLY triggered after each validated `feat` or `fix` commit.**
 
-Quand Claude complète un commit de type `feat` ou `fix`, il doit **immédiatement** proposer un version bump en utilisant le skill `/version-bump`.
+When Claude completes a `feat` or `fix` commit, it must **immediately** propose a version bump using the `/version-bump` skill.
 
 ### Semantic Versioning (MAJOR.MINOR.PATCH)
 
 #### MAJOR (1.0.0)
 - Breaking changes
-- Changements API incompatibles
-- Modifications architectural majeurs
-- **Détection**: Commit contient `BREAKING CHANGE:` dans body/footer
+- Incompatible API changes
+- Major architectural modifications
+- **Detection**: Commit contains `BREAKING CHANGE:` in body/footer
 
 #### MINOR (0.X.0)
-- Nouvelles features (backward-compatible)
-- Commits `feat`
-- Refactoring architectural significatif
-- **Détection**: Commits de type `feat` depuis dernière version
+- New features (backward-compatible)
+- `feat` commits
+- Significant architectural refactoring
+- **Detection**: `feat` type commits since last version
 
 #### PATCH (0.0.X)
 - Bug fixes
-- Commits `fix`
-- Performance improvements significatifs
-- **Détection**: Commits de type `fix` depuis dernière version
+- `fix` commits
+- Significant performance improvements
+- **Detection**: `fix` type commits since last version
 
-### Workflow Automatique
+### Automatic Workflow
 
 ```
 1. User Request
@@ -587,69 +587,69 @@ Quand Claude complète un commit de type `feat` ou `fix`, il doit **immédiateme
    ↓
 3. Tests & Validation
    ↓
-4. Commit créé avec Conventional Commits format
+4. Commit created with Conventional Commits format
    ↓
 5. ✨ AUTO-TRIGGER: Version Bump Check
    ↓
-   Si commit = feat OU fix:
-   ├─→ Proposer version bump immédiatement
+   If commit = feat OR fix:
+   ├─→ Propose version bump immediately
    │   "📦 New feature/fix committed! Bump version now? (v0.1.8 → v0.2.0)"
    │
-   └─→ Si user accepte: Exécuter `/version-bump` skill
-       Si user refuse: Ajouter rappel dans TODO
+   └─→ If user accepts: Execute `/version-bump` skill
+       If user refuses: Add reminder to TODO
 ```
 
-### Quand Déclencher le Version Bump
+### When to Trigger Version Bump
 
-**TOUJOURS après** ces commits:
-- ✅ `feat(scope): ...` → Proposer MINOR bump
-- ✅ `fix(scope): ...` → Proposer PATCH bump
-- ✅ Commit avec `BREAKING CHANGE:` → Proposer MAJOR bump
+**ALWAYS after** these commits:
+- ✅ `feat(scope): ...` → Propose MINOR bump
+- ✅ `fix(scope): ...` → Propose PATCH bump
+- ✅ Commit with `BREAKING CHANGE:` → Propose MAJOR bump
 
-**JAMAIS après** ces commits:
-- ❌ `docs:` → Pas de bump
-- ❌ `style:` → Pas de bump
-- ❌ `refactor:` (sauf si architectural majeur)
-- ❌ `test:` → Pas de bump
-- ❌ `chore:` → Pas de bump
+**NEVER after** these commits:
+- ❌ `docs:` → No bump
+- ❌ `style:` → No bump
+- ❌ `refactor:` (unless major architectural)
+- ❌ `test:` → No bump
+- ❌ `chore:` → No bump
 
-### Process de Version Bump (via `/version-bump` skill)
+### Version Bump Process (via `/version-bump` skill)
 
-Le skill `/version-bump` automatise:
+The `/version-bump` skill automates:
 
-1. **Analyser commits** depuis dernière version taggée
-   - Parser git log pour détecter feat/fix/breaking
-   - Déterminer type de bump (MAJOR > MINOR > PATCH)
+1. **Analyze commits** since last tagged version
+   - Parse git log to detect feat/fix/breaking
+   - Determine bump type (MAJOR > MINOR > PATCH)
 
-2. **Calculer nouvelle version**
-   - Lire VERSION actuelle dans `fmod_importer/__init__.py`
-   - Appliquer règle Semantic Versioning
-   - Proposer nouvelle version à user
+2. **Calculate new version**
+   - Read current VERSION from `fmod_importer/__init__.py`
+   - Apply Semantic Versioning rule
+   - Propose new version to user
 
-3. **Mettre à jour fichiers**
+3. **Update files**
    - `fmod_importer/__init__.py` → `VERSION = "X.Y.Z"`
-   - `CHANGELOG.md` → Renommer `[Unreleased]` en `[X.Y.Z]`
+   - `CHANGELOG.md` → Rename `[Unreleased]` to `[X.Y.Z]`
 
 4. **Git operations**
-   - Créer commit: `chore(release): Bump version to X.Y.Z`
-   - Créer tag: `vX.Y.Z`
-   - Afficher next steps (push to remote)
+   - Create commit: `chore(release): Bump version to X.Y.Z`
+   - Create tag: `vX.Y.Z`
+   - Display next steps (push to remote)
 
-**Voir détails complets**: [version-bump.md](version-bump.md)
+**See full details**: [version-bump.md](version-bump.md)
 
-### Exemple Complet
+### Complete Example
 
 ```
 User: "Add bank filter widget to GUI"
   ↓
-[Claude implémente la feature]
+[Claude implements the feature]
   ↓
 [Tests & validation]
   ↓
-[Commit créé]:
+[Commit created]:
   "feat(gui): Add bank filter widget"
   ↓
-🤖 Claude détecte feat commit et propose:
+🤖 Claude detects feat commit and proposes:
 
   "📦 New feature committed!
 
@@ -661,7 +661,7 @@ User: "Add bank filter widget to GUI"
   ↓
 [User: Y]
   ↓
-🤖 Claude exécute /version-bump:
+🤖 Claude executes /version-bump:
   ✓ Updated fmod_importer/__init__.py: VERSION = "0.2.0"
   ✓ Updated CHANGELOG.md: [0.2.0] - 2024-12-20
   ✓ Created commit: chore(release): Bump version to 0.2.0
@@ -671,7 +671,7 @@ User: "Add bank filter widget to GUI"
    Next: git push && git push --tags"
 ```
 
-### Files Affectés
+### Affected Files
 
 | File | Modification | Trigger |
 |------|-------------|---------|
@@ -681,74 +681,74 @@ User: "Add bank filter widget to GUI"
 
 ### Important
 
-- **SSOT**: `fmod_importer/__init__.py` est la single source of truth
-- **Atomique**: Version bump = 1 commit + 1 tag
-- **Toujours proposer**: Ne jamais skipper la proposition après feat/fix
-- **User décision**: Toujours demander confirmation avant bump
-- **Skill référence**: Voir `/version-bump` pour implémentation complète
+- **SSOT**: `fmod_importer/__init__.py` is the single source of truth
+- **Atomic**: Version bump = 1 commit + 1 tag
+- **Always propose**: Never skip the proposal after feat/fix
+- **User decision**: Always ask for confirmation before bump
+- **Skill reference**: See `/version-bump` for complete implementation
 
 ---
 
 ## Quality Checks Checklist
 
-Avant chaque commit, vérifier:
+Before each commit, verify:
 
 ### Architecture
-- [ ] Principes SOLID respectés
-- [ ] Pas de code GUI dans modules core
-- [ ] Pas de logique métier complexe dans GUI
-- [ ] Pas de dépendances circulaires
-- [ ] Mixin pattern maintenu pour GUI
+- [ ] SOLID principles respected
+- [ ] No GUI code in core modules
+- [ ] No complex business logic in GUI
+- [ ] No circular dependencies
+- [ ] Mixin pattern maintained for GUI
 
 ### Code Quality
 - [ ] **English only** - All code, comments, docstrings, and variable names in English
-- [ ] Pas de duplication code (DRY)
-- [ ] Noms clairs et descriptifs (KISS)
-- [ ] Pas d'effets secondaires cachés (WYSIWYG)
-- [ ] Pas de données dupliquées (SSOT)
-- [ ] Error handling approprié
+- [ ] No code duplication (DRY)
+- [ ] Clear and descriptive names (KISS)
+- [ ] No hidden side effects (WYSIWYG)
+- [ ] No duplicated data (SSOT)
+- [ ] Appropriate error handling
 
-### Métriques
-- [ ] Aucun fichier >800 lignes (ou refactoring planifié)
-- [ ] Aucune fonction >50 lignes
-- [ ] Profondeur nesting ≤3 niveaux
-- [ ] Nombre paramètres ≤5
+### Metrics
+- [ ] No file >800 lines (or refactoring planned)
+- [ ] No function >50 lines
+- [ ] Nesting depth ≤3 levels
+- [ ] Parameter count ≤5
 
 ### Documentation
-- [ ] Docstrings complètes pour code public
-- [ ] README.md à jour si feature user-facing
-- [ ] CHANGELOG.md à jour
-- [ ] VERSION bumped si nécessaire
-- [ ] Commentaires inline pour logique complexe uniquement
+- [ ] Complete docstrings for public code
+- [ ] README.md updated if user-facing feature
+- [ ] CHANGELOG.md updated
+- [ ] VERSION bumped if necessary
+- [ ] Inline comments for complex logic only
 
-### Tests (futur)
-- [ ] Tests unitaires pour logique core
-- [ ] Tests d'intégration pour workflows
-- [ ] Tests passent tous
+### Tests (future)
+- [ ] Unit tests for core logic
+- [ ] Integration tests for workflows
+- [ ] All tests pass
 
 ---
 
 ## Post-Commit Automation
 
-### 🚀 Actions Automatiques Après Commit
+### 🚀 Automatic Actions After Commit
 
-**IMPORTANT**: Après chaque commit réussi, Claude doit **automatiquement** effectuer ces vérifications:
+**IMPORTANT**: After each successful commit, Claude must **automatically** perform these checks:
 
-#### 1. Vérifier le Type de Commit
+#### 1. Check Commit Type
 
-Analyser le commit qui vient d'être créé:
+Analyze the just-created commit:
 ```bash
 git log -1 --pretty=format:"%s"
 ```
 
-#### 2. Déclencher Version Bump si Applicable
+#### 2. Trigger Version Bump if Applicable
 
-**SI le commit commence par:**
-- ✅ `feat` → **PROPOSER** version bump (MINOR)
-- ✅ `fix` → **PROPOSER** version bump (PATCH)
-- ✅ Contient `BREAKING CHANGE` → **PROPOSER** version bump (MAJOR)
+**IF the commit starts with:**
+- ✅ `feat` → **PROPOSE** version bump (MINOR)
+- ✅ `fix` → **PROPOSE** version bump (PATCH)
+- ✅ Contains `BREAKING CHANGE` → **PROPOSE** version bump (MAJOR)
 
-**ALORS immédiatement afficher:**
+**THEN immediately display:**
 
 ```
 📦 Feature/Fix committed successfully!
@@ -760,25 +760,25 @@ Proposed bump: v{new_version} ({bump_type})
 Would you like to bump the version now? [Y/n]
 ```
 
-**SI user accepte [Y]:**
-- Exécuter `/version-bump` skill immédiatement
-- Ne pas attendre la fin de la conversation
+**IF user accepts [Y]:**
+- Execute `/version-bump` skill immediately
+- Don't wait until end of conversation
 
-**SI user refuse [n]:**
-- Ajouter rappel dans TODO: "Pending version bump for v{new_version}"
-- Continuer normalement
+**IF user refuses [n]:**
+- Add reminder to TODO: "Pending version bump for v{new_version}"
+- Continue normally
 
-#### 3. Rappel Documentation
+#### 3. Documentation Reminder
 
-**SI commit de type `feat` avec feature user-facing:**
-- Vérifier que README.md a été mis à jour
-- Si non: Rappeler "README.md may need updating for this feature"
+**IF `feat` commit with user-facing feature:**
+- Check that README.md has been updated
+- If not: Remind "README.md may need updating for this feature"
 
-### Exemples de Post-Commit Automation
+### Post-Commit Automation Examples
 
-#### Exemple 1: Fix Commit
+#### Example 1: Fix Commit
 ```
-✅ Commit créé: fix(import): Resolve path escaping on Windows
+✅ Commit created: fix(import): Resolve path escaping on Windows
 
 📦 Fix committed successfully!
 
@@ -789,11 +789,11 @@ Proposed bump: v0.1.9 (PATCH)
 Would you like to bump the version now? [Y/n] _
 ```
 
-#### Exemple 2: Feature Commit
+#### Example 2: Feature Commit
 ```
-✅ Commit créé: feat(gui): Add bank filter widget
+✅ Commit created: feat(gui): Add bank filter widget
 
-�� Feature committed successfully!
+📦 Feature committed successfully!
 
 Commit: e7f8g9h feat(gui): Add bank filter widget
 Current version: v0.1.8
@@ -802,42 +802,42 @@ Proposed bump: v0.2.0 (MINOR - new feature)
 Would you like to bump the version now? [Y/n] _
 ```
 
-#### Exemple 3: Docs Commit (No Bump)
+#### Example 3: Docs Commit (No Bump)
 ```
-✅ Commit créé: docs: Update README troubleshooting
+✅ Commit created: docs: Update README troubleshooting
 
 ✓ Documentation commit completed.
 (No version bump needed for docs-only changes)
 ```
 
-### Checklist Post-Commit
+### Post-Commit Checklist
 
-Après **chaque** commit `feat` ou `fix`, vérifier:
+After **each** `feat` or `fix` commit, verify:
 
-- [ ] Proposition de version bump affichée à user
-- [ ] User a répondu (Y ou n)
-- [ ] Si Y: `/version-bump` exécuté avec succès
-- [ ] Si n: Rappel ajouté dans TODO
-- [ ] CHANGELOG.md contient l'entrée pour ce commit
-- [ ] README.md à jour si nécessaire
+- [ ] Version bump proposal displayed to user
+- [ ] User responded (Y or n)
+- [ ] If Y: `/version-bump` executed successfully
+- [ ] If n: Reminder added to TODO
+- [ ] CHANGELOG.md contains entry for this commit
+- [ ] README.md updated if necessary
 
 ### Exceptions
 
-**NE PAS proposer version bump si:**
-- Commit de type `docs`, `test`, `style`, `chore`
-- Commit est déjà un version bump (`chore(release): Bump version...`)
-- User a explicitement demandé de ne pas bumper
-- C'est un commit de merge
+**DO NOT propose version bump if:**
+- Commit type is `docs`, `test`, `style`, `chore`
+- Commit is already a version bump (`chore(release): Bump version...`)
+- User explicitly requested not to bump
+- It's a merge commit
 
 ---
 
 ## Error Handling Standards
 
-### Principes
-- Catcher les exceptions spécifiques, pas génériques
-- Fournir messages d'erreur utiles à l'utilisateur
-- Logger les détails techniques pour debugging
-- Fail gracefully avec fallbacks quand possible
+### Principles
+- Catch specific exceptions, not generic
+- Provide useful error messages to user
+- Log technical details for debugging
+- Fail gracefully with fallbacks when possible
 
 ### Pattern
 ```python
@@ -888,7 +888,7 @@ def risky_operation(path: str) -> Result:
     return process_data(data)
 ```
 
-### Anti-Patterns à Éviter
+### Anti-Patterns to Avoid
 ```python
 # ❌ BAD: Bare except
 try:
@@ -922,42 +922,42 @@ except FileNotFoundError as e:
 ## Skill Decision Tree
 
 ```
-Requête Utilisateur
+User Request
     │
-    ├─ Décrit un bug/erreur spécifique
-    │  → Utiliser /fmod-debug
+    ├─ Describes specific bug/error
+    │  → Use /fmod-debug
     │
-    ├─ Demande nouvelle fonctionnalité
-    │  → Utiliser /fmod-feature
+    ├─ Requests new functionality
+    │  → Use /fmod-feature
     │
-    ├─ Mentionne "refactor", "améliorer code", "clean up", "restructure"
-    │  → Utiliser /fmod-refactor
+    ├─ Mentions "refactor", "improve code", "clean up", "restructure"
+    │  → Use /fmod-refactor
     │
-    ├─ Demande "review", "vérifier code", "audit", "analyser"
-    │  → Utiliser /fmod-review
+    ├─ Requests "review", "check code", "audit", "analyze"
+    │  → Use /fmod-review
     │
-    └─ Question générale ou discussion
-       → Pas de skill, répondre directement
+    └─ General question or discussion
+       → No skill, respond directly
 ```
 
-### Cas Ambigus
+### Ambiguous Cases
 
 #### "Fix this code"
-- Si bug spécifique décrit → `/fmod-debug`
-- Si amélioration qualité générale → `/fmod-refactor`
+- If specific bug described → `/fmod-debug`
+- If general quality improvement → `/fmod-refactor`
 
-#### "Add feature X et clean up code Y"
-- Séparer en deux tasks:
-  1. `/fmod-feature` pour X
-  2. `/fmod-refactor` pour Y
+#### "Add feature X and clean up code Y"
+- Separate into two tasks:
+  1. `/fmod-feature` for X
+  2. `/fmod-refactor` for Y
 
-#### "Pourquoi ce code est structuré ainsi?"
-- Utiliser `/fmod-review` pour analyser architecture
-- Expliquer les design decisions
+#### "Why is this code structured this way?"
+- Use `/fmod-review` to analyze architecture
+- Explain design decisions
 
 ---
 
-## Architecture Patterns du Projet
+## Project Architecture Patterns
 
 ### Mixin Pattern (GUI)
 ```python
@@ -975,16 +975,16 @@ class FmodImporterGUI(
     pass
 ```
 
-**Bénéfices**:
-- Chaque mixin <1000 lignes
-- Séparation claire des responsabilités
-- Facile à tester individuellement
-- Modulaire et réutilisable
+**Benefits**:
+- Each mixin <1000 lines
+- Clear separation of responsibilities
+- Easy to test individually
+- Modular and reusable
 
-**Règles**:
-- Chaque mixin = une responsabilité
-- Pas de dépendances entre mixins (autant que possible)
-- Méthodes prefixées si privées au mixin (_method_name)
+**Rules**:
+- Each mixin = one responsibility
+- No dependencies between mixins (as much as possible)
+- Methods prefixed if private to mixin (_method_name)
 
 ### Builder Pattern (Naming)
 ```python
@@ -999,7 +999,7 @@ event_name = pattern.build(
 
 ### Strategy Pattern (Matching)
 ```python
-# Multiple stratégies de parsing avec fallback
+# Multiple parsing strategies with fallback
 def parse_asset(self, asset_name):
     # Try exact match
     result = self._parse_exact(asset_name)
@@ -1037,58 +1037,58 @@ else:
 
 ---
 
-## Niveau de Suggestions
+## Suggestion Levels
 
 ### [INFO]
-Suggestion informative, nice-to-have
+Informative suggestion, nice-to-have
 
-**Exemple**: Fichier approche 750 lignes
+**Example**: File approaching 750 lines
 
 ### [SUGGEST]
-Amélioration recommandée
+Recommended improvement
 
-**Exemple**: Code dupliqué 3 fois
+**Example**: Code duplicated 3 times
 
 ### [RECOMMEND]
-Fortement recommandé
+Strongly recommended
 
-**Exemple**: Fichier dépasse 800 lignes
+**Example**: File exceeds 800 lines
 
 ### [VIOLATION]
-Violation de principe, devrait être corrigé
+Principle violation, should be fixed
 
-**Exemple**: Code GUI dans module core
+**Example**: GUI code in core module
 
 ### [CRITICAL]
-Problème sérieux, doit être corrigé immédiatement
+Serious problem, must be fixed immediately
 
-**Exemple**: Dépendance circulaire
+**Example**: Circular dependency
 
 ---
 
-## Références Rapides
+## Quick References
 
-### Seuils Critiques
-- 750 lignes: Planifier refactoring
-- 800 lignes: Refactoring recommandé
-- 900 lignes (mixin): Refactoring urgent
-- 1000 lignes: Maximum absolu
+### Critical Thresholds
+- 750 lines: Plan refactoring
+- 800 lines: Refactoring recommended
+- 900 lines (mixin): Urgent refactoring
+- 1000 lines: Absolute maximum
 
-### Types de Commit
+### Commit Types
 - `feat`: Feature (minor bump)
 - `fix`: Bug fix (patch bump)
 - `refactor`: Restructure (no bump)
 - `docs`: Documentation (no bump)
 
-### Documentation à Mettre à Jour
-- README.md: Features user-facing, troubleshooting
-- CHANGELOG.md: Chaque version
-- Docstrings: Chaque fonction/classe publique
-- ARCHITECTURE.md: Changements architecturaux majeurs
+### Documentation to Update
+- README.md: User-facing features, troubleshooting
+- CHANGELOG.md: Each version
+- Docstrings: Each public function/class
+- ARCHITECTURE.md: Major architectural changes
 
 ### Quick SOLID Check
-1. SRP: Une responsabilité par classe?
-2. OCP: Extension par composition?
-3. LSP: Mixins composables?
-4. ISP: Pas de god classes?
-5. DIP: Dépend d'abstractions?
+1. SRP: One responsibility per class?
+2. OCP: Extension through composition?
+3. LSP: Mixins composable?
+4. ISP: No god classes?
+5. DIP: Depends on abstractions?
