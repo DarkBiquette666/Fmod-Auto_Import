@@ -5,6 +5,15 @@ All notable changes to the FMOD Importer Tool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2024-12-20
+
+### Fixed
+- **CRITICAL**: Fix template duplication failure causing empty events
+  - UI action `studio.window.triggerAction(Duplicate)` doesn't work in script/headless mode
+  - Replaced with manual template cloning that copies properties directly
+  - Now properly copies template properties: isOneshot, isStream, 3D settings, volume, pitch
+  - Ensures events are actually created with correct structure from templates
+
 ## [0.6.0] - 2024-12-20
 
 ### Added

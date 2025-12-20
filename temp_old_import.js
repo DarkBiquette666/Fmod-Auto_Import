@@ -245,52 +245,48 @@
                 var event;
 
                 if (eventData.templateEventPath) {
-                    // MODE A: Clone from template by copying its structure
+                    // MODE A: Clone from template using UI action
                     var template = findEventByPath(eventData.templateEventPath);
                     if (template && template.isOfType("Event")) {
-                        try {
-                            // Create new event
-                            event = studio.project.create("Event");
+                        // Get list of events BEFORE duplication to find the new one
+                        var eventsBefore = studio.project.model.Event.findInstances();
+                        var eventsBeforeIds = {};
+                        for (var eb = 0; eb < eventsBefore.length; eb++) {
+                            eventsBeforeIds[eventsBefore[eb].id] = true;
+                        }
 
-                            // Copy basic properties
-                            event.isOneshot = template.isOneshot;
-                            event.isStream = template.isStream;
-                            event.is3D = template.is3D;
-                            event.minDistance = template.minDistance;
-                            event.maxDistance = template.maxDistance;
+                        // Use FMOD's UI action to duplicate (correct method per FMOD docs)
+                        studio.window.navigateTo(template);
+                        studio.window.triggerAction(studio.window.actions.Duplicate);
 
-                            // Copy master track properties
-                            if (template.masterTrack && event.masterTrack) {
-                                event.masterTrack.volume = template.masterTrack.volume;
-                                event.masterTrack.pitch = template.masterTrack.pitch;
+                        // Find the newly created event (the one that wasn't in the list before)
+                        var eventsAfter = studio.project.model.Event.findInstances();
+                        var duplicatedEvent = null;
+
+                        for (var ea = 0; ea < eventsAfter.length; ea++) {
+                            // If this event ID wasn't in the before list, it's the new duplicate
+                            if (!eventsBeforeIds[eventsAfter[ea].id]) {
+                                duplicatedEvent = eventsAfter[ea];
+                                break;
                             }
+                        }
 
-                            // Copy existing group tracks from template (without audio)
-                            var templateTracks = template.groupTracks;
-                            for (var t = 0; t < templateTracks.length; t++) {
-                                var templateTrack = templateTracks[t];
-                                // Add track to new event
-                                var newTrack = event.addGroupTrack();
+                        if (duplicatedEvent) {
+                            event = duplicatedEvent;
+                            result.messages.push("INFO: Duplicated template '" + template.name + "' -> found duplicate ID: " + duplicatedEvent.id);
 
-                                // Copy track properties
-                                if (templateTrack.volume !== undefined) newTrack.volume = templateTrack.volume;
-                                if (templateTrack.pitch !== undefined) newTrack.pitch = templateTrack.pitch;
-
-                                // Copy effects chain (but not sound modules)
-                                var modules = templateTrack.modules;
-                                for (var m = 0; m < modules.length; m++) {
-                                    var module = modules[m];
-                                    // Skip audio modules (we'll add our own audio later)
-                                    if (module.isOfType("SingleSound") || module.isOfType("MultiSound")) {
-                                        continue;
+                            // Clear existing audio from cloned template
+                            var tracks = event.groupTracks;
+                            for (var t = 0; t < tracks.length; t++) {
+                                var modules = tracks[t].modules;
+                                for (var m = modules.length - 1; m >= 0; m--) {
+                                    if (modules[m].isOfType("SingleSound") || modules[m].isOfType("MultiSound")) {
+                                        modules[m].deleteObject();
                                     }
-                                    // TODO: Copy effect modules if needed (requires more complex cloning)
                                 }
                             }
-
-                            result.messages.push("INFO: Created event from template '" + template.name + "'");
-                        } catch (cloneErr) {
-                            result.messages.push("WARN: Failed to clone template '" + eventData.templateEventPath + "': " + cloneErr.message + ", creating from scratch");
+                        } else {
+                            result.messages.push("WARN: Duplicate action failed (no new event found), creating from scratch");
                             event = studio.project.create("Event");
                         }
                     } else {

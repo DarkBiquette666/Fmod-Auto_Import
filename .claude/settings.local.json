@@ -56,7 +56,10 @@
       "Bash(timeout /t 2)",
       "Bash(ping:*)",
       "Bash(powershell -Command:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(tasklist:*)",
+      "Bash(exit 0)",
+      "Bash(git ls-tree:*)"
     ],
     "deny": [],
     "ask": []
