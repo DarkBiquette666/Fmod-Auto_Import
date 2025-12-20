@@ -114,10 +114,6 @@
     - {count_fix} bug fixes
 
     See CHANGELOG.md for full details.
-
-    🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-    Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
     EOF
     )"
     ```

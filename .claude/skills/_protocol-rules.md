@@ -44,6 +44,64 @@ Ce fichier contient les règles globales partagées par tous les skills du proje
 - Les modules core importent-ils des modules GUI ? (NON!)
 - Les dépendances pointent-elles vers des abstractions ?
 
+### Code Language Standards
+
+**🇬🇧 MANDATORY: All code must be written in English**
+
+This applies to:
+- ✅ Variable names: `event_name` not `nom_event`
+- ✅ Function names: `create_event()` not `creer_evenement()`
+- ✅ Class names: `AudioMatcher` not `CorrespondanceAudio`
+- ✅ Comments: `# Parse the XML file` not `# Parser le fichier XML`
+- ✅ Docstrings: All documentation in English
+- ✅ Error messages shown to developers (technical errors)
+- ✅ Log messages
+
+**Exceptions** (French is allowed for):
+- ❌ User-facing GUI labels and messages (messagebox, tooltips)
+- ❌ User documentation in French (if applicable)
+
+**Rationale**:
+- International collaboration and maintenance
+- Consistency with Python/programming conventions
+- Easier code reviews and debugging
+- Better integration with English-based libraries and documentation
+
+**Example**:
+```python
+# ✅ GOOD - English code with French UI
+def create_event_from_selection(audio_files: list[str]) -> Event:
+    """
+    Create FMOD event from selected audio files.
+
+    Args:
+        audio_files: List of paths to audio files
+
+    Returns:
+        Created Event object
+    """
+    if not audio_files:
+        # Technical error - English
+        raise ValueError("Cannot create event from empty selection")
+
+    event = Event()
+    for file in audio_files:
+        event.add_audio(file)
+
+    # User message - French OK
+    messagebox.showinfo("Succès", "L'événement a été créé avec succès!")
+    return event
+
+# ❌ BAD - French in code
+def creer_evenement_depuis_selection(fichiers_audio: list[str]) -> Event:
+    """
+    Crée un événement FMOD depuis les fichiers sélectionnés.
+    """
+    if not fichiers_audio:
+        raise ValueError("Impossible de créer événement depuis sélection vide")
+    ...
+```
+
 ### DRY (Don't Repeat Yourself)
 - Extraire logique répétée dans fonctions utilitaires
 - Créer composants réutilisables à la 3ème occurrence de code similaire
@@ -398,16 +456,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Format (Conventional Commits)
 ```
-<type>(<scope>): <subject> (<version>)
+<type>(<scope>): <subject>
 
 <body>
 
 <footer>
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
+
+**Note**: Do NOT include Claude/Anthropic signatures in commits.
 
 ### Types de Commit
 
@@ -447,37 +503,28 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ### Footer (optionnel)
 - Breaking changes: `BREAKING CHANGE: description`
 - Issue references: `Fixes #123` ou `Closes #456`
-- Co-authors (toujours inclure Claude)
 
 ### Exemples
 
 #### Simple Feature
 ```
-feat(gui): Add event preview panel (v0.2.0)
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
+feat(gui): Add event preview panel
 ```
 
 #### Bug Fix avec Détails
 ```
-fix: Prevent crash when loading empty projects (v0.1.9)
+fix: Prevent crash when loading empty projects
 
 Previously, loading a project with no events would cause
 a NullPointerException in the analysis workflow. Added
 defensive checks and user-friendly error message.
 
 Fixes #42
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
 #### Refactoring Majeur
 ```
-refactor: Split project.py into focused modules (v0.2.0)
+refactor: Split project.py into focused modules
 
 Project module exceeded 1075 lines, violating 800-line threshold.
 Split into:
@@ -486,15 +533,11 @@ Split into:
 - cache.py: Caching logic (240 lines)
 
 Improves Single Responsibility Principle and maintainability.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
 #### Breaking Change
 ```
-feat!: Change naming pattern API to accept separator (v1.0.0)
+feat!: Change naming pattern API to accept separator
 
 BREAKING CHANGE: NamingPattern constructor now requires
 separator parameter. Update all instantiations:
@@ -503,10 +546,6 @@ Before: NamingPattern(pattern_str)
 After: NamingPattern(pattern_str, separator='_')
 
 Migration: Add separator='_' to all NamingPattern calls.
-
-🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 ```
 
 ---
@@ -608,10 +647,7 @@ User: "Add bank filter widget to GUI"
 [Tests & validation]
   ↓
 [Commit créé]:
-  "feat(gui): Add bank filter widget
-
-   🤖 Generated with [Claude Code](https://claude.com/claude-code)
-   Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+  "feat(gui): Add bank filter widget"
   ↓
 🤖 Claude détecte feat commit et propose:
 
@@ -665,6 +701,7 @@ Avant chaque commit, vérifier:
 - [ ] Mixin pattern maintenu pour GUI
 
 ### Code Quality
+- [ ] **English only** - All code, comments, docstrings, and variable names in English
 - [ ] Pas de duplication code (DRY)
 - [ ] Noms clairs et descriptifs (KISS)
 - [ ] Pas d'effets secondaires cachés (WYSIWYG)
