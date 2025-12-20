@@ -25,6 +25,9 @@ class ImportMixin:
 
     def import_assets(self):
         """Import assets using FMOD JavaScript API via auto-execute script"""
+        import threading
+        from .utils import ProgressDialog
+
         try:
             # 1. Validate inputs
             if not self.project:
@@ -316,12 +319,27 @@ class ImportMixin:
             # Execute the import script via FMOD Studio
             script_path = Path(__file__).resolve().parent.parent.parent / "Script" / "_Internal" / "FmodImportFromJson.js"
 
-            try:
-                # Create a temporary wrapper script that includes the JSON path
-                # This is needed because fmodstudiocl.exe doesn't pass arguments to scripts
-                wrapper_script_path = json_path.parent / "_temp_import_wrapper.js"
+            # Create progress dialog
+            progress = ProgressDialog(
+                self.root,
+                "Import in Progress",
+                f"Preparing to import {num_events} event(s)...\n\nPlease wait, this may take several minutes."
+            )
 
-                wrapper_script_content = f"""
+            # Define import function to run in background thread
+            def _do_import_in_thread():
+                """Execute import in background thread to prevent UI freeze"""
+                try:
+                    # Update progress message
+                    self.root.after(0, lambda: progress.update_message(
+                        f"Copying audio files to FMOD Assets folder...\n\nPlease wait, this may take several minutes."
+                    ))
+
+                    # Create a temporary wrapper script that includes the JSON path
+                    # This is needed because fmodstudiocl.exe doesn't pass arguments to scripts
+                    wrapper_script_path = json_path.parent / "_temp_import_wrapper.js"
+
+                    wrapper_script_content = f"""
 // Temporary wrapper script - auto-generated
 // Sets the JSON path as a global variable and runs the import script
 
@@ -346,103 +364,121 @@ var importScriptContent = readTextFile(importScriptPath);
 eval(importScriptContent);
 """
 
-                with open(wrapper_script_path, 'w', encoding='utf-8') as f:
-                    f.write(wrapper_script_content)
+                    with open(wrapper_script_path, 'w', encoding='utf-8') as f:
+                        f.write(wrapper_script_content)
 
-                # Build command: fmodstudiocl.exe -script wrapper.js project.fspro
-                cmd = [
-                    str(fmod_exe),
-                    "-script",
-                    str(wrapper_script_path),
-                    str(self.project.project_path)
-                ]
+                    # Build command: fmodstudiocl.exe -script wrapper.js project.fspro
+                    cmd = [
+                        str(fmod_exe),
+                        "-script",
+                        str(wrapper_script_path),
+                        str(self.project.project_path)
+                    ]
 
-                # Show progress message
-                progress_msg = f"Importing {num_events} event(s) to FMOD Studio...\n\nThis may take a moment."
-                print(f"Executing command: {' '.join(cmd)}")
-                messagebox.showinfo("Import Started", progress_msg)
+                    # Update progress message
+                    self.root.after(0, lambda: progress.update_message(
+                        f"Executing FMOD Studio import for {num_events} event(s)...\n\nPlease wait, this may take several minutes."
+                    ))
+                    print(f"Executing command: {' '.join(cmd)}")
 
-                # Execute the command
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=300  # 5 minute timeout
-                )
+                    # Execute the command
+                    result = subprocess.run(
+                        cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=300  # 5 minute timeout
+                    )
 
-                # Clean up wrapper script
-                try:
-                    if wrapper_script_path.exists():
-                        wrapper_script_path.unlink()
-                except:
-                    pass
+                    # Clean up wrapper script
+                    try:
+                        if wrapper_script_path.exists():
+                            wrapper_script_path.unlink()
+                    except:
+                        pass
 
-                # Print output for debugging
-                print("STDOUT:", result.stdout)
-                print("STDERR:", result.stderr)
-                print("Return code:", result.returncode)
+                    # Print output for debugging
+                    print("STDOUT:", result.stdout)
+                    print("STDERR:", result.stderr)
+                    print("Return code:", result.returncode)
 
-                # Check result file
-                if result_path.exists():
-                    with open(result_path, 'r', encoding='utf-8') as f:
-                        import_result = json.load(f)
+                    # Close progress dialog
+                    self.root.after(0, lambda: progress.close())
 
-                    success_msg = (f"Import Complete!\n\n"
-                                 f"Imported: {import_result.get('imported', 0)}\n"
-                                 f"Failed: {import_result.get('failed', 0)}")
-
-                    if import_result.get('messages'):
-                        success_msg += "\n\nMessages:\n" + "\n".join(import_result['messages'][:5])
-
-                    # Show success message and ask if user wants to open the project
-                    if messagebox.askyesno("Import Complete", success_msg + "\n\nDo you want to open the project in FMOD Studio?"):
-                        self._open_fmod_project()
-                else:
-                    # Result file not found - search for any recent result files
-                    import glob
-                    temp_dir = result_path.parent
-                    pattern = str(temp_dir / "fmod_import_result_*.json")
-                    recent_results = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
-
-                    if recent_results:
-                        # Found a result file - use the most recent one
-                        actual_result_path = Path(recent_results[0])
-                        with open(actual_result_path, 'r', encoding='utf-8') as f:
+                    # Check result file
+                    if result_path.exists():
+                        with open(result_path, 'r', encoding='utf-8') as f:
                             import_result = json.load(f)
 
                         success_msg = (f"Import Complete!\n\n"
                                      f"Imported: {import_result.get('imported', 0)}\n"
-                                     f"Failed: {import_result.get('failed', 0)}\n\n"
-                                     f"Note: Result file path mismatch detected.\n"
-                                     f"Expected: {result_path.name}\n"
-                                     f"Found: {actual_result_path.name}")
+                                     f"Failed: {import_result.get('failed', 0)}")
 
                         if import_result.get('messages'):
                             success_msg += "\n\nMessages:\n" + "\n".join(import_result['messages'][:5])
 
-                        if messagebox.askyesno("Import Complete", success_msg + "\n\nDo you want to open the project in FMOD Studio?"):
-                            self._open_fmod_project()
-                    else:
-                        messagebox.showwarning(
-                            "Import Status Unknown",
-                            "Import executed but result file not found.\n\n"
-                            "Possible causes:\n"
-                            "- Script execution failed silently\n"
-                            "- FMOD Studio crashed during import\n"
-                            "- Permissions issue writing result file\n\n"
-                            f"Result file expected at:\n{result_path}\n\n"
-                            "Check FMOD Studio console for error details."
-                        )
+                        # Show success message and ask if user wants to open the project
+                        def _show_success():
+                            if messagebox.askyesno("Import Complete", success_msg + "\n\nDo you want to open the project in FMOD Studio?"):
+                                self._open_fmod_project()
 
-            except subprocess.TimeoutExpired:
-                messagebox.showerror("Import Timeout",
-                                   "Import operation timed out after 5 minutes.\n"
-                                   "The project may be too large.")
-            except Exception as e:
-                messagebox.showerror("Import Failed",
-                                   f"Failed to execute import:\n{str(e)}\n\n"
-                                   "You can try manual import:\n"
-                                   "Scripts > FMOD Importer: Import JSON")
+                        self.root.after(0, _show_success)
+                    else:
+                        # Result file not found - search for any recent result files
+                        import glob
+                        temp_dir = result_path.parent
+                        pattern = str(temp_dir / "fmod_import_result_*.json")
+                        recent_results = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+
+                        if recent_results:
+                            # Found a result file - use the most recent one
+                            actual_result_path = Path(recent_results[0])
+                            with open(actual_result_path, 'r', encoding='utf-8') as f:
+                                import_result = json.load(f)
+
+                            success_msg = (f"Import Complete!\n\n"
+                                         f"Imported: {import_result.get('imported', 0)}\n"
+                                         f"Failed: {import_result.get('failed', 0)}\n\n"
+                                         f"Note: Result file path mismatch detected.\n"
+                                         f"Expected: {result_path.name}\n"
+                                         f"Found: {actual_result_path.name}")
+
+                            if import_result.get('messages'):
+                                success_msg += "\n\nMessages:\n" + "\n".join(import_result['messages'][:5])
+
+                            def _show_success():
+                                if messagebox.askyesno("Import Complete", success_msg + "\n\nDo you want to open the project in FMOD Studio?"):
+                                    self._open_fmod_project()
+
+                            self.root.after(0, _show_success)
+                        else:
+                            self.root.after(0, lambda: messagebox.showwarning(
+                                "Import Status Unknown",
+                                "Import executed but result file not found.\n\n"
+                                "Possible causes:\n"
+                                "- Script execution failed silently\n"
+                                "- FMOD Studio crashed during import\n"
+                                "- Permissions issue writing result file\n\n"
+                                f"Result file expected at:\n{result_path}\n\n"
+                                "Check FMOD Studio console for error details."
+                            ))
+
+                except subprocess.TimeoutExpired:
+                    self.root.after(0, lambda: progress.close())
+                    self.root.after(0, lambda: messagebox.showerror(
+                        "Import Timeout",
+                        "Import operation timed out after 5 minutes.\n"
+                        "The project may be too large."
+                    ))
+                except Exception as e:
+                    self.root.after(0, lambda: progress.close())
+                    error_msg = f"Failed to execute import:\n{str(e)}\n\n" \
+                                "You can try manual import:\n" \
+                                "Scripts > FMOD Importer: Import JSON"
+                    self.root.after(0, lambda: messagebox.showerror("Import Failed", error_msg))
+
+            # Start import in background thread (daemon=True ensures proper cleanup)
+            import_thread = threading.Thread(target=_do_import_in_thread, daemon=True)
+            import_thread.start()
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to prepare import: {str(e)}")

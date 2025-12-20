@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2024-12-20
+
+### Added
+- **Progress Dialog**: Import progress dialog with animated progress bar
+  - Prevents UI freeze during import by running FMOD Studio execution in background thread
+  - Shows modal dialog with indeterminate progress bar (pulse animation)
+  - Updates status messages at different import stages ("Preparing...", "Copying files...", "Executing FMOD...")
+  - Thread-safe UI updates using tkinter's after() method
+  - Graceful error handling with automatic dialog cleanup
+  - User can see that the import is actively running instead of frozen window
+  - Improves user experience during 1-5 minute import operations
+
+### Technical
+- New `ProgressDialog` class in [utils.py](FmodImporter-Dev/fmod_importer/gui/utils.py) (125 lines)
+- Modified `import_assets()` in [import_workflow.py](FmodImporter-Dev/fmod_importer/gui/import_workflow.py) to use threading
+- Uses Python stdlib threading module (no external dependencies)
+- Maintains SOLID principles and mixin architecture
+
 ## [0.5.0] - 2024-12-20
 
 ### Refactored

@@ -1,6 +1,6 @@
 # FMOD Importer Tool - Automatic Audio Asset Importer for FMOD Studio
 
-**Version:** 0.3.0
+**Version:** 0.8.0
 **Description:** Standalone Windows application for intelligently importing audio assets into FMOD Studio projects
 
 ---
@@ -127,13 +127,29 @@ In the import event list:
 **Orphan Events** (events without media):
 - Right-click to manually assign an audio file
 
-### 6. Finalization
+### 6. Import Progress
+
+When you click **"Import"**:
+- A progress dialog will appear showing the import status
+- The dialog displays an animated progress bar
+- Status messages update as the import progresses:
+  - "Preparing to import..." - Initial validation
+  - "Copying audio files..." - Files being copied to FMOD Assets folder
+  - "Executing FMOD Studio import..." - FMOD Studio processing events
+- The main window remains responsive during import (no freeze)
+- Import typically takes 1-5 minutes depending on project size
+- The progress dialog automatically closes when import completes
+
+**Note:** You can still interact with the main window during import, but avoid starting another import until the current one completes.
+
+### 7. Finalization
 
 1. Verify all matches
 2. Click **"Import"**
-3. Wait for import completion
-4. **Important:** Now you can open FMOD Studio and save the project (Ctrl+S)
-5. **Remember:** The tool directly modifies XML files, so never have FMOD Studio open while importing
+3. Monitor the progress dialog
+4. Wait for the "Import Complete" message
+5. **Important:** Now you can open FMOD Studio and save the project (Ctrl+S)
+6. **Remember:** The tool directly modifies XML files, so never have FMOD Studio open while importing
 
 ---
 
@@ -234,6 +250,21 @@ These values will be pre-filled on next launch.
 3. Open FMOD Studio
 4. **File > Save Project** (Ctrl+S)
 5. Changes will appear
+
+### Import progress dialog appears stuck
+
+**Cause:** Import is processing a large project or FMOD Studio is taking longer than expected
+**Solution:**
+1. **Wait patiently** - Imports can take 1-5 minutes depending on project size
+2. Check if FMOD Studio process is running in Task Manager (it should be)
+3. If stuck for more than 5 minutes, the import will timeout automatically
+4. If timeout occurs, check:
+   - FMOD Studio installation is working correctly
+   - Project files are not corrupted
+   - Sufficient disk space and permissions
+5. Try importing again with a smaller batch of events
+
+**Note:** The progress dialog cannot be closed manually - you must wait for the import to complete or timeout. This prevents interrupting the FMOD Studio process mid-import, which could corrupt the project.
 
 ### "Failed to load project"
 

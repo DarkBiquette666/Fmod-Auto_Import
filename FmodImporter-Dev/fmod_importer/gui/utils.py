@@ -489,3 +489,128 @@ class UtilsMixin:
                     self.orphan_events_list.delete(0, tk.END)
                     for event in orphan_events:
                         self.orphan_events_list.insert(tk.END, event)
+
+
+class ProgressDialog:
+    """
+    Modal progress dialog with indeterminate progress bar.
+
+    Displays an animated progress bar while a long-running operation
+    executes in a background thread. Prevents UI freeze by keeping
+    the dialog responsive.
+
+    Thread Safety:
+        - Call update_message() only from the main tkinter thread
+        - Use root.after(0, callback) when updating from background threads
+
+    Example:
+        >>> progress = ProgressDialog(root, "Processing", "Please wait...")
+        >>> # ... do work in background thread ...
+        >>> progress.update_message("Almost done...")
+        >>> progress.close()
+    """
+
+    def __init__(self, parent, title: str, message: str):
+        """
+        Create and display a modal progress dialog.
+
+        Args:
+            parent: Parent tkinter window
+            title: Dialog window title
+            message: Initial status message to display
+        """
+        from tkinter import ttk
+
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title(title)
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+
+        # Prevent window close button (user must wait for operation to complete)
+        self.dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+
+        # Configure dialog layout
+        self.dialog.resizable(False, False)
+
+        # Message label
+        self.message_label = tk.Label(
+            self.dialog,
+            text=message,
+            wraplength=350,
+            justify=tk.LEFT,
+            padx=20,
+            pady=20
+        )
+        self.message_label.pack()
+
+        # Indeterminate progress bar (animated pulse mode)
+        self.progress = ttk.Progressbar(
+            self.dialog,
+            mode='indeterminate',
+            length=350
+        )
+        self.progress.pack(padx=20, pady=(0, 20))
+        self.progress.start(10)  # Animation speed (ms)
+
+        # Center dialog relative to parent window
+        self._center_on_parent(parent)
+
+        # Force dialog to appear and update
+        self.dialog.update_idletasks()
+
+    def _center_on_parent(self, parent):
+        """
+        Center dialog relative to parent window.
+
+        Args:
+            parent: Parent tkinter window
+        """
+        self.dialog.update_idletasks()
+
+        # Get parent position and size
+        parent_x = parent.winfo_x()
+        parent_y = parent.winfo_y()
+        parent_width = parent.winfo_width()
+        parent_height = parent.winfo_height()
+
+        # Get dialog size
+        dialog_width = self.dialog.winfo_width()
+        dialog_height = self.dialog.winfo_height()
+
+        # Calculate center position
+        x = parent_x + (parent_width - dialog_width) // 2
+        y = parent_y + (parent_height - dialog_height) // 2
+
+        # Ensure dialog stays on screen (minimum 0)
+        x = max(0, x)
+        y = max(0, y)
+
+        self.dialog.geometry(f"+{x}+{y}")
+
+    def update_message(self, message: str):
+        """
+        Update the status message displayed in the dialog.
+
+        IMPORTANT: Must be called from the main tkinter thread only.
+        When calling from a background thread, use:
+            root.after(0, lambda: progress.update_message("New message"))
+
+        Args:
+            message: New status message to display
+        """
+        self.message_label.config(text=message)
+        self.dialog.update_idletasks()
+
+    def close(self):
+        """
+        Close and destroy the progress dialog.
+
+        Stops the progress bar animation and destroys the dialog window.
+        Safe to call multiple times.
+        """
+        try:
+            self.progress.stop()
+            self.dialog.destroy()
+        except:
+            # Dialog may already be destroyed
+            pass
