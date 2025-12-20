@@ -1,0 +1,13 @@
+{
+  "notifications.enabled": true,
+  "notifications.showInStatusBar": true,
+  "notifications.showErrors": true,
+  "notifications.showWarnings": true,
+  "notifications.showInfo": true,
+  "notifications.showDebug": false,
+  "notifications.sound.enabled": true,
+  "notifications.toast.enabled": true,
+  "window.enableWindowsNotifications": true,
+  "window.titleBarStyle": "custom"
+}
+

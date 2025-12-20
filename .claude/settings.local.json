@@ -48,7 +48,15 @@
       "Bash(FmodImporterTool-Package/docs/QUICKSTART.md)",
       "Bash(FmodImporterTool-Package/docs/VERSION.txt)",
       "Bash(FmodImporterTool-Package/docs/requirements.txt)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(del nul)",
+      "Bash(rm:*)",
+      "Bash(git tag:*)",
+      "Bash(git describe:*)",
+      "Bash(timeout /t 2)",
+      "Bash(ping:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

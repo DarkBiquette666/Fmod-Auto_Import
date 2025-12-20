@@ -130,10 +130,10 @@ class WidgetsMixin:
         # FeatureName
         ttk.Label(pattern_setup_frame, text="FeatureName:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.feature_entry = ttk.Entry(pattern_setup_frame, width=60)
-        self.feature_entry.insert(0, "e.g. BlueEyesDragon")
+        self.feature_entry.insert(0, "e.g. BlueEyesWhiteDragon")
         self.feature_entry.config(foreground='gray')
-        self.feature_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.feature_entry, 'e.g. BlueEyesDragon'))
-        self.feature_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.feature_entry, 'e.g. BlueEyesDragon'))
+        self.feature_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.feature_entry, 'e.g. BlueEyesWhiteDragon'))
+        self.feature_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.feature_entry, 'e.g. BlueEyesWhiteDragon'))
         self.feature_entry.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         # Event Pattern - ALL ON ONE LINE
@@ -654,7 +654,7 @@ class WidgetsMixin:
 
             # Get user values (excluding placeholders)
             prefix = self._get_entry_value(self.prefix_entry, 'e.g. Sfx')
-            feature = self._get_entry_value(self.feature_entry, 'e.g. BlueEyesDragon')
+            feature = self._get_entry_value(self.feature_entry, 'e.g. BlueEyesWhiteDragon')
 
             user_values = {}
             if prefix:
