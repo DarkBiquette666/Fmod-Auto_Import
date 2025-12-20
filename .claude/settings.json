@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "PROTOCOL REMINDER - FMOD Importer Project:\n\nUser request received. Before responding:\n\n1. IDENTIFY TASK TYPE:\n   - Bug/Error → Apply fmod-debug workflow\n   - New feature → Apply fmod-feature workflow\n   - Refactor/Quality → Apply fmod-refactor workflow\n   - Review request → Apply fmod-review workflow\n\n2. AFTER ANY CODE MODIFICATION, CHECK:\n   - Line counts: CRITICAL >1000, RECOMMEND >900, SUGGEST >800, INFO >750\n   - Code duplication: Flag if 3+ occurrences\n   - SOLID violations: Especially Single Responsibility\n   - Documentation: Update docstrings, README, CHANGELOG\n\n3. CRITICAL FILES (check if modified):\n   - project.py: 1075 lines (CRITICAL - cache disabled)\n   - widgets.py: 724 lines (90% threshold)\n   - naming.py: 710 lines (89% threshold)\n\n4. PRINCIPLES:\n   - SOLID, DRY (extract at 3rd occurrence), KISS, SSOT\n   - 800-line modularity threshold\n   - English-only code/comments\n   - Conventional commits (type(scope): subject)\n\nReturn 'PROTOCOL_ACKNOWLEDGED' to proceed.",
+            "model": "haiku",
+            "statusMessage": "Checking protocol..."
+          }
+        ]
+      }
+    ]
+  }
+}
