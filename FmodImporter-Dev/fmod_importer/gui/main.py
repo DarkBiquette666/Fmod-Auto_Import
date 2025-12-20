@@ -264,9 +264,9 @@ class FmodImporterGUI(
         filename = filedialog.askopenfilename(
             title="Select FMOD Studio Executable",
             filetypes=[
-                ("FMOD Studio", "fmodstudiocl.exe"),
-                ("FMOD Studio GUI", "FMOD Studio.exe"),
                 ("Executables", "*.exe"),
+                ("FMOD Studio CLI", "fmodstudiocl.exe"),
+                ("FMOD Studio GUI", "FMOD Studio.exe"),
                 ("All Files", "*.*")
             ]
         )

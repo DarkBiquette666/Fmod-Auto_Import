@@ -166,7 +166,7 @@ class SettingsMixin:
         def browse_fmod_exe():
             filename = filedialog.askopenfilename(
                 title="Select FMOD Studio Executable",
-                filetypes=[("FMOD Studio", "FMOD Studio*.exe"), ("All Files", "*.*")]
+                filetypes=[("Executables", "*.exe"), ("All Files", "*.*")]
             )
             if filename:
                 fmod_entry.delete(0, tk.END)
