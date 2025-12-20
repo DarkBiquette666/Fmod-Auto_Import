@@ -201,6 +201,45 @@
         }
     }
 
+    // Find or import audio file (handles both existing and new files)
+    function findOrImportAudioFile(audioPath) {
+        if (!audioPath) return null;
+
+        // STEP 1: Try to find existing audio file in project
+        // This handles files that were already copied to Assets/ by Python
+        try {
+            var allAudioFiles = studio.project.model.AudioFile.findInstances();
+            for (var i = 0; i < allAudioFiles.length; i++) {
+                var audioFile = allAudioFiles[i];
+
+                // Normalize paths for comparison (handle Windows backslash vs forward slash)
+                var normalizedAssetPath = audioFile.assetPath.replace(/\\/g, '/').toLowerCase();
+                var normalizedAudioPath = audioPath.replace(/\\/g, '/').toLowerCase();
+
+                // Extract filenames for comparison
+                var assetFilename = normalizedAssetPath.split('/').pop();
+                var searchFilename = normalizedAudioPath.split('/').pop();
+
+                // Match by full path, suffix, or filename
+                if (normalizedAssetPath === normalizedAudioPath ||
+                    normalizedAssetPath.endsWith(normalizedAudioPath) ||
+                    normalizedAudioPath.endsWith(normalizedAssetPath) ||
+                    assetFilename === searchFilename) {
+                    return audioFile;  // FOUND - return existing file
+                }
+            }
+        } catch (e) {
+            // Lookup failed, fall through to import
+        }
+
+        // STEP 2: Not found in project - import as external file
+        try {
+            return studio.project.importAudioFile(audioPath);
+        } catch (importErr) {
+            return null;
+        }
+    }
+
     // ========== MAIN IMPORT LOGIC ==========
 
     try {
@@ -224,13 +263,18 @@
                 if (eventData.audioFilePaths && eventData.audioFilePaths.length > 0) {
                     for (var a = 0; a < eventData.audioFilePaths.length; a++) {
                         var audioPath = eventData.audioFilePaths[a];
+                        result.messages.push("DEBUG: Processing audio file: " + audioPath);
+
                         try {
-                            var asset = studio.project.importAudioFile(audioPath);
+                            var asset = findOrImportAudioFile(audioPath);
                             if (asset) {
                                 audioAssets.push(asset);
+                                result.messages.push("DEBUG: Audio obtained successfully: " + asset.assetPath);
+                            } else {
+                                result.messages.push("ERROR: Failed to obtain audio (null returned): " + audioPath);
                             }
                         } catch (audioErr) {
-                            result.messages.push("WARN: Failed to import audio '" + audioPath + "': " + audioErr.message);
+                            result.messages.push("ERROR: Exception while processing audio '" + audioPath + "': " + audioErr.message);
                         }
                     }
                 }
@@ -252,39 +296,49 @@
                             // Create new event
                             event = studio.project.create("Event");
 
-                            // Copy basic properties
-                            event.isOneshot = template.isOneshot;
-                            event.isStream = template.isStream;
-                            event.is3D = template.is3D;
-                            event.minDistance = template.minDistance;
-                            event.maxDistance = template.maxDistance;
+                            // Copy basic properties with defensive checks
+                            if (template.isOneshot !== undefined) event.isOneshot = template.isOneshot;
+                            if (template.isStream !== undefined) event.isStream = template.isStream;
+                            if (template.is3D !== undefined) event.is3D = template.is3D;
+                            if (template.minDistance !== undefined) event.minDistance = template.minDistance;
+                            if (template.maxDistance !== undefined) event.maxDistance = template.maxDistance;
 
-                            // Copy master track properties
+                            // Copy master track properties with error handling
                             if (template.masterTrack && event.masterTrack) {
-                                event.masterTrack.volume = template.masterTrack.volume;
-                                event.masterTrack.pitch = template.masterTrack.pitch;
+                                try {
+                                    if (template.masterTrack.volume !== undefined)
+                                        event.masterTrack.volume = template.masterTrack.volume;
+                                    if (template.masterTrack.pitch !== undefined)
+                                        event.masterTrack.pitch = template.masterTrack.pitch;
+                                } catch (masterErr) {
+                                    result.messages.push("WARN: Could not copy master track properties: " + masterErr.message);
+                                }
                             }
 
                             // Copy existing group tracks from template (without audio)
                             var templateTracks = template.groupTracks;
                             for (var t = 0; t < templateTracks.length; t++) {
-                                var templateTrack = templateTracks[t];
-                                // Add track to new event
-                                var newTrack = event.addGroupTrack();
+                                try {
+                                    var templateTrack = templateTracks[t];
+                                    // Add track to new event
+                                    var newTrack = event.addGroupTrack();
 
-                                // Copy track properties
-                                if (templateTrack.volume !== undefined) newTrack.volume = templateTrack.volume;
-                                if (templateTrack.pitch !== undefined) newTrack.pitch = templateTrack.pitch;
+                                    // Copy track properties with defensive checks
+                                    if (templateTrack.volume !== undefined) newTrack.volume = templateTrack.volume;
+                                    if (templateTrack.pitch !== undefined) newTrack.pitch = templateTrack.pitch;
 
-                                // Copy effects chain (but not sound modules)
-                                var modules = templateTrack.modules;
-                                for (var m = 0; m < modules.length; m++) {
-                                    var module = modules[m];
-                                    // Skip audio modules (we'll add our own audio later)
-                                    if (module.isOfType("SingleSound") || module.isOfType("MultiSound")) {
-                                        continue;
+                                    // Copy effects chain (but not sound modules)
+                                    var modules = templateTrack.modules;
+                                    for (var m = 0; m < modules.length; m++) {
+                                        var module = modules[m];
+                                        // Skip audio modules (we'll add our own audio later)
+                                        if (module.isOfType("SingleSound") || module.isOfType("MultiSound")) {
+                                            continue;
+                                        }
+                                        // TODO: Copy effect modules if needed (requires more complex cloning)
                                     }
-                                    // TODO: Copy effect modules if needed (requires more complex cloning)
+                                } catch (trackErr) {
+                                    result.messages.push("WARN: Could not copy group track " + t + ": " + trackErr.message);
                                 }
                             }
 
@@ -304,6 +358,7 @@
 
                 // 3. Set event name
                 event.name = eventData.newEventName;
+                result.messages.push("DEBUG: Created event with ID: " + event.id + ", name: " + event.name);
 
                 // 4. Assign to folder (create if doesn't exist)
                 if (eventData.destFolderPath) {
@@ -357,6 +412,8 @@
                     var singleSound = track.addSound(timeline, "SingleSound", 0, audioLength);
                     singleSound.audioFile = audioAsset;
                 }
+
+                result.messages.push("DEBUG: Assigned " + audioAssets.length + " audio file(s) to track");
 
                 // 8. Bus routing - use mixerInput.output (correct FMOD API)
                 if (eventData.busName) {
@@ -423,6 +480,25 @@
             }
         } catch (writeError) {
             // Silent fail on error result write
+        }
+    } finally {
+        // CRITICAL: Always attempt to write result file, even if catch block failed
+        // This ensures Python can detect import status
+        try {
+            if (typeof result !== 'undefined' && result &&
+                typeof resultPath !== 'undefined' && resultPath) {
+                // Ensure result file exists (write again if needed)
+                writeJsonFile(resultPath, result);
+            }
+        } catch (finalErr) {
+            // Last resort: try to show error dialog
+            try {
+                studio.ui.showModalDialog("Critical Error",
+                    "Failed to write result file: " + finalErr.message +
+                    "\n\nResult path: " + (resultPath || "(undefined)"));
+            } catch (dialogErr) {
+                // Nothing more we can do - silent fail
+            }
         }
     }
 })();

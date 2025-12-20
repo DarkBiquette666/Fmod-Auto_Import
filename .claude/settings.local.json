@@ -59,7 +59,8 @@
       "Bash(powershell:*)",
       "Bash(tasklist:*)",
       "Bash(exit 0)",
-      "Bash(git ls-tree:*)"
+      "Bash(git ls-tree:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

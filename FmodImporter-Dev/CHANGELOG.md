@@ -5,6 +5,41 @@ All notable changes to the FMOD Importer Tool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2024-12-20
+
+### Fixed
+- **CRITICAL**: Fix audio import regression for files already in Assets/ folder
+  - Root cause: `importAudioFile()` API fails on files already in FMOD project
+  - Solution: Search for existing audio files first before attempting import
+  - Added `findOrImportAudioFile()` helper function for smart audio handling
+  - Result: Events now created successfully, audio marked as "used" in FMOD
+
+### Added
+- Always write result JSON file (even on JavaScript errors) for reliable Python feedback
+- Comprehensive DEBUG logging throughout import flow for easier diagnostics
+- Defensive template cloning with null checks and per-operation error handling
+- Detailed error messages in result file for all failure points
+
+### Technical Details
+**Before (broken):**
+```
+1. Python copies audio to Assets/
+2. JavaScript calls importAudioFile() on files in Assets/
+3. API returns null (files already in project)
+4. audioAssets.length === 0 → event skipped
+5. No result file → Python shows misleading "Configuration Error"
+```
+
+**After (fixed):**
+```
+1. Python copies audio to Assets/
+2. JavaScript searches for existing files first
+3. Files found → use existing AudioFile objects
+4. Files not found → import as external
+5. Events created with audio attached
+6. Result file always written with detailed status
+```
+
 ## [0.6.2] - 2024-12-20
 
 ### Fixed
