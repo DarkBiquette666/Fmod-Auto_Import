@@ -17,6 +17,8 @@ from .core.xml_writer import write_pretty_xml
 from .core.pending_folder_manager import PendingFolderManager
 from .core.bus_manager import BusManager
 from .core.bank_manager import BankManager
+from .core.event_folder_manager import EventFolderManager
+from .core.asset_folder_manager import AssetFolderManager
 
 
 class FMODProject:
@@ -159,120 +161,16 @@ class FMODProject:
         return folders
 
     def get_events_in_folder(self, folder_id: str) -> List[Dict]:
-        """Get all events in a specific folder (recursively) - uses cache if available"""
-
-        # Get all folder IDs in the hierarchy (this folder + all subfolders)
-        target_folder_ids = {folder_id}
-
-        def collect_subfolder_ids(current_folder_id: str):
-            for fid, fdata in self.event_folders.items():
-                if fdata.get('parent') == current_folder_id:
-                    target_folder_ids.add(fid)
-                    collect_subfolder_ids(fid)
-
-        collect_subfolder_ids(folder_id)
-
-        # CACHE LIKELY OBSOLETE - Remove if no performance issues
-        # Code kept temporarily in case we notice slowdowns
-        # # FAST PATH: Use cache if available
-        # if self._cache_loaded and self._cache_data:
-        #     events = []
-        #     for event in self._cache_data.get('events', []):
-        #         if event.get('folder_id') in target_folder_ids:
-        #             events.append({
-        #                 'id': event['id'],
-        #                 'name': event['name'],
-        #                 'path': event.get('path', ''),
-        #                 'folder_id': event['folder_id']
-        #             })
-        #     return events
-
-        # Parse XML files directly (no performance difference with cache)
-        event_dir = self.metadata_path / "Event"
-        if not event_dir.exists():
-            return []
-
-        events = []
-
-        for xml_file in event_dir.glob("*.xml"):
-            try:
-                tree = ET.parse(xml_file)
-                root = tree.getroot()
-
-                for obj in root.findall(".//object[@class='Event']"):
-                    folder_rel = obj.find(".//relationship[@name='folder']/destination")
-                    event_folder_id = folder_rel.text if folder_rel is not None else None
-
-                    if event_folder_id in target_folder_ids:
-                        event_id = obj.get('id')
-                        name_elem = obj.find(".//property[@name='name']/value")
-                        event_name = name_elem.text if name_elem is not None else "Unnamed"
-
-                        events.append({
-                            'id': event_id,
-                            'name': event_name,
-                            'path': xml_file,
-                            'folder_id': event_folder_id
-                        })
-            except Exception as e:
-                continue
-
-        return events
+        """Get all events in a specific folder (delegates to EventFolderManager)"""
+        return EventFolderManager.get_events_in_folder(
+            folder_id, self.event_folders, self.metadata_path
+        )
 
     def get_bus_from_template_events(self, folder_id: str) -> Tuple[Optional[str], bool, set]:
-        """
-        Analyze bus routing in template folder events.
-
-        Parses all event XML files in the template folder to extract their
-        bus routing (MixerInput.output relationship).
-
-        Args:
-            folder_id: Template folder UUID
-
-        Returns:
-            Tuple of (common_bus_id, all_same, all_bus_ids):
-            - common_bus_id: The bus ID if all events share same bus, else None
-            - all_same: True if all events route to same bus
-            - all_bus_ids: Set of all unique bus IDs found
-        """
-        # Get all events in folder
-        events = self.get_events_in_folder(folder_id)
-
-        if not events:
-            return (None, True, set())
-
-        bus_ids = set()
-        event_dir = self.metadata_path / "Event"
-
-        # Parse each event's XML to find bus routing
-        for event in events:
-            event_id = event['id']
-            event_file = event_dir / f"{event_id}.xml"
-
-            if not event_file.exists():
-                continue
-
-            try:
-                tree = ET.parse(event_file)
-                root = tree.getroot()
-
-                # Find MixerInput object's output relationship
-                mixer_input = root.find(".//object[@class='MixerInput']")
-                if mixer_input is not None:
-                    output_rel = mixer_input.find(".//relationship[@name='output']/destination")
-                    if output_rel is not None and output_rel.text:
-                        bus_ids.add(output_rel.text)
-            except Exception:
-                # Skip problematic XML files
-                continue
-
-        # Determine if all events use same bus
-        all_same = len(bus_ids) == 1
-        common_bus_id = bus_ids.pop() if all_same else None
-        if all_same and common_bus_id:
-            bus_ids.add(common_bus_id)  # Re-add for return value
-
-        return (common_bus_id, all_same, bus_ids)
+        """Analyze bus routing in template folder events (delegates to EventFolderManager)"""
+        return EventFolderManager.get_bus_from_template_events(
+            folder_id, self.event_folders, self.metadata_path
+        )
 
     def _load_banks(self) -> Dict[str, Dict]:
         """Load all banks from the Bank directory"""
@@ -388,74 +286,16 @@ class FMODProject:
         return asset_folders
 
     def get_folder_hierarchy(self) -> List[Tuple[str, str, int]]:
-        """Get event folders as a hierarchical list (name, id, depth)"""
-        def build_hierarchy(folder_id: str, depth: int = 0) -> List[Tuple[str, str, int]]:
-            result = []
-            if folder_id in self.event_folders:
-                folder = self.event_folders[folder_id]
-                result.append((folder['name'], folder_id, depth))
-
-                # Find children
-                for fid, fdata in self.event_folders.items():
-                    if fdata['parent'] == folder_id:
-                        result.extend(build_hierarchy(fid, depth + 1))
-
-            return result
-
+        """Get event folders as a hierarchical list (delegates to EventFolderManager)"""
         master_id = self.workspace['masterEventFolder']
-        return build_hierarchy(master_id)
+        return EventFolderManager.get_hierarchy(master_id, self.event_folders)
 
     def create_event_folder(self, name: str, parent_id: str, commit: bool = True) -> str:
-        """
-        Create a new event folder
-
-        Args:
-            name: Folder name
-            parent_id: Parent folder ID
-            commit: If True, write to XML immediately. If False, stage in memory only.
-
-        Returns:
-            New folder ID
-        """
-        folder_id = "{" + str(uuid.uuid4()) + "}"
-
-        # Build folder data
-        folder_data = {
-            'name': name,
-            'parent': parent_id,
-            'path': None,  # Will be set when committed
-            'items': []
-        }
-
-        if commit:
-            # Create XML
-            root = ET.Element('objects', serializationModel="Studio.02.02.00")
-            obj = ET.SubElement(root, 'object', {'class': 'EventFolder', 'id': folder_id})
-
-            # Add name property
-            prop = ET.SubElement(obj, 'property', name='name')
-            value = ET.SubElement(prop, 'value')
-            value.text = name
-
-            # Add parent relationship
-            rel = ET.SubElement(obj, 'relationship', name='folder')
-            dest = ET.SubElement(rel, 'destination')
-            dest.text = parent_id
-
-            # Write to file
-            folder_file = self.metadata_path / "EventFolder" / f"{folder_id}.xml"
-            write_pretty_xml(root, folder_file)
-
-            # Update path
-            folder_data['path'] = folder_file
-
-            # Add to committed folders
-            self.event_folders[folder_id] = folder_data
-        else:
-            # Stage in memory only
-            self._pending_manager.add_event_folder(folder_id, folder_data)
-
-        return folder_id
+        """Create a new event folder (delegates to EventFolderManager)"""
+        return EventFolderManager.create(
+            name, parent_id, commit, self.metadata_path,
+            self.event_folders, self._pending_manager
+        )
 
     def create_bank(self, name: str, parent_id: str = None) -> str:
         """Create a new bank folder (delegates to BankManager)"""
@@ -466,70 +306,11 @@ class FMODProject:
         BankManager.delete(bank_id, self.banks, self.metadata_path)
 
     def create_asset_folder(self, name: str, parent_path: str, commit: bool = True) -> str:
-        """
-        Create a new asset folder
-
-        Args:
-            name: Folder name (no slashes)
-            parent_path: Parent folder path (e.g., "Characters/")
-            commit: If True, write to XML immediately. If False, stage in memory only.
-
-        Returns:
-            New asset folder ID
-        """
-        # Remove any slashes from the name
-        name = name.replace('/', '').replace('\\', '')
-        if not name:
-            raise ValueError("Invalid folder name: cannot be empty after removing slashes")
-
-        # Build new path
-        new_path = parent_path + name + '/'
-
-        # Check for conflicts in both committed and pending folders
-        all_asset_folders = self.get_all_asset_folders()
-        for asset_id, asset_data in all_asset_folders.items():
-            if asset_data.get('path') == new_path:
-                raise ValueError(f"Asset folder with path '{new_path}' already exists")
-
-        asset_id = "{" + str(uuid.uuid4()) + "}"
-        master_id = self.workspace['masterAssetFolder']
-
-        # Build folder data
-        folder_data = {
-            'path': new_path,
-            'xml_path': None,  # Will be set when committed
-            'master_folder': master_id
-        }
-
-        if commit:
-            # Create XML structure
-            root_elem = ET.Element('objects', serializationModel="Studio.02.02.00")
-            obj = ET.SubElement(root_elem, 'object', {'class': 'EncodableAsset', 'id': asset_id})
-
-            # Add assetPath property
-            prop = ET.SubElement(obj, 'property', name='assetPath')
-            value = ET.SubElement(prop, 'value')
-            value.text = new_path
-
-            # Add masterAssetFolder relationship
-            rel = ET.SubElement(obj, 'relationship', name='masterAssetFolder')
-            dest = ET.SubElement(rel, 'destination')
-            dest.text = master_id
-
-            # Write to file
-            asset_file = self.metadata_path / "Asset" / f"{asset_id}.xml"
-            write_pretty_xml(root_elem, asset_file)
-
-            # Update path
-            folder_data['xml_path'] = asset_file
-
-            # Add to committed folders
-            self.asset_folders[asset_id] = folder_data
-        else:
-            # Stage in memory only
-            self._pending_manager.add_asset_folder(asset_id, folder_data)
-
-        return asset_id
+        """Create a new asset folder (delegates to AssetFolderManager)"""
+        return AssetFolderManager.create(
+            name, parent_path, commit, self.metadata_path,
+            self.asset_folders, self._pending_manager, self.workspace
+        )
 
     def create_bus(self, name: str, parent_id: str = None) -> str:
         """Create a new bus (delegates to BusManager)"""
@@ -543,12 +324,8 @@ class FMODProject:
         BusManager.delete(bus_id, self.buses, self.metadata_path)
 
     def delete_folder(self, folder_id: str):
-        """Delete an event folder"""
-        if folder_id in self.event_folders:
-            folder_path = self.event_folders[folder_id]['path']
-            if folder_path.exists():
-                folder_path.unlink()
-            del self.event_folders[folder_id]
+        """Delete an event folder (delegates to EventFolderManager)"""
+        EventFolderManager.delete(folder_id, self.event_folders, self.metadata_path)
 
     def commit_pending_folders(self) -> Tuple[int, int]:
         """
