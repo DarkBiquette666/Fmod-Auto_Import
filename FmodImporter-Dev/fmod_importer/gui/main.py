@@ -285,6 +285,14 @@ class FmodImporterGUI(
             settings['fmod_exe_path'] = fmod_exe_path
             self.save_settings(settings)
 
+            # Update version display if project is loaded
+            if hasattr(self, 'project') and self.project:
+                settings = self.load_settings()
+                exe_path = settings.get('fmod_exe_path', '')
+                self._exe_version = self.project.get_executable_version(exe_path)
+                if hasattr(self, 'update_version_display'):
+                    self.update_version_display()
+
     def select_template_folder(self):
         """Open tree dialog to select template folder"""
         if not self.project:
@@ -437,6 +445,14 @@ class FmodImporterGUI(
             self._set_master_bus_as_default()
 
             # Project loaded successfully - no popup needed
+
+            # Update version display with project version
+            settings = self.load_settings()
+            exe_path = settings.get('fmod_exe_path', '')
+            self._project_version = self.project.get_project_version()
+            self._exe_version = self.project.get_executable_version(exe_path)
+            if hasattr(self, 'update_version_display'):
+                self.update_version_display()
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load project:\n{str(e)}")

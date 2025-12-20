@@ -240,7 +240,7 @@ class FMODProject:
         Compare two FMOD Studio versions (major.minor only).
 
         Args:
-            version1: First version string (e.g., "2.03.00")
+            version1: First version string (e.g., "2.03.00" or "02.03.00")
             version2: Second version string (e.g., "2.02.30")
 
         Returns:
@@ -250,9 +250,10 @@ class FMODProject:
             return False
 
         try:
-            # Extract major.minor from "2.03.00" -> ["2", "03"]
-            v1_parts = version1.split('.')[:2]
-            v2_parts = version2.split('.')[:2]
+            # Extract major.minor and convert to int to handle leading zeros
+            # "02.03" -> [2, 3], "2.03" -> [2, 3] (both match)
+            v1_parts = [int(x) for x in version1.split('.')[:2]]
+            v2_parts = [int(x) for x in version2.split('.')[:2]]
 
             return v1_parts == v2_parts
         except Exception:
