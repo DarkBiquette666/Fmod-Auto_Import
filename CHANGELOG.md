@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-12-20
+
 ### Added
 - Development protocol with skills (/new-feature, /debug, /refactor, /review)
+- Automated version bump system with /version-bump skill
+- Automatic post-commit version bump proposals for feat/fix commits
+- English-only coding standard for all code (variables, functions, comments)
 - Automated code quality checks and SOLID principles enforcement
 - Comprehensive documentation standards
-- Conventional commit format
+- Conventional commit format (without signatures)
 
 ## [0.1.9] - 2024-12-19
 
