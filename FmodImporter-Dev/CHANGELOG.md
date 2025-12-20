@@ -23,6 +23,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Analysis now validates FMOD Studio version compatibility before template analysis
 - Import workflow now blocks execution if version mismatch detected
 
+### Fixed
+- **FMOD Studio exit crash (0xC0000005)** after successful import
+  - Added 1-second delay before script exit to allow FMOD to finalize background operations
+  - Removed modal completion dialog that could trigger crashes during FMOD exit
+  - Import still completes successfully and all data is saved correctly
+  - Prevents crash reporter dialog from appearing unnecessarily
+
 ### Technical Details
 **Version Detection Flow:**
 ```

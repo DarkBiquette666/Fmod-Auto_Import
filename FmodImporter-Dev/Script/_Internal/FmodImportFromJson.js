@@ -448,21 +448,21 @@
         // Write result file
         writeJsonFile(resultPath, result);
 
-        // Show completion summary
-        var summary = "Import Complete!\n\n";
-        summary += "Imported: " + result.imported + "\n";
-        summary += "Failed: " + result.failed + "\n";
-        summary += "Skipped: " + result.skipped;
+        // IMPORTANT: Give FMOD time to finalize save operations
+        // Without this delay, FMOD Studio may crash on exit (0xC0000005)
+        // This doesn't affect data - everything is saved correctly
+        // But prevents the crash reporter dialog from appearing
+        result.messages.push("INFO: Waiting for FMOD to finalize operations...");
 
-        if (result.messages.length > 0) {
-            var messagesToShow = result.messages.length <= 10 ? result.messages : result.messages.slice(0, 10);
-            summary += "\n\nDetails:\n" + messagesToShow.join("\n");
-            if (result.messages.length > 10) {
-                summary += "\n... and " + (result.messages.length - 10) + " more (see result file)";
-            }
+        // Wait 1 second to let FMOD finish background operations
+        var startTime = Date.now();
+        while (Date.now() - startTime < 1000) {
+            // Busy wait
         }
 
-        studio.ui.showModalDialog("FMOD Importer", summary);
+        // Don't show modal dialog - Python displays the results
+        // Modal dialogs can sometimes trigger crashes when FMOD exits
+        result.messages.push("INFO: Import completed successfully. Check Python output for details.");
 
     } catch (e) {
         studio.ui.showModalDialog("Import Error", "Failed to execute import:\n\n" + e.message + "\n\nStack:\n" + e.stack);
