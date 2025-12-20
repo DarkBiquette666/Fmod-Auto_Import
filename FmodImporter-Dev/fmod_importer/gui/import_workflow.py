@@ -282,7 +282,7 @@ class ImportMixin:
                 fh.write(f"[EVENTS TO IMPORT] ({len(import_events)} total)\n")
                 for event in import_events:
                     fh.write(f"\n  Event: {event['newEventName']}\n")
-                    fh.write(f"    Template: {event['templateEventPath']}\n")
+                    fh.write(f"    Template: {event.get('templateEventPath', '(auto-created)')}\n")
                     fh.write(f"    Dest Folder: {event['destFolderPath']}\n")
                     fh.write(f"    Asset Folder: {event['assetFolderPath']}\n")
                     fh.write(f"    Bank: {event['bankName']}\n")
@@ -307,6 +307,42 @@ class ImportMixin:
                        "  Scripts > FMOD Importer: Import JSON")
                 messagebox.showwarning("Manual Import Required", msg)
                 return
+
+            # Check if using GUI version - warn and offer to fix
+            if fmod_exe.endswith("FMOD Studio.exe"):
+                cl_path = fmod_exe.replace("FMOD Studio.exe", "fmodstudiocl.exe")
+                if os.path.exists(cl_path):
+                    # fmodstudiocl.exe exists - offer to auto-fix
+                    fix_msg = (
+                        "Configuration Issue Detected\n\n"
+                        "You are using 'FMOD Studio.exe' (GUI version) which may not\n"
+                        "work correctly for automated imports.\n\n"
+                        f"Found console version at:\n{cl_path}\n\n"
+                        "Would you like to update your settings to use the console version?\n"
+                        "(Recommended for reliable imports)"
+                    )
+                    if messagebox.askyesno("Update FMOD Path?", fix_msg):
+                        # Update settings
+                        settings = self.load_settings()
+                        settings['fmod_exe_path'] = cl_path
+                        self.save_settings(settings)
+                        fmod_exe = cl_path
+                        messagebox.showinfo("Settings Updated",
+                                          "FMOD path updated to console version.\n"
+                                          "Import will now proceed.")
+                else:
+                    # fmodstudiocl.exe doesn't exist - warn user
+                    warn_msg = (
+                        "Warning: Using GUI version of FMOD Studio\n\n"
+                        "You are using 'FMOD Studio.exe' which may not support\n"
+                        "automated imports properly.\n\n"
+                        "Console version (fmodstudiocl.exe) not found in:\n"
+                        f"{os.path.dirname(fmod_exe)}\n\n"
+                        "Consider updating to FMOD Studio 2.03+ for better compatibility.\n\n"
+                        "Continue anyway?"
+                    )
+                    if not messagebox.askyesno("Continue Import?", warn_msg):
+                        return
 
             # Execute the import script via FMOD Studio console
             script_path = Path(__file__).resolve().parent.parent.parent / "Script" / "_Internal" / "FmodImportFromJson.js"
@@ -393,9 +429,37 @@ eval(importScriptContent);
                     if messagebox.askyesno("Import Complete", success_msg + "\n\nDo you want to open the project in FMOD Studio?"):
                         self._open_fmod_project()
                 else:
-                    messagebox.showwarning("Import Status Unknown",
-                                         "Import executed but result file not found.\n"
-                                         "Check FMOD Studio console for details.")
+                    # Result file not found - check if using GUI version instead of console
+                    is_gui_version = fmod_exe.endswith("FMOD Studio.exe")
+
+                    if is_gui_version:
+                        error_msg = (
+                            "Import failed: Using GUI version of FMOD Studio.\n\n"
+                            "PROBLEM:\n"
+                            "You are using 'FMOD Studio.exe' (GUI version) which doesn't\n"
+                            "support automated scripting properly.\n\n"
+                            "SOLUTION:\n"
+                            "1. Go to Settings in the FMOD Importer Tool\n"
+                            "2. Update FMOD Studio path to use 'fmodstudiocl.exe'\n"
+                            "   (console version)\n\n"
+                            f"Current path:\n{fmod_exe}\n\n"
+                            "Expected path:\n"
+                            f"{fmod_exe.replace('FMOD Studio.exe', 'fmodstudiocl.exe')}\n\n"
+                            "Note: If fmodstudiocl.exe doesn't exist, you may need to\n"
+                            "update to a newer version of FMOD Studio (2.03+)."
+                        )
+                        messagebox.showerror("Configuration Error", error_msg)
+                    else:
+                        messagebox.showwarning(
+                            "Import Status Unknown",
+                            "Import executed but result file not found.\n\n"
+                            "Possible causes:\n"
+                            "- Script execution failed silently\n"
+                            "- FMOD Studio crashed during import\n"
+                            "- Permissions issue writing result file\n\n"
+                            f"Result file expected at:\n{result_path}\n\n"
+                            "Check FMOD Studio console for error details."
+                        )
 
             except subprocess.TimeoutExpired:
                 messagebox.showerror("Import Timeout",
