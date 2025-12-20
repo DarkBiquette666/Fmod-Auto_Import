@@ -14,6 +14,7 @@ import wave
 
 from .core.xml_loader import XMLLoader
 from .core.xml_writer import write_pretty_xml
+from .core.pending_folder_manager import PendingFolderManager
 
 
 class FMODProject:
@@ -26,8 +27,9 @@ class FMODProject:
         if not self.metadata_path.exists():
             raise ValueError(f"Metadata folder not found: {self.metadata_path}")
 
-        # Initialize XML loader
+        # Initialize managers
         self._xml_loader = XMLLoader(self.metadata_path)
+        self._pending_manager = PendingFolderManager()
 
         # Load only minimal data needed for UI at startup
         self.workspace = self._xml_loader.load_workspace()
@@ -38,10 +40,6 @@ class FMODProject:
         self._buses = None
         self._asset_folders = None
         self._events_by_folder = None
-
-        # Pending folders (not yet written to XML)
-        self._pending_event_folders = {}
-        self._pending_asset_folders = {}
 
     # CACHE LIKELY OBSOLETE - Remove if no performance issues
     # Code kept temporarily in case we notice slowdowns
@@ -456,7 +454,7 @@ class FMODProject:
             self.event_folders[folder_id] = folder_data
         else:
             # Stage in memory only
-            self._pending_event_folders[folder_id] = folder_data
+            self._pending_manager.add_event_folder(folder_id, folder_data)
 
         return folder_id
 
@@ -525,7 +523,7 @@ class FMODProject:
         new_path = parent_path + name + '/'
 
         # Check for conflicts in both committed and pending folders
-        all_asset_folders = {**self.asset_folders, **self._pending_asset_folders}
+        all_asset_folders = self.get_all_asset_folders()
         for asset_id, asset_data in all_asset_folders.items():
             if asset_data.get('path') == new_path:
                 raise ValueError(f"Asset folder with path '{new_path}' already exists")
@@ -566,7 +564,7 @@ class FMODProject:
             self.asset_folders[asset_id] = folder_data
         else:
             # Stage in memory only
-            self._pending_asset_folders[asset_id] = folder_data
+            self._pending_manager.add_asset_folder(asset_id, folder_data)
 
         return asset_id
 
@@ -654,150 +652,44 @@ class FMODProject:
 
     def commit_pending_folders(self) -> Tuple[int, int]:
         """
-        Commit all pending folders to XML files.
-        This should be called before starting an import operation.
+        Commit all pending folders to XML files (delegates to PendingFolderManager).
 
         Returns:
             Tuple of (num_event_folders_committed, num_asset_folders_committed)
         """
-        event_count = 0
-        asset_count = 0
-        committed_event_ids = []
-        committed_asset_ids = []
-
-        try:
-            # Phase 1: Commit event folders with topological sort
-            pending_event_items = list(self._pending_event_folders.items())
-
-            while pending_event_items:
-                made_progress = False
-                remaining = []
-
-                for folder_id, folder_data in pending_event_items:
-                    parent_id = folder_data['parent']
-
-                    # Check if parent is committed
-                    parent_committed = (parent_id in self.event_folders or
-                                       parent_id in committed_event_ids or
-                                       parent_id == self.workspace.get('masterEventFolder'))
-
-                    if parent_committed:
-                        # Create XML
-                        root = ET.Element('objects', serializationModel="Studio.02.02.00")
-                        obj = ET.SubElement(root, 'object', {'class': 'EventFolder', 'id': folder_id})
-
-                        # Add name property
-                        prop = ET.SubElement(obj, 'property', name='name')
-                        value = ET.SubElement(prop, 'value')
-                        value.text = folder_data['name']
-
-                        # Add parent relationship
-                        rel = ET.SubElement(obj, 'relationship', name='folder')
-                        dest = ET.SubElement(rel, 'destination')
-                        dest.text = parent_id
-
-                        # Write to file
-                        folder_file = self.metadata_path / "EventFolder" / f"{folder_id}.xml"
-                        write_pretty_xml(root, folder_file)
-
-                        # Update data and move to committed
-                        folder_data['path'] = folder_file
-                        self.event_folders[folder_id] = folder_data
-                        committed_event_ids.append(folder_id)
-                        event_count += 1
-                        made_progress = True
-                    else:
-                        remaining.append((folder_id, folder_data))
-
-                # Deadlock detection
-                if not made_progress and remaining:
-                    orphaned = [f"{fdata['name']} (parent: {fdata['parent']})"
-                               for fid, fdata in remaining]
-                    raise ValueError(f"Cannot commit folders with missing parents: {orphaned}")
-
-                pending_event_items = remaining
-
-            # Phase 2: Commit asset folders
-            for asset_id, folder_data in self._pending_asset_folders.items():
-                # Create XML structure
-                root_elem = ET.Element('objects', serializationModel="Studio.02.02.00")
-                obj = ET.SubElement(root_elem, 'object', {'class': 'EncodableAsset', 'id': asset_id})
-
-                # Add assetPath property
-                prop = ET.SubElement(obj, 'property', name='assetPath')
-                value = ET.SubElement(prop, 'value')
-                value.text = folder_data['path']
-
-                # Add masterAssetFolder relationship
-                rel = ET.SubElement(obj, 'relationship', name='masterAssetFolder')
-                dest = ET.SubElement(rel, 'destination')
-                dest.text = folder_data['master_folder']
-
-                # Write to file
-                asset_file = self.metadata_path / "Asset" / f"{asset_id}.xml"
-                write_pretty_xml(root_elem, asset_file)
-
-                # Update data and move to committed
-                folder_data['xml_path'] = asset_file
-                self.asset_folders[asset_id] = folder_data
-                committed_asset_ids.append(asset_id)
-                asset_count += 1
-
-            # Clear pending folders
-            self._pending_event_folders.clear()
-            self._pending_asset_folders.clear()
-
-            return (event_count, asset_count)
-
-        except Exception as e:
-            # Rollback: delete created files
-            for folder_id in committed_event_ids:
-                if folder_id in self.event_folders:
-                    folder_path = self.event_folders[folder_id].get('path')
-                    if folder_path and folder_path.exists():
-                        folder_path.unlink()
-                    del self.event_folders[folder_id]
-
-            for asset_id in committed_asset_ids:
-                if asset_id in self.asset_folders:
-                    asset_path = self.asset_folders[asset_id].get('xml_path')
-                    if asset_path and asset_path.exists():
-                        asset_path.unlink()
-                    del self.asset_folders[asset_id]
-
-            raise RuntimeError(f"Failed to commit pending folders: {e}")
+        return self._pending_manager.commit_all(
+            self.event_folders,
+            self.asset_folders,
+            self.workspace,
+            self.metadata_path
+        )
 
     def clear_pending_folders(self) -> int:
         """
-        Clear all pending folders without committing them.
-        This should be called when the user closes the application without importing.
+        Clear all pending folders without committing them (delegates to PendingFolderManager).
 
         Returns:
             Number of pending folders cleared
         """
-        count = len(self._pending_event_folders) + len(self._pending_asset_folders)
-        self._pending_event_folders.clear()
-        self._pending_asset_folders.clear()
-        return count
+        return self._pending_manager.clear_all()
 
     def get_all_event_folders(self) -> Dict[str, Dict]:
         """
         Get all event folders (both committed and pending).
         Useful for tree displays.
         """
-        return {**self.event_folders, **self._pending_event_folders}
+        return self._pending_manager.get_all_event_folders(self.event_folders)
 
     def get_all_asset_folders(self) -> Dict[str, Dict]:
         """
         Get all asset folders (both committed and pending).
         Useful for tree displays.
         """
-        return {**self.asset_folders, **self._pending_asset_folders}
+        return self._pending_manager.get_all_asset_folders(self.asset_folders)
 
     def is_folder_pending(self, folder_id: str) -> bool:
         """Check if a folder is pending (not yet committed to XML)"""
-        return (folder_id in self._pending_event_folders or
-                folder_id in self._pending_asset_folders)
+        return self._pending_manager.is_pending(folder_id)
 
     def _write_pretty_xml(self, element: ET.Element, filepath: Path):
         """Write XML with proper formatting"""
