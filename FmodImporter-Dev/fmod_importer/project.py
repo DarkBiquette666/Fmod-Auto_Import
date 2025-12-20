@@ -15,6 +15,8 @@ import wave
 from .core.xml_loader import XMLLoader
 from .core.xml_writer import write_pretty_xml
 from .core.pending_folder_manager import PendingFolderManager
+from .core.bus_manager import BusManager
+from .core.bank_manager import BankManager
 
 
 class FMODProject:
@@ -354,11 +356,8 @@ class FMODProject:
         return buses
 
     def _get_master_bus_id(self) -> Optional[str]:
-        """Get the master bus ID"""
-        for bus_id, bus_info in self.buses.items():
-            if bus_info['parent'] is None:  # Master bus has no parent
-                return bus_id
-        return None
+        """Get the master bus ID (delegates to BusManager)"""
+        return BusManager.get_master_bus_id(self.buses)
 
     def _load_asset_folders(self) -> Dict[str, Dict]:
         """Load all asset folders from the Asset directory"""
@@ -459,48 +458,12 @@ class FMODProject:
         return folder_id
 
     def create_bank(self, name: str, parent_id: str = None) -> str:
-        """Create a new bank folder (BankFolder object)"""
-        bank_id = "{" + str(uuid.uuid4()) + "}"
-
-        # Create XML
-        root = ET.Element('objects', serializationModel="Studio.02.02.00")
-        obj = ET.SubElement(root, 'object', {'class': 'BankFolder', 'id': bank_id})
-
-        # Add name property
-        prop = ET.SubElement(obj, 'property', name='name')
-        value = ET.SubElement(prop, 'value')
-        value.text = name
-
-        # Add parent relationship if exists
-        if parent_id:
-            rel = ET.SubElement(obj, 'relationship', name='folder')
-            dest = ET.SubElement(rel, 'destination')
-            dest.text = parent_id
-
-        # Ensure BankFolder directory exists
-        bank_folder_dir = self.metadata_path / "BankFolder"
-        bank_folder_dir.mkdir(exist_ok=True)
-
-        # Write to file in BankFolder directory
-        bank_file = bank_folder_dir / f"{bank_id}.xml"
-        write_pretty_xml(root, bank_file)
-
-        # Update internal structure
-        self.banks[bank_id] = {
-            'name': name,
-            'path': bank_file,
-            'parent': parent_id
-        }
-
-        return bank_id
+        """Create a new bank folder (delegates to BankManager)"""
+        return BankManager.create(name, parent_id, self.metadata_path, self.banks)
 
     def delete_bank(self, bank_id: str):
-        """Delete a bank"""
-        if bank_id in self.banks:
-            bank_path = self.banks[bank_id]['path']
-            if bank_path.exists():
-                bank_path.unlink()
-            del self.banks[bank_id]
+        """Delete a bank (delegates to BankManager)"""
+        BankManager.delete(bank_id, self.banks, self.metadata_path)
 
     def create_asset_folder(self, name: str, parent_path: str, commit: bool = True) -> str:
         """
@@ -569,78 +532,15 @@ class FMODProject:
         return asset_id
 
     def create_bus(self, name: str, parent_id: str = None) -> str:
-        """Create a new bus (MixerGroup)"""
-        bus_id = "{" + str(uuid.uuid4()) + "}"
-
-        # Create XML structure for MixerGroup
-        root = ET.Element('objects', serializationModel="Studio.02.02.00")
-        obj = ET.SubElement(root, 'object', {'class': 'MixerGroup', 'id': bus_id})
-
-        # Add name property
-        prop = ET.SubElement(obj, 'property', name='name')
-        value = ET.SubElement(prop, 'value')
-        value.text = name
-
-        # Add effectChain
-        effect_chain_id = "{" + str(uuid.uuid4()) + "}"
-        rel_effect = ET.SubElement(obj, 'relationship', name='effectChain')
-        dest_effect = ET.SubElement(rel_effect, 'destination')
-        dest_effect.text = effect_chain_id
-
-        # Add panner
-        panner_id = "{" + str(uuid.uuid4()) + "}"
-        rel_panner = ET.SubElement(obj, 'relationship', name='panner')
-        dest_panner = ET.SubElement(rel_panner, 'destination')
-        dest_panner.text = panner_id
-
-        # Add output (parent relationship)
+        """Create a new bus (delegates to BusManager)"""
         # If no parent specified, route to Master Bus
         if not parent_id:
-            # Get master bus from Mixer.xml
             parent_id = self._get_master_bus_id()
-
-        if parent_id:
-            rel_output = ET.SubElement(obj, 'relationship', name='output')
-            dest_output = ET.SubElement(rel_output, 'destination')
-            dest_output.text = parent_id
-
-        # Add effect chain object
-        effect_chain_obj = ET.SubElement(root, 'object', {'class': 'MixerBusEffectChain', 'id': effect_chain_id})
-        fader_id = "{" + str(uuid.uuid4()) + "}"
-        rel_effects = ET.SubElement(effect_chain_obj, 'relationship', name='effects')
-        dest_fader = ET.SubElement(rel_effects, 'destination')
-        dest_fader.text = fader_id
-
-        # Add panner object
-        ET.SubElement(root, 'object', {'class': 'MixerBusPanner', 'id': panner_id})
-
-        # Add fader object
-        ET.SubElement(root, 'object', {'class': 'MixerBusFader', 'id': fader_id})
-
-        # Ensure Group folder exists
-        group_folder = self.metadata_path / "Group"
-        group_folder.mkdir(exist_ok=True)
-
-        # Write to file
-        bus_file = group_folder / f"{bus_id}.xml"
-        write_pretty_xml(root, bus_file)
-
-        # Update internal structure
-        self.buses[bus_id] = {
-            'name': name,
-            'path': bus_file,
-            'parent': parent_id
-        }
-
-        return bus_id
+        return BusManager.create(name, parent_id, self.metadata_path, self.buses)
 
     def delete_bus(self, bus_id: str):
-        """Delete a bus"""
-        if bus_id in self.buses:
-            bus_path = self.buses[bus_id]['path']
-            if bus_path.exists():
-                bus_path.unlink()
-            del self.buses[bus_id]
+        """Delete a bus (delegates to BusManager)"""
+        BusManager.delete(bus_id, self.buses, self.metadata_path)
 
     def delete_folder(self, folder_id: str):
         """Delete an event folder"""
