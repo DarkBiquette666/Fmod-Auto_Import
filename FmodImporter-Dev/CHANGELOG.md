@@ -5,6 +5,19 @@ All notable changes to the FMOD Importer Tool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2024-12-20
+
+### Added
+- Add FMOD Studio Executable field to main UI in Paths section
+- FMOD executable path now visible and editable directly in main window
+- Browse button for selecting FMOD Studio executable (prioritizes fmodstudiocl.exe)
+- Auto-save FMOD executable path to settings on change
+- FMOD executable path already included in preset save/load system
+
+### Changed
+- FMOD executable path no longer hidden in settings dialog
+- Path is now part of the visible UI for better accessibility
+
 ## [0.5.1] - 2024-12-20
 
 ### Fixed

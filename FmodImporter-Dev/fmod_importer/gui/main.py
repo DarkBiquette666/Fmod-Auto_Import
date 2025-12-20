@@ -259,6 +259,32 @@ class FmodImporterGUI(
             self.media_entry.delete(0, tk.END)
             self.media_entry.insert(0, directory)
 
+    def browse_fmod_exe(self):
+        """Browse for FMOD Studio executable"""
+        filename = filedialog.askopenfilename(
+            title="Select FMOD Studio Executable",
+            filetypes=[
+                ("FMOD Studio", "fmodstudiocl.exe"),
+                ("FMOD Studio GUI", "FMOD Studio.exe"),
+                ("Executables", "*.exe"),
+                ("All Files", "*.*")
+            ]
+        )
+
+        if filename:
+            self.fmod_exe_entry.delete(0, tk.END)
+            self.fmod_exe_entry.insert(0, filename)
+            # Save to settings immediately
+            self._on_fmod_exe_changed(None)
+
+    def _on_fmod_exe_changed(self, event):
+        """Save FMOD exe path to settings when it changes"""
+        fmod_exe_path = self.fmod_exe_entry.get()
+        if fmod_exe_path:
+            settings = self.load_settings()
+            settings['fmod_exe_path'] = fmod_exe_path
+            self.save_settings(settings)
+
     def select_template_folder(self):
         """Open tree dialog to select template folder"""
         if not self.project:

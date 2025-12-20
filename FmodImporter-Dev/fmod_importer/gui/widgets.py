@@ -81,6 +81,19 @@ class WidgetsMixin:
         ttk.Button(media_frame, text="Browse...", command=self.browse_media).grid(row=0, column=1, padx=5)
         media_frame.columnconfigure(0, weight=1)
 
+        # FMOD Studio Executable
+        ttk.Label(paths_frame, text="FMOD Studio Executable:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        fmod_exe_frame = ttk.Frame(paths_frame)
+        fmod_exe_frame.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+
+        self.fmod_exe_entry = ttk.Entry(fmod_exe_frame, width=60)
+        self.fmod_exe_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        ttk.Button(fmod_exe_frame, text="Browse...", command=self.browse_fmod_exe).grid(row=0, column=1, padx=5)
+        fmod_exe_frame.columnconfigure(0, weight=1)
+
+        # Bind change event to save to settings
+        self.fmod_exe_entry.bind('<FocusOut>', self._on_fmod_exe_changed)
+
         paths_frame.columnconfigure(1, weight=1)
 
         # ==================== SECTION 3: PATTERN SETUP ====================

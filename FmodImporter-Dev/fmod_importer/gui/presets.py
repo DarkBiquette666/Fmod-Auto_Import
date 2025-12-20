@@ -21,6 +21,9 @@ class PresetsMixin:
     - Pattern configuration (prefix, feature, patterns, separators)
     - FMOD references (folders, banks, buses) with smart UUID resolution
 
+    The FMOD executable path is displayed in the main UI and saved in both
+    the preset files and the global settings file.
+
     These methods are mixed into FmodImporterGUI via multiple inheritance.
     All methods access shared state through 'self'.
     """
@@ -401,7 +404,12 @@ class PresetsMixin:
             self.media_entry.delete(0, tk.END)
             self.media_entry.insert(0, media_path)
 
-        # Save fmod_exe_path to settings (it's not in UI)
+        # Apply FMOD exe path to UI and settings
+        if hasattr(self, 'fmod_exe_entry'):
+            self.fmod_exe_entry.delete(0, tk.END)
+            self.fmod_exe_entry.insert(0, fmod_exe_path)
+
+        # Also save to settings
         if fmod_exe_path and hasattr(self, 'save_settings'):
             settings = self.load_settings() if hasattr(self, 'load_settings') else {}
             settings['fmod_exe_path'] = fmod_exe_path

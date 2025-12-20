@@ -33,6 +33,11 @@ class SettingsMixin:
             self.media_entry.delete(0, tk.END)
             self.media_entry.insert(0, settings['default_media_path'])
 
+        # Load FMOD Studio executable path
+        if settings.get('fmod_exe_path'):
+            self.fmod_exe_entry.delete(0, tk.END)
+            self.fmod_exe_entry.insert(0, settings['fmod_exe_path'])
+
         # Apply default template folder if project is loaded
         if settings.get('default_template_folder_id') and self.project:
             template_id = settings['default_template_folder_id']
