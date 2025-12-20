@@ -225,6 +225,61 @@ class FMODProject:
 
         return events
 
+    def get_bus_from_template_events(self, folder_id: str) -> Tuple[Optional[str], bool, set]:
+        """
+        Analyze bus routing in template folder events.
+
+        Parses all event XML files in the template folder to extract their
+        bus routing (MixerInput.output relationship).
+
+        Args:
+            folder_id: Template folder UUID
+
+        Returns:
+            Tuple of (common_bus_id, all_same, all_bus_ids):
+            - common_bus_id: The bus ID if all events share same bus, else None
+            - all_same: True if all events route to same bus
+            - all_bus_ids: Set of all unique bus IDs found
+        """
+        # Get all events in folder
+        events = self.get_events_in_folder(folder_id)
+
+        if not events:
+            return (None, True, set())
+
+        bus_ids = set()
+        event_dir = self.metadata_path / "Event"
+
+        # Parse each event's XML to find bus routing
+        for event in events:
+            event_id = event['id']
+            event_file = event_dir / f"{event_id}.xml"
+
+            if not event_file.exists():
+                continue
+
+            try:
+                tree = ET.parse(event_file)
+                root = tree.getroot()
+
+                # Find MixerInput object's output relationship
+                mixer_input = root.find(".//object[@class='MixerInput']")
+                if mixer_input is not None:
+                    output_rel = mixer_input.find(".//relationship[@name='output']/destination")
+                    if output_rel is not None and output_rel.text:
+                        bus_ids.add(output_rel.text)
+            except Exception:
+                # Skip problematic XML files
+                continue
+
+        # Determine if all events use same bus
+        all_same = len(bus_ids) == 1
+        common_bus_id = bus_ids.pop() if all_same else None
+        if all_same and common_bus_id:
+            bus_ids.add(common_bus_id)  # Re-add for return value
+
+        return (common_bus_id, all_same, bus_ids)
+
     def _load_banks(self) -> Dict[str, Dict]:
         """Load all banks from the Bank directory"""
         banks = {}

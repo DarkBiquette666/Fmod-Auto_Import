@@ -260,6 +260,13 @@ class WidgetsMixin:
         ttk.Button(bus_frame, text="Select...", command=self.select_bus).grid(row=0, column=1, padx=5)
         bus_frame.columnconfigure(0, weight=1)
 
+        # Bus warning label (inside bus_frame, row 1)
+        self.bus_warning_label = ttk.Label(
+            bus_frame, text="", foreground="#FF8C00",
+            font=('TkDefaultFont', 8, 'italic')
+        )
+        self.bus_warning_label.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(2, 0))
+
         import_setup_frame.columnconfigure(1, weight=1)
 
         # ==================== ORPHANS CONTAINER (RIGHT SIDE) ====================

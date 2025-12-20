@@ -270,6 +270,7 @@ class FmodImporterGUI(
             folder_name, folder_id = selected
             self.template_var.set(folder_name)
             self.selected_template_id = folder_id
+            self._auto_detect_bus_from_template()
 
     def select_destination_folder(self):
         """Open tree dialog to select destination folder"""
@@ -316,6 +317,63 @@ class FmodImporterGUI(
             bus_name, bus_id = selected
             self.bus_var.set(bus_name)
             self.selected_bus_id = bus_id
+            self.bus_warning_label.config(text="")
+
+    def _set_master_bus_as_default(self):
+        """Set master bus as default if no bus is selected"""
+        if not self.project:
+            return
+
+        master_bus_id = self.project._get_master_bus_id()
+        if master_bus_id and not self.selected_bus_id:
+            # Import resolver here to avoid circular imports
+            from .preset_resolver import PresetResolver
+            resolver = PresetResolver(self.project)
+
+            master_path = resolver.get_bus_path(master_bus_id)
+            display_name = master_path if master_path else "Master Bus"
+
+            self.bus_var.set(display_name)
+            self.selected_bus_id = master_bus_id
+            self.bus_warning_label.config(text="")
+
+    def _auto_detect_bus_from_template(self):
+        """Auto-detect bus from selected template folder"""
+        if not self.project or not self.selected_template_id:
+            return
+
+        # Get bus routing from template events
+        common_bus_id, all_same, bus_ids = self.project.get_bus_from_template_events(
+            self.selected_template_id
+        )
+
+        if not bus_ids:  # No events in template folder
+            self.bus_warning_label.config(text="")
+            return
+
+        if all_same and common_bus_id:
+            # Check if bus exists in current project
+            if common_bus_id in self.project.buses:
+                # Auto-populate bus field
+                from .preset_resolver import PresetResolver
+                resolver = PresetResolver(self.project)
+                bus_path = resolver.get_bus_path(common_bus_id)
+
+                self.bus_var.set(bus_path if bus_path else self.project.buses[common_bus_id]['name'])
+                self.selected_bus_id = common_bus_id
+                self.bus_warning_label.config(text="")
+            else:
+                # Bus doesn't exist - warn user
+                self.bus_warning_label.config(
+                    text="⚠ Template bus not found in project - please select a bus"
+                )
+                self.bus_var.set("(No bus selected)")
+                self.selected_bus_id = None
+        else:
+            # Different buses detected
+            self.bus_warning_label.config(
+                text=f"⚠ Template events use {len(bus_ids)} different buses"
+            )
 
     def select_asset_folder(self):
         """Open tree dialog to select asset folder"""
@@ -348,6 +406,9 @@ class FmodImporterGUI(
             self.selected_bank_id = None
             self.selected_bus_id = None
             self.selected_asset_id = None
+
+            # Auto-populate bus with master bus
+            self._set_master_bus_as_default()
 
             # Project loaded successfully - no popup needed
 

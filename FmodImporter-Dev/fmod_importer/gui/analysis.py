@@ -69,10 +69,12 @@ class AnalysisMixin:
                 return
             bank_name = self.bank_var.get()
 
-            # Get bus
+            # Get bus (auto-populate master if not selected)
             if not self.selected_bus_id:
-                messagebox.showwarning("Warning", "Please select a bus")
-                return
+                self._set_master_bus_as_default()
+                if not self.selected_bus_id:  # Still no bus? Error!
+                    messagebox.showerror("Error", "No buses found in project")
+                    return
             bus = self.bus_var.get()
 
             # Clear existing preview and orphan lists
