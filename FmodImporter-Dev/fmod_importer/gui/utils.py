@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Dict, Optional
 
 from ..matcher import AudioMatcher
+from ..naming import NamingPattern
 
 
 class UtilsMixin:
@@ -203,22 +204,60 @@ class UtilsMixin:
             messagebox.showwarning("Warning", "Please fill in Prefix and Feature Name first")
             return
 
-        # Try to extract common suffix from selected files
-        # Use the first file to determine the event name
+        # Get pattern configuration for event name building
+        pattern_str = self.pattern_var.get()
+        event_separator = self.event_separator_entry.get() if hasattr(self, 'event_separator_entry') else None
+        pattern = NamingPattern(pattern_str, separator=event_separator)
+
+        # Validate pattern
+        valid, error = pattern.validate()
+        if not valid:
+            messagebox.showwarning("Warning", f"Invalid naming pattern:\n{error}")
+            return
+
+        # Get asset pattern (optional - for parsing files with different separators)
+        asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional)")
+        asset_separator = self.asset_separator_entry.get() if hasattr(self, 'asset_separator_entry') else None
+
+        parse_pattern = pattern  # Default: use same pattern and separator for parsing
+        if asset_pattern_str:
+            # User provided a different pattern for parsing assets
+            parse_pattern = NamingPattern(asset_pattern_str, separator=asset_separator)
+            valid, error = parse_pattern.validate()
+            if not valid:
+                messagebox.showwarning("Warning", f"Invalid asset pattern:\n{error}")
+                return
+        elif asset_separator and asset_separator != event_separator:
+            # Only asset separator provided (different from event separator)
+            # Use event pattern with asset separator
+            parse_pattern = NamingPattern(pattern_str, separator=asset_separator)
+
+        # Extract action from first file using parse pattern
         first_file = selected_media[0]
         basename = Path(first_file).stem
 
-        extracted_suffix = AudioMatcher.extract_suffix_from_basename(basename, prefix, feature)
+        # Normalize feature for matching
+        normalized_feature = feature.replace(' ', '_')
+        user_values = {
+            'prefix': prefix,
+            'feature': normalized_feature
+        }
 
-        if not extracted_suffix:
+        # Parse the asset to extract the action
+        parsed = parse_pattern.parse_asset_fuzzy(basename, user_values)
+
+        if not parsed or 'action' not in parsed:
+            # Show helpful error message with expected format
+            expected_format = parse_pattern.get_pattern_preview(user_values)
             messagebox.showwarning("Warning",
                 f"Could not determine event name from '{first_file}'.\n"
-                f"Expected format: {prefix}_{feature}_EventName[_##]")
+                f"Expected format: {expected_format}")
             return
 
-        # Generate event name (normalize feature - replace spaces with underscores)
-        normalized_feature = feature.replace(' ', '_')
-        event_name = f"{prefix}_{normalized_feature}_{extracted_suffix}"
+        action = parsed['action']
+
+        # Build event name using the naming pattern
+        event_name = pattern.build(prefix=prefix, feature=normalized_feature, action=action)
 
         # Get bank and bus from current selection
         bank_name = self.bank_var.get()
