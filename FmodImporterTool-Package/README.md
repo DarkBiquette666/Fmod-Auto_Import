@@ -1,6 +1,6 @@
 # FMOD Importer Tool - Automatic Audio Asset Importer for FMOD Studio
 
-**Version:** 0.2.0
+**Version:** 0.3.0
 **Description:** Standalone Windows application for intelligently importing audio assets into FMOD Studio projects
 
 ---
@@ -320,5 +320,5 @@ Full license: [docs/LICENSE.txt](docs/LICENSE.txt)
 
 ---
 
-**Version:** 0.2.0
+**Version:** 0.3.0
 **Last update:** December 2025
