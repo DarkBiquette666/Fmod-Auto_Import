@@ -513,47 +513,143 @@ Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
 
 ## Version Bumping
 
+### ⚡ Automatic Version Bump System
+
+**Le version bump est AUTOMATIQUEMENT déclenché après chaque commit `feat` ou `fix` validé.**
+
+Quand Claude complète un commit de type `feat` ou `fix`, il doit **immédiatement** proposer un version bump en utilisant le skill `/version-bump`.
+
 ### Semantic Versioning (MAJOR.MINOR.PATCH)
 
 #### MAJOR (1.0.0)
 - Breaking changes
 - Changements API incompatibles
 - Modifications architectural majeurs
+- **Détection**: Commit contient `BREAKING CHANGE:` dans body/footer
 
-#### MINOR (0.1.0)
+#### MINOR (0.X.0)
 - Nouvelles features (backward-compatible)
 - Commits `feat`
 - Refactoring architectural significatif
+- **Détection**: Commits de type `feat` depuis dernière version
 
-#### PATCH (0.1.1)
+#### PATCH (0.0.X)
 - Bug fixes
 - Commits `fix`
 - Performance improvements significatifs
+- **Détection**: Commits de type `fix` depuis dernière version
 
-### Process de Version Bump
+### Workflow Automatique
 
-1. **Déterminer le type de bump** basé sur commits depuis dernière version
-2. **Mettre à jour VERSION** dans `fmod_importer/__init__.py`
-3. **Mettre à jour CHANGELOG.md** avec nouvelle section version
-4. **Inclure version dans message commit**: `(vX.Y.Z)`
-
-### Exemple
-```python
-# fmod_importer/__init__.py
-VERSION = "0.2.0"  # Was "0.1.8"
+```
+1. User Request
+   ↓
+2. Implementation (feat/fix)
+   ↓
+3. Tests & Validation
+   ↓
+4. Commit créé avec Conventional Commits format
+   ↓
+5. ✨ AUTO-TRIGGER: Version Bump Check
+   ↓
+   Si commit = feat OU fix:
+   ├─→ Proposer version bump immédiatement
+   │   "📦 New feature/fix committed! Bump version now? (v0.1.8 → v0.2.0)"
+   │
+   └─→ Si user accepte: Exécuter `/version-bump` skill
+       Si user refuse: Ajouter rappel dans TODO
 ```
 
-```markdown
-# CHANGELOG.md
-## [0.2.0] - 2024-12-20
-### Added
-- Event filtering by bank name
-- JSON export functionality
+### Quand Déclencher le Version Bump
+
+**TOUJOURS après** ces commits:
+- ✅ `feat(scope): ...` → Proposer MINOR bump
+- ✅ `fix(scope): ...` → Proposer PATCH bump
+- ✅ Commit avec `BREAKING CHANGE:` → Proposer MAJOR bump
+
+**JAMAIS après** ces commits:
+- ❌ `docs:` → Pas de bump
+- ❌ `style:` → Pas de bump
+- ❌ `refactor:` (sauf si architectural majeur)
+- ❌ `test:` → Pas de bump
+- ❌ `chore:` → Pas de bump
+
+### Process de Version Bump (via `/version-bump` skill)
+
+Le skill `/version-bump` automatise:
+
+1. **Analyser commits** depuis dernière version taggée
+   - Parser git log pour détecter feat/fix/breaking
+   - Déterminer type de bump (MAJOR > MINOR > PATCH)
+
+2. **Calculer nouvelle version**
+   - Lire VERSION actuelle dans `fmod_importer/__init__.py`
+   - Appliquer règle Semantic Versioning
+   - Proposer nouvelle version à user
+
+3. **Mettre à jour fichiers**
+   - `fmod_importer/__init__.py` → `VERSION = "X.Y.Z"`
+   - `CHANGELOG.md` → Renommer `[Unreleased]` en `[X.Y.Z]`
+
+4. **Git operations**
+   - Créer commit: `chore(release): Bump version to X.Y.Z`
+   - Créer tag: `vX.Y.Z`
+   - Afficher next steps (push to remote)
+
+**Voir détails complets**: [version-bump.md](version-bump.md)
+
+### Exemple Complet
+
+```
+User: "Add bank filter widget to GUI"
+  ↓
+[Claude implémente la feature]
+  ↓
+[Tests & validation]
+  ↓
+[Commit créé]:
+  "feat(gui): Add bank filter widget
+
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+   Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+  ↓
+🤖 Claude détecte feat commit et propose:
+
+  "📦 New feature committed!
+
+   Current version: v0.1.8
+   Proposed: v0.2.0 (MINOR bump - new feature)
+
+   Would you like to bump the version now? [Y/n]"
+
+  ↓
+[User: Y]
+  ↓
+🤖 Claude exécute /version-bump:
+  ✓ Updated fmod_importer/__init__.py: VERSION = "0.2.0"
+  ✓ Updated CHANGELOG.md: [0.2.0] - 2024-12-20
+  ✓ Created commit: chore(release): Bump version to 0.2.0
+  ✓ Created tag: v0.2.0
+
+  "✅ Version bump completed!
+   Next: git push && git push --tags"
 ```
 
-```bash
-git commit -m "feat(gui): Add bank filter widget (v0.2.0)"
-```
+### Files Affectés
+
+| File | Modification | Trigger |
+|------|-------------|---------|
+| `fmod_importer/__init__.py` | `VERSION = "X.Y.Z"` | Automatic via skill |
+| `CHANGELOG.md` | `## [X.Y.Z] - YYYY-MM-DD` | Automatic via skill |
+| `.git/refs/tags/vX.Y.Z` | Git tag | Automatic via skill |
+
+### Important
+
+- **SSOT**: `fmod_importer/__init__.py` est la single source of truth
+- **Atomique**: Version bump = 1 commit + 1 tag
+- **Toujours proposer**: Ne jamais skipper la proposition après feat/fix
+- **User décision**: Toujours demander confirmation avant bump
+- **Skill référence**: Voir `/version-bump` pour implémentation complète
 
 ---
 
@@ -592,6 +688,109 @@ Avant chaque commit, vérifier:
 - [ ] Tests unitaires pour logique core
 - [ ] Tests d'intégration pour workflows
 - [ ] Tests passent tous
+
+---
+
+## Post-Commit Automation
+
+### 🚀 Actions Automatiques Après Commit
+
+**IMPORTANT**: Après chaque commit réussi, Claude doit **automatiquement** effectuer ces vérifications:
+
+#### 1. Vérifier le Type de Commit
+
+Analyser le commit qui vient d'être créé:
+```bash
+git log -1 --pretty=format:"%s"
+```
+
+#### 2. Déclencher Version Bump si Applicable
+
+**SI le commit commence par:**
+- ✅ `feat` → **PROPOSER** version bump (MINOR)
+- ✅ `fix` → **PROPOSER** version bump (PATCH)
+- ✅ Contient `BREAKING CHANGE` → **PROPOSER** version bump (MAJOR)
+
+**ALORS immédiatement afficher:**
+
+```
+📦 Feature/Fix committed successfully!
+
+Commit: {commit_hash_short} {commit_subject}
+Current version: v{current_version}
+Proposed bump: v{new_version} ({bump_type})
+
+Would you like to bump the version now? [Y/n]
+```
+
+**SI user accepte [Y]:**
+- Exécuter `/version-bump` skill immédiatement
+- Ne pas attendre la fin de la conversation
+
+**SI user refuse [n]:**
+- Ajouter rappel dans TODO: "Pending version bump for v{new_version}"
+- Continuer normalement
+
+#### 3. Rappel Documentation
+
+**SI commit de type `feat` avec feature user-facing:**
+- Vérifier que README.md a été mis à jour
+- Si non: Rappeler "README.md may need updating for this feature"
+
+### Exemples de Post-Commit Automation
+
+#### Exemple 1: Fix Commit
+```
+✅ Commit créé: fix(import): Resolve path escaping on Windows
+
+📦 Fix committed successfully!
+
+Commit: a3b4c5d fix(import): Resolve path escaping on Windows
+Current version: v0.1.8
+Proposed bump: v0.1.9 (PATCH)
+
+Would you like to bump the version now? [Y/n] _
+```
+
+#### Exemple 2: Feature Commit
+```
+✅ Commit créé: feat(gui): Add bank filter widget
+
+�� Feature committed successfully!
+
+Commit: e7f8g9h feat(gui): Add bank filter widget
+Current version: v0.1.8
+Proposed bump: v0.2.0 (MINOR - new feature)
+
+Would you like to bump the version now? [Y/n] _
+```
+
+#### Exemple 3: Docs Commit (No Bump)
+```
+✅ Commit créé: docs: Update README troubleshooting
+
+✓ Documentation commit completed.
+(No version bump needed for docs-only changes)
+```
+
+### Checklist Post-Commit
+
+Après **chaque** commit `feat` ou `fix`, vérifier:
+
+- [ ] Proposition de version bump affichée à user
+- [ ] User a répondu (Y ou n)
+- [ ] Si Y: `/version-bump` exécuté avec succès
+- [ ] Si n: Rappel ajouté dans TODO
+- [ ] CHANGELOG.md contient l'entrée pour ce commit
+- [ ] README.md à jour si nécessaire
+
+### Exceptions
+
+**NE PAS proposer version bump si:**
+- Commit de type `docs`, `test`, `style`, `chore`
+- Commit est déjà un version bump (`chore(release): Bump version...`)
+- User a explicitement demandé de ne pas bumper
+- C'est un commit de merge
 
 ---
 
