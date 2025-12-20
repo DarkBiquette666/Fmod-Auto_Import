@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Refactored
+- **Core Architecture**: Extracted project.py business logic into 8 specialized core modules
+  - Reduced project.py from 1137 lines to 186 lines (84% reduction)
+  - Improved modularity and maintainability following SOLID principles
+  - Created core/ directory with specialized managers:
+    - `xml_writer.py`: Shared XML formatting utilities
+    - `xml_loader.py`: Centralized XML parsing for all FMOD metadata
+    - `pending_folder_manager.py`: Transaction-like staging system with commit/rollback
+    - `event_folder_manager.py`: CRUD operations for event folders
+    - `asset_folder_manager.py`: CRUD operations for asset folders
+    - `bus_manager.py`: CRUD operations for mixer buses
+    - `bank_manager.py`: CRUD operations for bank folders
+    - `event_creator.py`: Complex event copying from templates
+    - `audio_file_manager.py`: Audio file XML entry creation
+  - All backward compatibility maintained (GUI code unchanged)
+  - Pattern: Facade pattern with delegation to stateless managers
+  - Zero external dependencies preserved (stdlib only)
+
 ## [0.4.0] - 2024-12-20
 
 ### Fixed
