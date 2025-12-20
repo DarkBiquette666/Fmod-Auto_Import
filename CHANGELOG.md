@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2024-12-20
+
+### Added
+- **Preset System**: Complete configuration snapshot save/load functionality
+  - Save entire configuration including paths, patterns, and FMOD references
+  - Category-based organization for managing multiple presets
+  - Dropdown selector with auto-load on selection
+  - Smart UUID resolution: automatically creates missing FMOD elements (folders, banks, buses)
+  - Override warning when saving over existing presets
+  - Preset files stored in `~/.fmod_importer_presets/` as human-readable JSON
+- New PresetsMixin following the 8-mixin architecture pattern
+- Preset UI section added to main interface with Save and Manage buttons
+
+### Changed
+- **Refactored preset system** for code quality compliance
+  - Extracted UUID resolution logic to separate [preset_resolver.py](FmodImporter-Dev/fmod_importer/gui/preset_resolver.py) module (349 lines)
+  - Reduced [presets.py](FmodImporter-Dev/fmod_importer/gui/presets.py) from 1057 → 757 lines (below 800-line threshold)
+  - Improved separation of concerns: PresetResolver handles FMOD reference resolution, PresetsMixin handles UI and persistence
+
+### Technical
+- Added preset_resolver.py (349 lines) - handles smart UUID resolution for FMOD references
+- presets.py: 1057 → 757 lines (28% reduction, now complies with <800 guideline)
+- widgets.py: 724 → 755 lines (94% of 800-line threshold)
+- Maintains all SOLID principles and zero external dependencies
+
 ## [0.2.0] - 2025-12-20
 
 ### Added

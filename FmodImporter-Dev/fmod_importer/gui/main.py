@@ -20,6 +20,7 @@ from .drag_drop import DragDropMixin
 from .analysis import AnalysisMixin
 from .import_workflow import ImportMixin
 from .settings import SettingsMixin
+from .presets import PresetsMixin
 
 
 class FmodImporterGUI(
@@ -30,7 +31,8 @@ class FmodImporterGUI(
     DragDropMixin,
     AnalysisMixin,
     ImportMixin,
-    SettingsMixin
+    SettingsMixin,
+    PresetsMixin
 ):
     """
     Main GUI application for FMOD Importer Tool.
@@ -53,8 +55,8 @@ class FmodImporterGUI(
         self.root = root
         self.root.title("FMOD Importer Tool - Asset Importer")
 
-        # Set window size to 4:3 ratio (1440x1080)
-        self.root.geometry("1440x1080")
+        # Set window size to accommodate all sections
+        self.root.geometry("1440x1150")
         # Center window on screen
         self.root.update_idletasks()
         width = self.root.winfo_width()
@@ -92,6 +94,9 @@ class FmodImporterGUI(
 
         # Load default settings (from SettingsMixin)
         self._load_default_settings()
+
+        # Populate preset combobox (from PresetsMixin)
+        self._refresh_preset_combobox()
 
         # Set up window close handler
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)

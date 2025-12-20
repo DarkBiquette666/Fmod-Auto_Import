@@ -25,9 +25,40 @@ class WidgetsMixin:
         main_frame = ttk.Frame(self.root, padding="10")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        # ==================== SECTION 1: PATHS ====================
+        # ==================== SECTION 1: PRESETS ====================
+        presets_frame = ttk.LabelFrame(main_frame, text="Presets", padding="10")
+        presets_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+
+        ttk.Label(presets_frame, text="Configuration Preset:").grid(
+            row=0, column=0, sticky=tk.W, pady=5, padx=(0, 10))
+
+        # Preset combobox with buttons
+        preset_controls_frame = ttk.Frame(presets_frame)
+        preset_controls_frame.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=5)
+
+        self.preset_var = tk.StringVar(value="(No preset selected)")
+        self.preset_combobox = ttk.Combobox(
+            preset_controls_frame,
+            textvariable=self.preset_var,
+            state='readonly',
+            width=50
+        )
+        self.preset_combobox.grid(row=0, column=0, padx=(0, 5))
+        self.preset_combobox.bind('<<ComboboxSelected>>',
+            lambda e: self.load_selected_preset())
+
+        ttk.Button(preset_controls_frame, text="Save...",
+                   command=self.open_preset_save_dialog, width=10).grid(
+            row=0, column=1, padx=5)
+        ttk.Button(preset_controls_frame, text="Manage...",
+                   command=self.open_presets_manager, width=10).grid(
+            row=0, column=2, padx=5)
+
+        presets_frame.columnconfigure(1, weight=1)
+
+        # ==================== SECTION 2: PATHS ====================
         paths_frame = ttk.LabelFrame(main_frame, text="Paths", padding="10")
-        paths_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        paths_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
 
         # FMOD Project
         ttk.Label(paths_frame, text="FMOD Project (.fspro):").grid(row=0, column=0, sticky=tk.W, pady=5)
@@ -52,9 +83,9 @@ class WidgetsMixin:
 
         paths_frame.columnconfigure(1, weight=1)
 
-        # ==================== SECTION 2: PATTERN SETUP ====================
+        # ==================== SECTION 3: PATTERN SETUP ====================
         pattern_setup_frame = ttk.LabelFrame(main_frame, text="Pattern Setup", padding="10")
-        pattern_setup_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        pattern_setup_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
 
         # Fuzzy matching note
         note_label = ttk.Label(
@@ -181,9 +212,9 @@ class WidgetsMixin:
 
         pattern_setup_frame.columnconfigure(1, weight=1)
 
-        # ==================== SECTION 3: IMPORT SETUP ====================
+        # ==================== SECTION 4: IMPORT SETUP ====================
         import_setup_frame = ttk.LabelFrame(main_frame, text="Import Setup", padding="10")
-        import_setup_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        import_setup_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
 
         # Event Folder
         ttk.Label(import_setup_frame, text="Event Folder:").grid(row=0, column=0, sticky=tk.W, pady=5)
