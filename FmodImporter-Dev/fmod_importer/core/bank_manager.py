@@ -12,7 +12,7 @@ from .xml_writer import write_pretty_xml
 
 
 class BankManager:
-    """Static methods for bank folder operations."""
+    """Static methods for bank and bank folder operations."""
 
     @staticmethod
     def create(name: str, parent_id: str, metadata_path: Path, banks_dict: Dict) -> str:
@@ -20,13 +20,13 @@ class BankManager:
         Create a new bank folder (BankFolder object).
 
         Args:
-            name: Name of the bank
+            name: Name of the bank folder
             parent_id: Parent bank folder ID (can be None)
             metadata_path: Path to the Metadata directory
             banks_dict: Dictionary of banks to update
 
         Returns:
-            UUID of the created bank
+            UUID of the created bank folder
         """
         bank_id = "{" + str(uuid.uuid4()) + "}"
 
@@ -57,7 +57,57 @@ class BankManager:
         banks_dict[bank_id] = {
             'name': name,
             'path': bank_file,
-            'parent': parent_id
+            'parent': parent_id,
+            'type': 'folder'
+        }
+
+        return bank_id
+
+    @staticmethod
+    def create_bank(name: str, parent_id: str, metadata_path: Path, banks_dict: Dict) -> str:
+        """
+        Create a new individual bank (Bank object).
+
+        Args:
+            name: Name of the bank
+            parent_id: Parent bank folder ID (can be None)
+            metadata_path: Path to the Metadata directory
+            banks_dict: Dictionary of banks to update
+
+        Returns:
+            UUID of the created bank
+        """
+        bank_id = "{" + str(uuid.uuid4()) + "}"
+
+        # Create XML
+        root = ET.Element('objects', serializationModel="Studio.02.02.00")
+        obj = ET.SubElement(root, 'object', {'class': 'Bank', 'id': bank_id})
+
+        # Add name property
+        prop = ET.SubElement(obj, 'property', name='name')
+        value = ET.SubElement(prop, 'value')
+        value.text = name
+
+        # Add parent folder relationship if exists
+        if parent_id:
+            rel = ET.SubElement(obj, 'relationship', name='folder')
+            dest = ET.SubElement(rel, 'destination')
+            dest.text = parent_id
+
+        # Ensure Bank directory exists
+        bank_dir = metadata_path / "Bank"
+        bank_dir.mkdir(exist_ok=True)
+
+        # Write to file in Bank directory
+        bank_file = bank_dir / f"{bank_id}.xml"
+        write_pretty_xml(root, bank_file)
+
+        # Update internal structure
+        banks_dict[bank_id] = {
+            'name': name,
+            'path': bank_file,
+            'parent': parent_id,
+            'type': 'bank'
         }
 
         return bank_id

@@ -98,11 +98,19 @@ class FMODProject:
         )
 
     def create_bank(self, name: str, parent_id: str = None) -> str:
-        """Create a new bank folder (delegates to BankManager)"""
+        """Create a new bank folder (delegates to BankManager) - DEPRECATED, use create_bank_folder()"""
         return BankManager.create(name, parent_id, self.metadata_path, self.banks)
 
+    def create_bank_folder(self, name: str, parent_id: str = None) -> str:
+        """Create a new bank folder (BankFolder object)"""
+        return BankManager.create(name, parent_id, self.metadata_path, self.banks)
+
+    def create_bank_instance(self, name: str, parent_id: str = None) -> str:
+        """Create a new individual bank (Bank object)"""
+        return BankManager.create_bank(name, parent_id, self.metadata_path, self.banks)
+
     def delete_bank(self, bank_id: str):
-        """Delete a bank (delegates to BankManager)"""
+        """Delete a bank or bank folder (delegates to BankManager)"""
         BankManager.delete(bank_id, self.banks, self.metadata_path)
 
     def create_asset_folder(self, name: str, parent_path: str, commit: bool = True) -> str:

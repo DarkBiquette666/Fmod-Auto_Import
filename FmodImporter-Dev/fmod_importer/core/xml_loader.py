@@ -85,42 +85,72 @@ class XMLLoader:
 
     def load_banks(self) -> Dict[str, Dict]:
         """
-        Load all bank folders from the BankFolder directory.
+        Load all banks and bank folders from the Bank and BankFolder directories.
 
         Returns:
-            Dictionary mapping bank folder IDs to bank information
+            Dictionary mapping bank/folder IDs to bank information.
+            Each entry has a 'type' field: 'folder' or 'bank'.
         """
         banks = {}
-        bank_dir = self.metadata_path / "BankFolder"
-
-        if not bank_dir.exists():
-            return banks
 
         # Get master bank folder ID from workspace
         master_bank_id = None
         if hasattr(self, 'workspace') and self.workspace:
             master_bank_id = self.workspace.get('masterBankFolder')
 
-        # Load all XML files from BankFolder directory
-        for xml_file in bank_dir.glob("*.xml"):
-            tree = ET.parse(xml_file)
-            root = tree.getroot()
+        # Load BankFolder objects (organizational folders)
+        bank_folder_dir = self.metadata_path / "BankFolder"
+        if bank_folder_dir.exists():
+            for xml_file in bank_folder_dir.glob("*.xml"):
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
 
-            # Look for BankFolder and MasterBankFolder class objects
-            for obj in root.findall(".//object"):
-                obj_class = obj.get('class')
-                if obj_class in ['BankFolder', 'MasterBankFolder']:
-                    bank_id = obj.get('id')
+                # Look for BankFolder and MasterBankFolder class objects
+                for obj in root.findall(".//object"):
+                    obj_class = obj.get('class')
+                    if obj_class in ['BankFolder', 'MasterBankFolder']:
+                        bank_id = obj.get('id')
 
-                    # MasterBankFolder typically has no name
-                    if obj_class == 'MasterBankFolder':
-                        name = "Master"
-                        parent_id = None
-                    else:
+                        # MasterBankFolder typically has no name
+                        if obj_class == 'MasterBankFolder':
+                            name = "Master"
+                            parent_id = None
+                        else:
+                            name_elem = obj.find(".//property[@name='name']/value")
+                            name = name_elem.text if name_elem is not None else "Unnamed"
+
+                            # Get parent relationship if exists
+                            parent_rel = obj.find(".//relationship[@name='folder']/destination")
+                            parent_id = parent_rel.text if parent_rel is not None else None
+
+                            # If no explicit parent, set to master bank folder
+                            if not parent_id and master_bank_id:
+                                parent_id = master_bank_id
+
+                        banks[bank_id] = {
+                            'name': name,
+                            'path': xml_file,
+                            'parent': parent_id,
+                            'type': 'folder'  # Mark as folder
+                        }
+
+        # Load Bank objects (individual bank files)
+        bank_dir = self.metadata_path / "Bank"
+        if bank_dir.exists():
+            for xml_file in bank_dir.glob("*.xml"):
+                tree = ET.parse(xml_file)
+                root = tree.getroot()
+
+                # Look for Bank class objects
+                for obj in root.findall(".//object"):
+                    obj_class = obj.get('class')
+                    if obj_class == 'Bank':
+                        bank_id = obj.get('id')
+
                         name_elem = obj.find(".//property[@name='name']/value")
                         name = name_elem.text if name_elem is not None else "Unnamed"
 
-                        # Get parent relationship if exists
+                        # Get parent folder relationship
                         parent_rel = obj.find(".//relationship[@name='folder']/destination")
                         parent_id = parent_rel.text if parent_rel is not None else None
 
@@ -128,11 +158,12 @@ class XMLLoader:
                         if not parent_id and master_bank_id:
                             parent_id = master_bank_id
 
-                    banks[bank_id] = {
-                        'name': name,
-                        'path': xml_file,
-                        'parent': parent_id
-                    }
+                        banks[bank_id] = {
+                            'name': name,
+                            'path': xml_file,
+                            'parent': parent_id,
+                            'type': 'bank'  # Mark as individual bank
+                        }
 
         return banks
 

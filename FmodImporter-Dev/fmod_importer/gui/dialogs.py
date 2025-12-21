@@ -182,8 +182,17 @@ class DialogsMixin:
         dialog.wait_window()
         return result[0]
 
-    def _show_hierarchical_dialog(self, title: str, items: dict, create_fn, delete_fn):
-        """Show a dialog with tree view for hierarchical items (Banks, Buses)"""
+    def _show_hierarchical_dialog(self, title: str, items: dict, create_fn=None, delete_fn=None, create_folder_fn=None, create_bank_fn=None):
+        """Show a dialog with tree view for hierarchical items (Banks, Buses).
+
+        Args:
+            title: Dialog title
+            items: Dictionary of items to display
+            create_fn: Function to create new items (for single-type dialogs like buses)
+            delete_fn: Function to delete items
+            create_folder_fn: Function to create folders (for dual-type dialogs like banks)
+            create_bank_fn: Function to create banks (for dual-type dialogs like banks)
+        """
         dialog = tk.Toplevel(self.root)
         dialog.title(title)
         dialog.geometry("500x600")
@@ -247,7 +256,15 @@ class DialogsMixin:
                     if not has_matching_descendant(item_id, search_filter):
                         continue
 
-                node = tree.insert(parent_item, 'end', text=item_data['name'], values=(item_id,))
+                # Show type prefix for banks (folder vs bank)
+                display_name = item_data['name']
+                item_type = item_data.get('type')
+                if item_type == 'folder':
+                    display_name = f"📁 {display_name}"
+                elif item_type == 'bank':
+                    display_name = f"💾 {display_name}"
+
+                node = tree.insert(parent_item, 'end', text=display_name, values=(item_id,))
                 build_tree(node, item_id, search_filter)
 
         def find_root_items():
@@ -317,7 +334,15 @@ class DialogsMixin:
                     if not has_matching_descendant(root_id, search_filter):
                         continue
 
-                root_node = tree.insert('', 'end', text=root_data['name'], values=(root_id,))
+                # Show type prefix for banks (folder vs bank)
+                display_name = root_data['name']
+                item_type = root_data.get('type')
+                if item_type == 'folder':
+                    display_name = f"📁 {display_name}"
+                elif item_type == 'bank':
+                    display_name = f"💾 {display_name}"
+
+                root_node = tree.insert('', 'end', text=display_name, values=(root_id,))
                 build_tree(root_node, root_id, search_filter)
 
             restore_expanded_state(expanded_ids)
@@ -330,7 +355,8 @@ class DialogsMixin:
 
         search_var.trace('w', on_search_change)
 
-        def on_new():
+        def _create_item(creation_fn, item_type_label):
+            """Generic item creation handler"""
             selection = tree.selection()
             parent_id = None
             if selection:
@@ -338,11 +364,11 @@ class DialogsMixin:
                 parent_id = tree.item(parent_item, 'values')[0]
 
             initial_value = self._get_combined_name()
-            name = simpledialog.askstring("New Item", "Enter name:",
+            name = simpledialog.askstring(f"New {item_type_label}", "Enter name:",
                                           initialvalue=initial_value, parent=dialog)
             if name:
                 try:
-                    new_id = create_fn(name, parent_id)
+                    new_id = creation_fn(name, parent_id)
                     refresh_tree()
 
                     # Find and select the newly created item in the tree
@@ -363,7 +389,19 @@ class DialogsMixin:
 
                     find_and_select()
                 except Exception as e:
-                    messagebox.showerror("Error", f"Failed to create:\n{str(e)}")
+                    messagebox.showerror("Error", f"Failed to create {item_type_label}:\n{str(e)}")
+
+        def on_new():
+            """Single-type creation (for buses, etc.)"""
+            _create_item(create_fn, "Item")
+
+        def on_new_folder():
+            """Folder creation (for banks)"""
+            _create_item(create_folder_fn, "Folder")
+
+        def on_new_bank():
+            """Bank creation (for banks)"""
+            _create_item(create_bank_fn, "Bank")
 
         def on_rename():
             selection = tree.selection()
@@ -433,11 +471,23 @@ class DialogsMixin:
         # Edit buttons
         edit_frame = ttk.Frame(frame)
         edit_frame.grid(row=2, column=0, pady=5)
-        ttk.Button(edit_frame, text="New", command=on_new, width=10).grid(row=0, column=0, padx=2)
-        ttk.Button(edit_frame, text="Rename (F2)", command=on_rename, width=12).grid(row=0, column=1, padx=2)
-        ttk.Button(edit_frame, text="Delete", command=on_delete, width=10).grid(row=0, column=2, padx=2)
-        ttk.Button(edit_frame, text="Expand All", command=expand_all, width=10).grid(row=0, column=3, padx=2)
-        ttk.Button(edit_frame, text="Collapse", command=collapse_all, width=10).grid(row=0, column=4, padx=2)
+
+        # Check if dual-type mode (banks) or single-type mode (buses)
+        if create_folder_fn and create_bank_fn:
+            # Dual mode: separate buttons for folder and bank
+            ttk.Button(edit_frame, text="New Folder", command=on_new_folder, width=10).grid(row=0, column=0, padx=2)
+            ttk.Button(edit_frame, text="New Bank", command=on_new_bank, width=10).grid(row=0, column=1, padx=2)
+            ttk.Button(edit_frame, text="Rename (F2)", command=on_rename, width=12).grid(row=0, column=2, padx=2)
+            ttk.Button(edit_frame, text="Delete", command=on_delete, width=10).grid(row=0, column=3, padx=2)
+            ttk.Button(edit_frame, text="Expand All", command=expand_all, width=10).grid(row=0, column=4, padx=2)
+            ttk.Button(edit_frame, text="Collapse", command=collapse_all, width=10).grid(row=0, column=5, padx=2)
+        else:
+            # Single mode: one "New" button
+            ttk.Button(edit_frame, text="New", command=on_new, width=10).grid(row=0, column=0, padx=2)
+            ttk.Button(edit_frame, text="Rename (F2)", command=on_rename, width=12).grid(row=0, column=1, padx=2)
+            ttk.Button(edit_frame, text="Delete", command=on_delete, width=10).grid(row=0, column=2, padx=2)
+            ttk.Button(edit_frame, text="Expand All", command=expand_all, width=10).grid(row=0, column=3, padx=2)
+            ttk.Button(edit_frame, text="Collapse", command=collapse_all, width=10).grid(row=0, column=4, padx=2)
 
         # Selection buttons
         button_frame = ttk.Frame(frame)
