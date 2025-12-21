@@ -1,7 +1,7 @@
 # FMOD Importer Architecture
 
-**Last Updated**: 2024-12-20
-**Version**: 0.1.9 (development)
+**Last Updated**: 2024-12-21
+**Version**: 0.8.0
 
 ## Table of Contents
 
@@ -26,9 +26,13 @@ FMOD Importer is a Python-based desktop application that facilitates importing a
 
 - **Language**: Python 3.x (standard library only, no external dependencies)
 - **GUI Framework**: tkinter (included in Python stdlib)
-- **Architecture Pattern**: Mixin-based composition for GUI, modular core logic
+- **Architecture Pattern**:
+  - Mixin-based composition for GUI (10 mixins)
+  - Modular core logic (9 specialized managers with facade pattern)
+  - Stateless managers with delegation
 - **Lines of Code**: ~8,000 Python LOC
-- **Platforms**: Windows, macOS, Linux (cross-platform)
+- **Platforms**: Windows (standalone .exe via PyInstaller)
+- **Distribution**: Standalone executable (~25 MB, no Python installation required)
 
 ---
 
@@ -39,20 +43,33 @@ fmod-importer/
 ├── FmodImporter-Dev/              # Main development directory
 │   ├── fmod_importer/             # Core Python package
 │   │   ├── __init__.py            # Package initialization, VERSION
-│   │   ├── project.py             # FMOD project XML manipulation (1,075 lines)
+│   │   ├── project.py             # FMOD project facade (186 lines) ← UPDATED v0.5.0
 │   │   ├── naming.py              # Pattern-based name parsing (710 lines)
 │   │   ├── matcher.py             # Audio file matching logic (473 lines)
+│   │   ├── core/                  # Core business logic modules ← NEW v0.5.0
+│   │   │   ├── __init__.py
+│   │   │   ├── xml_writer.py      # XML formatting utilities
+│   │   │   ├── xml_loader.py      # XML parsing for FMOD metadata
+│   │   │   ├── pending_folder_manager.py  # Transaction staging
+│   │   │   ├── event_folder_manager.py    # Event folder CRUD
+│   │   │   ├── asset_folder_manager.py    # Asset folder CRUD
+│   │   │   ├── bus_manager.py             # Bus CRUD
+│   │   │   ├── bank_manager.py            # Bank CRUD
+│   │   │   ├── event_creator.py           # Event template cloning
+│   │   │   └── audio_file_manager.py      # Audio file XML entries
 │   │   └── gui/                   # GUI components package
 │   │       ├── __init__.py
 │   │       ├── main.py            # Main GUI class (355 lines)
-│   │       ├── widgets.py         # Widget creation (709 lines)
+│   │       ├── widgets.py         # Widget creation (762 lines)
 │   │       ├── dialogs.py         # CRUD dialogs (699 lines)
 │   │       ├── asset_dialogs.py   # Asset folder tree dialog (394 lines)
 │   │       ├── drag_drop.py       # Drag & drop (641 lines)
 │   │       ├── analysis.py        # Analysis workflow (239 lines)
 │   │       ├── import_workflow.py # Import workflow (430 lines)
 │   │       ├── settings.py        # Settings management (379 lines)
-│   │       └── utils.py           # Utility methods (378 lines)
+│   │       ├── utils.py           # Utility methods (378 lines)
+│   │       ├── presets.py         # Preset system (757 lines)
+│   │       └── preset_resolver.py # UUID resolution (349 lines)
 │   │
 │   ├── Script/
 │   │   └── _Internal/
@@ -135,36 +152,135 @@ The FMOD Importer follows these architectural principles:
 
 ### Core Modules (Business Logic)
 
-#### 1. **project.py** - FMODProject Class (1,075 lines)
-**Purpose**: FMOD Studio project XML manipulation and metadata management
+#### 1. **project.py** - FMODProject Facade (186 lines) ← UPDATED v0.5.0
+**Purpose**: Facade for FMOD Studio project operations, delegates to core managers
 
 **Responsibilities**:
 - Load and parse FMOD Studio project files (.fspro)
-- XML manipulation for Events, Banks, Buses, Asset Folders
-- Cache system for performance optimization
-- CRUD operations for project entities
-- Pending folder management
+- Facade pattern: delegates to specialized core modules
+- Maintain backward compatibility with GUI layer
+- Coordinate operations across multiple managers
 
-**Key Methods**:
+**Key Methods** (unchanged - all delegate to core):
 ```python
-__init__(project_path)                    # Load project with caching
-get_events_in_folder(folder_id)           # Get events recursively
-create_event_folder(name, parent)         # Create event folder
-create_bank(name, parent)                 # Create bank
-create_bus(name, parent)                  # Create bus
-create_asset_folder(name, path)           # Create asset folder
-copy_event_from_template(...)             # Clone event with effects
-commit_pending_folders()                  # Write pending folders to XML
+__init__(project_path)                    # Load project, initialize managers
+get_events_in_folder(folder_id)           # → event_folder_manager
+create_event_folder(name, parent)         # → event_folder_manager
+create_bank(name, parent)                 # → bank_manager
+create_bus(name, parent)                  # → bus_manager
+create_asset_folder(name, path)           # → asset_folder_manager
+copy_event_from_template(...)             # → event_creator
+commit_pending_folders()                  # → pending_folder_manager
 ```
 
 **Design Patterns**:
+- Facade pattern (single interface to core subsystem)
+- Delegation pattern (forwards all operations)
 - Lazy loading (@property decorators)
-- Caching pattern (JSON cache for fast loading)
-- Pending operations (batch folder creation)
 
-**Known Issues**:
-- ⚠️ File exceeds 800-line threshold (1,075 lines)
-- 🔧 **Planned**: Extract XML handling and caching to separate modules
+**Refactoring Impact (v0.5.0)**:
+- Reduced from 1,075 → 186 lines (84% reduction)
+- All business logic extracted to 9 core modules
+- 100% backward compatibility (GUI unchanged)
+- SOLID principles (Single Responsibility)
+
+---
+
+#### 1.1. **core/xml_writer.py** - XMLWriter Utilities (NEW v0.5.0)
+**Purpose**: Shared XML formatting utilities
+
+**Responsibilities**:
+- Format XML attributes consistently
+- Ensure consistent XML output across all managers
+- Utility functions for XML generation
+
+---
+
+#### 1.2. **core/xml_loader.py** - XMLLoader (NEW v0.5.0)
+**Purpose**: Centralized XML parsing for all FMOD metadata
+
+**Responsibilities**:
+- Parse events, banks, buses, folders from XML
+- Unified XML parsing logic (DRY principle)
+- Error handling for malformed XML
+- Performance-optimized parsing
+
+---
+
+#### 1.3. **core/pending_folder_manager.py** - PendingFolderManager (NEW v0.5.0)
+**Purpose**: Transaction-like staging system for folder creation
+
+**Responsibilities**:
+- Stage folder operations (create, delete) before commit
+- Batch multiple operations into single XML write
+- Rollback support for failed operations
+- Atomicity guarantee (all or nothing)
+
+**Design Pattern**: Pending Operations / Transaction pattern
+
+---
+
+#### 1.4. **core/event_folder_manager.py** - EventFolderManager (NEW v0.5.0)
+**Purpose**: CRUD operations for event folders
+
+**Responsibilities**:
+- Create event folders with hierarchy
+- Get events in folder (recursive)
+- Validate folder structure
+- XML manipulation for event folder metadata
+
+---
+
+#### 1.5. **core/asset_folder_manager.py** - AssetFolderManager (NEW v0.5.0)
+**Purpose**: CRUD operations for asset folders
+
+**Responsibilities**:
+- Create audio asset folders
+- Link asset folders to events
+- Manage asset folder hierarchy
+- XML manipulation for asset metadata
+
+---
+
+#### 1.6. **core/bus_manager.py** - BusManager (NEW v0.5.0)
+**Purpose**: CRUD operations for mixer buses
+
+**Responsibilities**:
+- Create mixer buses
+- Auto-detect buses from templates (v0.4.0 feature)
+- Bus hierarchy management
+- XML manipulation for bus metadata
+
+---
+
+#### 1.7. **core/bank_manager.py** - BankManager (NEW v0.5.0)
+**Purpose**: CRUD operations for bank folders
+
+**Responsibilities**:
+- Create bank folders with hierarchy
+- Validate bank references
+- XML manipulation for bank metadata
+
+---
+
+#### 1.8. **core/event_creator.py** - EventCreator (NEW v0.5.0)
+**Purpose**: Complex event cloning from templates
+
+**Responsibilities**:
+- Copy events with all effects and parameters
+- Clone timeline modules
+- Preserve event relationships
+- Manual template cloning (v0.6.1 fix)
+
+---
+
+#### 1.9. **core/audio_file_manager.py** - AudioFileManager (NEW v0.5.0)
+**Purpose**: Audio file XML entry creation
+
+**Responsibilities**:
+- Create audio file references in FMOD XML
+- Link audio files to events
+- Validate audio file paths
 
 ---
 
@@ -246,20 +362,22 @@ class FmodImporterGUI(
 
 | Mixin | Lines | Responsibility |
 |-------|-------|----------------|
-| **WidgetsMixin** | 709 | Widget creation, placeholder management, UI layout |
+| **WidgetsMixin** | 762 | Widget creation, FMOD exe path field (v0.6.0) |
+| **PresetsMixin** | 757 | Configuration presets save/load (v0.3.0) |
 | **DialogsMixin** | 699 | CRUD dialogs for banks, buses, folders |
 | **DragDropMixin** | 641 | Drag & drop between widgets, keyboard navigation |
-| **ImportMixin** | 430 | Import workflow, JSON generation, FMOD integration |
+| **ImportMixin** | 430 | Import workflow, progress dialog (v0.8.0) |
 | **AssetDialogsMixin** | 394 | Asset folder tree dialog |
 | **SettingsMixin** | 379 | Settings persistence (JSON in user home) |
-| **UtilsMixin** | 378 | Utility methods, context menus |
-| **AnalysisMixin** | 239 | Audio analysis workflow, matching |
+| **UtilsMixin** | 378 | Utility methods, ProgressDialog class (v0.8.0) |
+| **AnalysisMixin** | 239 | Analysis workflow, version detection (v0.7.0) |
+| **PresetResolverMixin** | 349 | Smart UUID resolution for presets (v0.3.0) |
 
 **Benefits of Mixin Pattern**:
-- ✅ Each mixin < 1,000 lines (maintainable)
-- ✅ Clear separation of concerns
-- ✅ Easy to test individually
-- ✅ Composable and reusable
+-Each mixin < 1,000 lines (maintainable)
+-Clear separation of concerns
+-Easy to test individually
+-Composable and reusable
 
 ---
 
@@ -485,11 +603,11 @@ Original monolithic GUI class exceeded 3000 lines, violating maintainability pri
 Split into 8 focused mixins using Python's multiple inheritance.
 
 **Consequences**:
-- ✅ Each mixin < 1000 lines
-- ✅ Clear separation of concerns
-- ✅ Easy to add features (new mixin)
-- ⚠️ Slightly more complex initialization
-- ⚠️ Need to manage method name conflicts (rare)
+-Each mixin < 1000 lines
+-Clear separation of concerns
+-Easy to add features (new mixin)
+-Slightly more complex initialization
+-Need to manage method name conflicts (rare)
 
 **Alternatives Considered**:
 - Single class with better organization (rejected: still too large)
@@ -508,10 +626,10 @@ Wanted maximum portability and easy distribution.
 Use only Python standard library (tkinter for GUI, no external packages).
 
 **Consequences**:
-- ✅ Works on any Python installation (no pip install needed)
-- ✅ Easy distribution (PyInstaller creates standalone exe)
-- ✅ No dependency conflicts or updates needed
-- ⚠️ Can't use advanced libraries (e.g., Qt for GUI, pandas for data)
+-Works on any Python installation (no pip install needed)
+-Easy distribution (PyInstaller creates standalone exe)
+-No dependency conflicts or updates needed
+-Can't use advanced libraries (e.g., Qt for GUI, pandas for data)
 
 **Alternatives Considered**:
 - PyQt/PySide (rejected: external dependency, licensing)
@@ -530,10 +648,10 @@ Large FMOD projects (1000+ events) took 10+ seconds to load via XML parsing.
 Implement JSON cache for project metadata, fallback to XML if cache invalid.
 
 **Consequences**:
-- ✅ 10x faster project loading (10s → 1s)
-- ✅ Automatic cache invalidation on XML change
-- ⚠️ Cache files take disk space (~500KB per project)
-- ⚠️ Must maintain cache consistency
+-10x faster project loading (10s → 1s)
+-Automatic cache invalidation on XML change
+-Cache files take disk space (~500KB per project)
+-Must maintain cache consistency
 
 **Alternatives Considered**:
 - No caching (rejected: too slow for large projects)
@@ -552,15 +670,126 @@ Different studios use different naming conventions for audio files.
 Implement flexible pattern system with user-defined tags (`$prefix`, `$feature`, etc.).
 
 **Consequences**:
-- ✅ Supports any naming convention
-- ✅ User can customize patterns
-- ✅ Multiple parsing strategies for robustness
-- ⚠️ Learning curve for pattern syntax
-- ⚠️ Complex parsing logic
+-Supports any naming convention
+-User can customize patterns
+-Multiple parsing strategies for robustness
+-Learning curve for pattern syntax
+-Complex parsing logic
 
 **Alternatives Considered**:
 - Hard-coded naming convention (rejected: not flexible)
 - Regex patterns (rejected: too complex for users)
+
+---
+
+### ADR 005: Core Module Extraction (v0.5.0)
+
+**Status**: Accepted
+
+**Context**:
+project.py exceeded 1000 lines (1,137 lines), violating modularity principle and SRP.
+
+**Decision**:
+Extract business logic into 9 specialized core modules, keep project.py as facade.
+
+**Consequences**:
+-project.py: 1,137 → 186 lines (84% reduction)
+-Each core module < 400 lines (highly maintainable)
+-Clear SRP (Single Responsibility Principle)
+-100% backward compatible (GUI unchanged)
+-Easy to test individual managers
+-More files to navigate (9 core modules vs 1)
+-Slightly more complex initialization
+
+**Alternatives Considered**:
+- Better organization within single file (rejected: still too large)
+- Separate classes without facade (rejected: breaks existing GUI code)
+
+---
+
+### ADR 006: Threading for Import Progress (v0.8.0)
+
+**Status**: Accepted
+
+**Context**:
+Import operations (1-5 minutes) froze GUI, creating poor user experience.
+
+**Decision**:
+Implement ProgressDialog with threading - run FMOD Studio execution in background thread.
+
+**Consequences**:
+-Responsive UI during import (no freeze)
+-Visual feedback with animated progress bar
+-Status message updates at each stage
+-Better user experience
+-Thread safety considerations (use tkinter.after() for UI updates)
+-Cannot cancel import mid-process (prevents project corruption)
+
+**Implementation**:
+- New ProgressDialog class in utils.py
+- Thread-safe UI updates via root.after(0, callback)
+- Modal dialog prevents user interaction during import
+
+**Alternatives Considered**:
+- Asynchronous execution with asyncio (rejected: tkinter not async-friendly)
+- Multiprocessing (rejected: overkill, harder to manage)
+
+---
+
+### ADR 007: Version Mismatch Detection (v0.7.0)
+
+**Status**: Accepted
+
+**Context**:
+Users could import events with mismatched FMOD versions, causing compatibility issues.
+
+**Decision**:
+Detect FMOD project version vs executable version, warn/block import on mismatch.
+
+**Consequences**:
+-Prevents compatibility issues from version mismatches
+-Clear UI feedback (version display component)
+-Auto-detection when project loads
+-Users must ensure version compatibility before import
+-May require FMOD Studio updates
+
+**Implementation**:
+- Parse FMOD version from project XML
+- Detect FMOD Studio executable version
+- Display versions in main UI
+- Block import if versions don't match (configurable)
+
+**Alternatives Considered**:
+- No version check (rejected: causes cryptic errors)
+- Warning only without blocking (rejected: users ignore warnings)
+
+---
+
+### ADR 008: FMOD Executable Path on Main UI (v0.6.0)
+
+**Status**: Accepted
+
+**Context**:
+Users with non-standard FMOD installations couldn't find executable path buried in Settings.
+
+**Decision**:
+Add FMOD Studio Executable path field with browse button to main UI.
+
+**Consequences**:
+-Easier to configure for non-standard installations
+-More visible when path detection fails
+-Browses all .exe files by default (user-friendly)
+-Main UI slightly more cluttered
+-Duplicate of Settings option (acceptable tradeoff)
+
+**Implementation**:
+- Added to WidgetsMixin in main UI layout
+- Browse button with file dialog (all .exe filter)
+- Synced with Settings persistence
+
+**Alternatives Considered**:
+- Keep in Settings only (rejected: not discoverable enough)
+- Auto-detect only (rejected: fails for custom installations)
 
 ---
 
@@ -634,28 +863,31 @@ class NamingPattern:
 
 ## Known Issues and Technical Debt
 
-### 1. project.py Exceeds Size Threshold
-- **Issue**: 1,075 lines (exceeds 800-line threshold)
-- **Impact**: Violates modularity, harder to maintain
-- **Plan**: Extract XML handling and caching to separate modules
-- **Effort**: Medium (4-6 hours)
-- **Priority**: HIGH
+### 1. ~~project.py Exceeds Size Threshold~~ RESOLVED v0.5.0
+- **Status**: RESOLVED
+- **Resolution**: Extracted to 9 core modules, reduced from 1,075 → 186 lines
 
-### 2. Duplicate normalize_string() Function
-- **Issue**: Same function in naming.py and matcher.py
-- **Impact**: DRY violation, maintenance burden
-- **Plan**: Extract to shared utils module
-- **Effort**: Low (30 minutes)
+### 2. widgets.py Approaching Threshold
+- **Issue**: 762 lines (95% of 800-line threshold)
+- **Impact**: Close to violating modularity principle
+- **Plan**: Monitor for further growth, extract if exceeds 800
+- **Effort**: Medium (3-4 hours if needed)
 - **Priority**: MEDIUM
 
-### 3. No Automated Tests
+### 3. presets.py Approaching Threshold
+- **Issue**: 757 lines (95% of 800-line threshold)
+- **Impact**: Close to violating modularity principle
+- **Status**: Already extracted PresetResolver (349 lines) in v0.3.0
+- **Priority**: LOW (unlikely to grow significantly)
+
+### 4. No Automated Tests
 - **Issue**: No unit or integration tests
 - **Impact**: Manual testing only, risk of regressions
 - **Plan**: Add pytest infrastructure and core module tests
 - **Effort**: High (1-2 days)
-- **Priority**: MEDIUM
+- **Priority**: HIGH (now more feasible with modular core)
 
-### 4. Error Messages Not Centralized
+### 5. Error Messages Not Centralized
 - **Issue**: Error message strings duplicated across files
 - **Impact**: Inconsistency, harder to update messages
 - **Plan**: Create error_messages.py constants file

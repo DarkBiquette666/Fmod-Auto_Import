@@ -1,65 +1,54 @@
-# 📁 Package Contents - FMOD Importer Tool
+# Package Contents - FMOD Importer Tool
 
-## 🎯 Quick Start
+## Quick Start
 1. **START HERE:** [QUICKSTART.md](QUICKSTART.md) - 5-minute getting started guide
 2. **Full documentation:** [../README.md](../README.md) - Detailed guide with all use cases
 
 ---
 
-## 📦 Package Files
+## Package Files
 
-### 🚀 Launch Scripts
+### Executable
 | File | Description | Usage |
 |------|-------------|-------|
-| `launch.bat` | Windows launcher | Double-click or run in CMD |
-| `launch.sh` | macOS/Linux launcher | `./launch.sh` in terminal |
+| `FmodImporter.exe` | Standalone Windows executable | Double-click to launch |
 
-### 🐍 Source Code
+### Documentation
 | File | Description |
 |------|-------------|
-| `fmod_importer.py` | Main Python script (189 KB) |
-| `requirements.txt` | Python dependencies list (none external!) |
-
-### 📖 Documentation
-| File | Content |
-|------|---------|
-| `QUICKSTART.md` | 5-minute quick guide ⚡ |
-| `README.md` | Complete documentation with all details |
-| `INDEX.md` | This file - package overview |
-| `VERSION.txt` | Version information and changelog |
-| `LICENSE.txt` | MIT License and disclaimer |
-
-### 🔧 Configuration
-| File | Description |
-|------|-------------|
-| `.gitignore` | Git exclusions (if you version the project) |
+| `README.md` | Complete user guide |
+| `docs/QUICKSTART.md` | 5-minute quick start |
+| `docs/INDEX.md` | This file - package overview |
+| `docs/LICENSE.txt` | License information |
+| `docs/VERSION.txt` | Version history and changelog |
 
 ---
 
-## 🎬 Recommended Usage Workflow
+## Recommended Usage Workflow
 
-### For Beginners
-1. Read [QUICKSTART.md](QUICKSTART.md)
-2. Verify Python is installed (`python --version`)
-3. Double-click `launch.bat` (Windows) or run `./launch.sh` (macOS/Linux)
+### For All Users
+1. Read [QUICKSTART.md](QUICKSTART.md) for 5-minute getting started guide
+2. Double-click `FmodImporter.exe` to launch
+3. For advanced features, see [../README.md](../README.md)
+4. Customize defaults via "Settings" button
 
-### For Advanced Users
-1. Read [../README.md](../README.md) to understand all features
-2. Launch directly: `python fmod_importer.py`
-3. Check "Settings" section to customize
-
-**Note:** No installation required! Python 3.8+ already includes all required libraries.
+**System Requirements:**
+- Windows 10 or later (64-bit)
+- FMOD Studio 2.0+ installed
+- No Python installation required
 
 ---
 
-## 📏 Package Size
-- **Total:** ~240 KB (very lightweight!)
-- **Main script:** 189 KB
+## Package Size
+- **Total:** ~25-30 MB (standalone executable with embedded Python)
+- **Executable:** ~25 MB (includes all dependencies)
 - **Documentation:** ~15 KB
 
+**Note:** No Python installation required - everything is bundled!
+
 ---
 
-## 🆘 Need Help?
+## Need Help?
 
 1. **First reflex:** [QUICKSTART.md](QUICKSTART.md) - Simple use cases
 2. **Specific problem:** [../README.md](../README.md) - "Troubleshooting" section
@@ -67,7 +56,7 @@
 
 ---
 
-## ✅ Pre-sharing Checklist
+## Pre-sharing Checklist
 
 To distribute this package to other users:
 
@@ -80,31 +69,24 @@ To distribute this package to other users:
 - [x] Requirements.txt present
 - [x] Lightweight (240 KB)
 
-**Package is ready to share!** 🎉
+**Package is ready to share!**
 
 ---
 
-## 📦 How to Share
+## How to Share
 
 **Option 1: ZIP Archive**
-```bash
-# Create archive of the folder
-zip -r FmodImporterTool-v1.0.0.zip FmodImporterTool-Package/
-```
+Simply zip the complete FmodImporterTool-Package folder and share.
 
-**Option 2: Git Repository**
-```bash
-# Initialize a git repo (optional)
-cd FmodImporterTool-Package
-git init
-git add .
-git commit -m "Release v1.0.0"
-```
+**Option 2: Direct Copy**
+Copy the FmodImporterTool-Package folder - users just need to double-click FmodImporter.exe
 
-**Option 3: Direct Copy**
-Simply copy the complete `FmodImporterTool-Package` folder
+**System Requirements:**
+- Windows 10 or later (64-bit)
+- FMOD Studio 2.0+ installed
+- No Python installation required
 
 ---
 
-**Version:** 1.0.0
-**Last update:** November 2024
+**Version:** 0.8.0
+**Last update:** December 2024

@@ -1,17 +1,101 @@
 FMOD Importer Tool for FMOD Studio
-Version: 1.0.0
-Release Date: November 2024
+Version: 0.8.0
+Release Date: December 2024
 
 Changelog:
 ----------
 
+v0.8.0 (December 2024)
+- Progress dialog for import operations with threading
+- Animated progress bar prevents UI freeze during 1-5 minute imports
+- FMOD Studio exit crash prevention after successful import
+- Thread-safe UI updates for responsive interface
+
+v0.7.0 (December 2024)
+- Version mismatch detection between project and FMOD executable
+- Version display UI component shows compatibility status
+- Auto-detection prevents import when versions don't match
+- Protects against compatibility issues from version mismatches
+
+v0.6.3 (December 2024)
+- Fix audio import regression for files in Assets/ folder
+
+v0.6.2 (December 2024)
+- Remove incorrect GUI version detection blocking imports
+
+v0.6.1 (December 2024)
+- Template duplication via manual cloning (more robust)
+
+v0.6.0 (December 2024)
+- FMOD Studio Executable path field on main UI with browse button
+- All .exe files shown by default in browse dialog
+- Easier configuration for non-standard FMOD installations
+
+v0.5.1 (December 2024)
+- Handle auto-created events in import workflow
+- Improve FMOD version detection accuracy
+
+v0.5.0 (December 2024)
+- Major core architecture refactoring for maintainability
+- Extracted project.py (1,137 lines) into 9 specialized core modules (186 lines)
+- 84% code reduction in main project facade
+- New core/ directory with specialized managers:
+  - xml_writer.py: Shared XML formatting utilities
+  - xml_loader.py: Centralized XML parsing
+  - pending_folder_manager.py: Transaction staging system
+  - event_folder_manager.py: Event folder CRUD operations
+  - asset_folder_manager.py: Asset folder CRUD operations
+  - bus_manager.py: Bus CRUD operations
+  - bank_manager.py: Bank CRUD operations
+  - event_creator.py: Event template cloning
+  - audio_file_manager.py: Audio file XML entries
+- Stateless manager pattern with facade delegation
+- 100% backward compatibility maintained
+- Follows SOLID principles (Single Responsibility)
+- All modules < 400 lines (highly maintainable)
+
+v0.4.0 (December 2024)
+- Bus auto-detection from templates
+- Improved UI layout for preset system
+
+v0.3.0 (December 2024)
+- Complete preset system for configuration snapshots
+- Save/load entire configurations (paths, patterns, FMOD references)
+- Category-based preset organization
+- Smart UUID resolution (auto-creates missing FMOD elements)
+- Preset files in ~/.fmod_importer_presets/ as JSON
+- PresetsMixin following 8-mixin architecture
+- PresetResolver module for UUID resolution (349 lines)
+
+v0.2.0 (December 2024)
+- Development protocol with skills (/feature, /debug, /refactor, /review)
+- Automated version bump system
+- English-only coding standard
+- Conventional commit format
+- Automated code quality checks
+
+v0.1.9 (December 2024)
+- Reorganized UI layout with orphans panel on right
+- Customizable separator fields for Event and Asset patterns
+- Optional template folder with checkbox selection
+
+v0.1.0 - v0.1.8 (December 2024)
+- Initial FMOD Importer functionality
+- Mixin-based GUI architecture (8 mixins)
+- Template-based event creation
+- Audio file matching system with fuzzy matching
+- Drag and drop support
+- Settings persistence
+- Pattern-based naming system
+- Orphan media/event tracking
+- Various bug fixes and improvements
+
 v1.0.0 (November 2024)
-- Initial release
+- Initial release (legacy version number)
 - Complete GUI for audio asset import
 - Automatic matching between audio files and events
 - Template system to copy existing event structures
 - Intelligent match scoring system
 - Manual match editing support
 - Default settings persistence
-- Intuitive interface with visual feedback (confidence icons)
 - Multi-platform support (Windows, macOS, Linux)

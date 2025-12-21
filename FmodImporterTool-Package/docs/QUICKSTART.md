@@ -1,52 +1,43 @@
-# 🚀 Quick Start Guide - FMOD Importer Tool
+# Quick Start Guide - FMOD Importer Tool
 
-## Setup in 2 Steps
+## Setup in 1 Step
 
-### 1. Verify Python
-Open a terminal and type:
-```bash
-python --version
-```
-If error → Install Python from https://www.python.org/downloads/
+### Simply double-click `FmodImporter.exe`
 
-**Note:** Python 3.8+ already includes all required libraries (tkinter, xml, json, etc.)
+**That's it!** This is a standalone Windows executable - **no Python installation required!**
 
-### 2. Launch
-**Windows:** Double-click on `launch.bat`
-**macOS/Linux:** `./launch.sh`
-
-**Or directly:**
-```bash
-python fmod_importer.py
-```
+**Note:** The first launch may take a few seconds as the executable extracts its dependencies.
 
 ---
 
 ## First Import in 5 Minutes
 
-### 1️⃣ Load your FMOD project
+### Step 0: Ensure FMOD Studio is closed
+**IMPORTANT:** Close FMOD Studio completely before using this tool!
+
+### Step 1: Load your FMOD project
 - Click "Browse..." → Select your `.fspro`
 - Click "Load"
 
-### 2️⃣ Select your audio files
+### Step 2: Select your audio files
 - Click "Browse..." (Media Files)
 - Choose the folder with your .wav/.mp3 files
 
-### 3️⃣ Configure destination
+### Step 3: Configure destination
 - **Event Folder:** Click "Select..." → Choose where to create events
 - **Bank:** Click "Select..." → Choose a bank
 - **Bus:** Click "Select..." → Choose a bus
 
-### 4️⃣ Analyze
+### Step 4: Analyze
 - Click "Analyze"
 - Check the match list
 
-### 5️⃣ Import
+### Step 5: Import
 - Click "Import"
-- Wait for completion
+- **A progress dialog will appear** - wait for completion (1-5 minutes)
 - Open FMOD Studio and save (Ctrl+S)
 
-**That's it!** 🎉
+**That's it!**
 
 ---
 
@@ -67,8 +58,14 @@ If you already have events to copy:
 **"Please select a destination folder"**
 → Open the "Event Folder" dropdown and select a folder
 
-**"tkinter not found" (Linux)**
-→ `sudo apt-get install python3-tk`
+**"Could not find FMOD Studio executable"**
+→ Use the "Browse..." button next to FMOD Studio Executable to locate your FMOD installation
+
+**"FMOD version mismatch detected"**
+→ Update FMOD Studio or project to match versions (shown in main UI)
+
+**"Tool doesn't launch"**
+→ Ensure Windows 10 or later (64-bit). First launch may take longer.
 
 **Changes don't appear in FMOD**
 → Open FMOD Studio and save the project (Ctrl+S)
@@ -77,11 +74,12 @@ If you already have events to copy:
 
 ## Tips
 
-✅ Name your files consistently for better matching
-✅ Test first on a small project
-✅ Always backup your FMOD project before importing
-✅ Use "Settings" to save your favorite folders
+- Name your files consistently for better matching
+-  Test first on a small project
+- Always backup your FMOD project before importing
+- Use "Settings" to save your favorite folders
+- Wait for the progress dialog to complete (don't close it manually)
 
 ---
 
-📖 **For more details:** See [../README.md](../README.md)
+**For more details:** See [../README.md](../README.md)

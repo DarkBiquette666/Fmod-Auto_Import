@@ -114,7 +114,7 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 
 In the import event list:
 
-- **✓**: Perfect match found
+- **[OK]**: Perfect match found
 - **~**: Approximate match (medium confidence)
 - **?**: No match found
 - **+**: Auto-created event (no template)
@@ -266,6 +266,18 @@ These values will be pre-filled on next launch.
 
 **Note:** The progress dialog cannot be closed manually - you must wait for the import to complete or timeout. This prevents interrupting the FMOD Studio process mid-import, which could corrupt the project.
 
+### "FMOD version mismatch detected"
+
+**Cause:** Project FMOD version doesn't match installed FMOD Studio executable version
+
+**Solution:**
+1. Check the version display in the main interface (shows Project version vs Executable version)
+2. Either:
+   - Update your FMOD Studio installation to match the project version
+   - Upgrade/downgrade the FMOD project to match your executable version
+3. The tool will prevent import until versions match to avoid compatibility issues
+4. Version detection is automatic when you load a project
+
 ### "Failed to load project"
 
 **Possible causes:**
@@ -351,5 +363,5 @@ Full license: [docs/LICENSE.txt](docs/LICENSE.txt)
 
 ---
 
-**Version:** 0.3.0
-**Last update:** December 2025
+**Version:** 0.8.0
+**Last update:** December 2024
