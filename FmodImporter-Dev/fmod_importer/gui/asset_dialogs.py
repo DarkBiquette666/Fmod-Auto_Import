@@ -29,9 +29,18 @@ class AssetDialogsMixin:
         frame = ttk.Frame(dialog, padding="10")
         frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
+        # Search field
+        search_frame = ttk.Frame(frame)
+        search_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        ttk.Label(search_frame, text="Search:").grid(row=0, column=0, padx=(0, 5))
+        search_var = tk.StringVar()
+        search_entry = ttk.Entry(search_frame, textvariable=search_var, width=40)
+        search_entry.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        search_frame.columnconfigure(1, weight=1)
+
         # Create treeview
         tree_frame = ttk.Frame(frame)
-        tree_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        tree_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         tree = ttk.Treeview(tree_frame, selectmode='browse')
         tree.heading('#0', text='Asset Folders')
@@ -71,8 +80,8 @@ class AssetDialogsMixin:
 
             return path_tree
 
-        def build_tree():
-            """Build tree view from path hierarchy"""
+        def build_tree(search_filter=""):
+            """Build tree view from path hierarchy with optional search filter"""
             path_tree = build_path_hierarchy()
 
             # Get master asset folder ID
@@ -101,6 +110,10 @@ class AssetDialogsMixin:
                 # Get display name (last component of path)
                 display_name = path.rstrip('/').split('/')[-1] if path.rstrip('/') else path
 
+                # Apply search filter
+                if search_filter and search_filter.lower() not in display_name.lower():
+                    continue
+
                 # Find parent path
                 parts = [p for p in path.split('/') if p]
                 if len(parts) > 1:
@@ -117,7 +130,19 @@ class AssetDialogsMixin:
                                   values=(asset_id or '', full_path), tags=tags)
                 item_map[path] = item
 
-        build_tree()
+        def rebuild_tree(search_filter=""):
+            """Rebuild tree with search filter"""
+            tree.delete(*tree.get_children())
+            build_tree(search_filter)
+            if search_filter:
+                expand_all()
+
+        rebuild_tree()
+
+        # Connect search field
+        def on_search_change(*args):
+            rebuild_tree(search_var.get())
+        search_var.trace('w', on_search_change)
 
         result = [None]
 
@@ -369,7 +394,7 @@ class AssetDialogsMixin:
 
         # Edit buttons
         edit_frame = ttk.Frame(frame)
-        edit_frame.grid(row=1, column=0, pady=5)
+        edit_frame.grid(row=2, column=0, pady=5)
         ttk.Button(edit_frame, text="New", command=on_new_folder, width=10).grid(row=0, column=0, padx=2)
         ttk.Button(edit_frame, text="Rename (F2)", command=on_rename, width=12).grid(row=0, column=1, padx=2)
         ttk.Button(edit_frame, text="Delete", command=on_delete_folder, width=10).grid(row=0, column=2, padx=2)
@@ -378,7 +403,7 @@ class AssetDialogsMixin:
 
         # Selection buttons
         button_frame = ttk.Frame(frame)
-        button_frame.grid(row=2, column=0, pady=10)
+        button_frame.grid(row=3, column=0, pady=10)
         ttk.Button(button_frame, text="Select", command=on_select, width=15).grid(row=0, column=0, padx=5)
         ttk.Button(button_frame, text="Cancel", command=on_cancel, width=15).grid(row=0, column=1, padx=5)
 
@@ -386,7 +411,7 @@ class AssetDialogsMixin:
         dialog.columnconfigure(0, weight=1)
         dialog.rowconfigure(0, weight=1)
         frame.columnconfigure(0, weight=1)
-        frame.rowconfigure(0, weight=1)
+        frame.rowconfigure(1, weight=1)
         tree_frame.columnconfigure(0, weight=1)
         tree_frame.rowconfigure(0, weight=1)
 

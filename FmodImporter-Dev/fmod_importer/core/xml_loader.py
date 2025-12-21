@@ -96,14 +96,15 @@ class XMLLoader:
         if not bank_dir.exists():
             return banks
 
-        for xml_file in bank_dir.glob("*.xml"):
+        # Load all XML files recursively (includes Bank/*.xml and Bank/BankFolder/*.xml)
+        for xml_file in bank_dir.glob("**/*.xml"):
             tree = ET.parse(xml_file)
             root = tree.getroot()
 
             # Look for both MasterBank and Bank classes
             for obj in root.findall(".//object"):
                 obj_class = obj.get('class')
-                if obj_class in ['MasterBank', 'Bank']:
+                if obj_class in ['MasterBank', 'Bank', 'BankFolder']:
                     bank_id = obj.get('id')
                     name_elem = obj.find(".//property[@name='name']/value")
                     name = name_elem.text if name_elem is not None else "Unnamed"

@@ -468,9 +468,18 @@ class DialogsMixin:
         frame = ttk.Frame(dialog, padding="10")
         frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
+        # Search field
+        search_frame = ttk.Frame(frame)
+        search_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 5))
+        ttk.Label(search_frame, text="Search:").grid(row=0, column=0, padx=(0, 5))
+        search_var = tk.StringVar()
+        search_entry = ttk.Entry(search_frame, textvariable=search_var, width=40)
+        search_entry.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        search_frame.columnconfigure(1, weight=1)
+
         # Create treeview
         tree_frame = ttk.Frame(frame)
-        tree_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        tree_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
         tree = ttk.Treeview(tree_frame, selectmode='browse')
         tree.heading('#0', text='Event Folders')
@@ -483,8 +492,20 @@ class DialogsMixin:
         # Configure pending folder style
         tree.tag_configure('pending', font=('TkDefaultFont', 9, 'italic'), foreground='gray')
 
+        def has_matching_descendant(folder_id, search_filter, all_folders):
+            """Check if folder or any descendant matches search"""
+            if not search_filter:
+                return True
+            if search_filter.lower() in all_folders.get(folder_id, {}).get('name', '').lower():
+                return True
+            for fid, fdata in all_folders.items():
+                if fdata.get('parent') == folder_id:
+                    if has_matching_descendant(fid, search_filter, all_folders):
+                        return True
+            return False
+
         # Build tree hierarchy sorted A-Z
-        def build_tree(parent_item, parent_folder_id):
+        def build_tree(parent_item, parent_folder_id, search_filter=""):
             # Get all child folders (committed + pending) and sort them by name A-Z
             all_folders = self.project.get_all_event_folders()
             child_folders = [(folder_id, folder_data) for folder_id, folder_data in all_folders.items()
@@ -492,18 +513,33 @@ class DialogsMixin:
             child_folders.sort(key=lambda x: x[1]['name'].lower())
 
             for folder_id, folder_data in child_folders:
+                # Apply search filter
+                if search_filter and not has_matching_descendant(folder_id, search_filter, all_folders):
+                    continue
                 # Check if pending
                 tags = ('pending',) if self.project.is_folder_pending(folder_id) else ()
                 item = tree.insert(parent_item, 'end', text=folder_data['name'],
                                   values=(folder_id,), tags=tags)
-                build_tree(item, folder_id)
+                build_tree(item, folder_id, search_filter)
+
+        def rebuild_tree(search_filter=""):
+            """Rebuild tree with search filter"""
+            tree.delete(*tree.get_children())
+            master_id = self.project.workspace['masterEventFolder']
+            all_folders = self.project.get_all_event_folders()
+            master_name = all_folders[master_id]['name']
+            root_item = tree.insert('', 'end', text=master_name, values=(master_id,))
+            build_tree(root_item, master_id, search_filter)
+            if search_filter:
+                expand_all()
 
         # Start with master folder
-        master_id = self.project.workspace['masterEventFolder']
-        all_folders = self.project.get_all_event_folders()
-        master_name = all_folders[master_id]['name']
-        root_item = tree.insert('', 'end', text=master_name, values=(master_id,))
-        build_tree(root_item, master_id)
+        rebuild_tree()
+
+        # Connect search field
+        def on_search_change(*args):
+            rebuild_tree(search_var.get())
+        search_var.trace('w', on_search_change)
 
         result = [None]
 
@@ -674,7 +710,7 @@ class DialogsMixin:
 
         # Edit buttons
         edit_frame = ttk.Frame(frame)
-        edit_frame.grid(row=1, column=0, pady=5)
+        edit_frame.grid(row=2, column=0, pady=5)
         ttk.Button(edit_frame, text="New", command=on_new_folder, width=10).grid(row=0, column=0, padx=2)
         ttk.Button(edit_frame, text="Rename (F2)", command=on_rename, width=12).grid(row=0, column=1, padx=2)
         ttk.Button(edit_frame, text="Delete", command=on_delete_folder, width=10).grid(row=0, column=2, padx=2)
@@ -683,7 +719,7 @@ class DialogsMixin:
 
         # Selection buttons
         button_frame = ttk.Frame(frame)
-        button_frame.grid(row=2, column=0, pady=10)
+        button_frame.grid(row=3, column=0, pady=10)
         ttk.Button(button_frame, text="Select", command=on_select, width=15).grid(row=0, column=0, padx=5)
         ttk.Button(button_frame, text="Cancel", command=on_cancel, width=15).grid(row=0, column=1, padx=5)
 
@@ -691,7 +727,7 @@ class DialogsMixin:
         dialog.columnconfigure(0, weight=1)
         dialog.rowconfigure(0, weight=1)
         frame.columnconfigure(0, weight=1)
-        frame.rowconfigure(0, weight=1)
+        frame.rowconfigure(1, weight=1)
         tree_frame.columnconfigure(0, weight=1)
         tree_frame.rowconfigure(0, weight=1)
 

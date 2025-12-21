@@ -302,7 +302,11 @@ class FmodImporterGUI(
         selected = self._show_folder_tree_dialog("Select Template Folder")
         if selected:
             folder_name, folder_id = selected
-            self.template_var.set(folder_name)
+            # Calculate and display full path
+            from .preset_resolver import PresetResolver
+            resolver = PresetResolver(self.project)
+            folder_path = resolver.get_folder_path(folder_id)
+            self.template_var.set(folder_path if folder_path else folder_name)
             self.selected_template_id = folder_id
             self._auto_detect_bus_from_template()
 
@@ -315,7 +319,11 @@ class FmodImporterGUI(
         selected = self._show_folder_tree_dialog("Select Destination Folder")
         if selected:
             folder_name, folder_id = selected
-            self.dest_var.set(folder_name)
+            # Calculate and display full path
+            from .preset_resolver import PresetResolver
+            resolver = PresetResolver(self.project)
+            folder_path = resolver.get_folder_path(folder_id)
+            self.dest_var.set(folder_path if folder_path else folder_name)
             self.selected_dest_id = folder_id
 
     def select_bank(self):
@@ -332,7 +340,11 @@ class FmodImporterGUI(
         )
         if selected:
             bank_name, bank_id = selected
-            self.bank_var.set(bank_name)
+            # Calculate and display full path
+            from .preset_resolver import PresetResolver
+            resolver = PresetResolver(self.project)
+            bank_path = resolver.get_bank_path(bank_id)
+            self.bank_var.set(bank_path if bank_path else bank_name)
             self.selected_bank_id = bank_id
 
     def select_bus(self):
@@ -349,7 +361,11 @@ class FmodImporterGUI(
         )
         if selected:
             bus_name, bus_id = selected
-            self.bus_var.set(bus_name)
+            # Calculate and display full path
+            from .preset_resolver import PresetResolver
+            resolver = PresetResolver(self.project)
+            bus_path = resolver.get_bus_path(bus_id)
+            self.bus_var.set(bus_path if bus_path else bus_name)
             self.selected_bus_id = bus_id
             self.bus_warning_label.config(text="")
 

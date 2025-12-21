@@ -347,3 +347,42 @@ class PresetResolver:
         parent_id = bank_data.get('parent', '')
 
         return (bank_name, parent_id)
+
+    def get_bank_path(self, bank_id: str) -> str:
+        """
+        Build full path from bank ID.
+
+        Traverses parent hierarchy to build path like "SFX/Characters".
+
+        Args:
+            bank_id: Bank UUID
+
+        Returns:
+            Full path string (no prefix, unlike buses)
+        """
+        if not self.project or not bank_id:
+            return ""
+
+        if bank_id not in self.project.banks:
+            return ""
+
+        path_parts = []
+        current_id = bank_id
+        master_bank_id = self.project.workspace.get('masterBankFolder')
+
+        while current_id and current_id in self.project.banks:
+            bank_data = self.project.banks[current_id]
+            bank_name = bank_data.get('name', '')
+
+            # Stop at master bank (don't include in path)
+            if current_id == master_bank_id:
+                break
+
+            path_parts.insert(0, bank_name)
+            current_id = bank_data.get('parent')
+
+        # If no path parts, return just the bank name
+        if not path_parts:
+            return self.project.banks[bank_id].get('name', '')
+
+        return '/'.join(path_parts)
