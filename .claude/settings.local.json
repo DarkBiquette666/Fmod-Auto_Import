@@ -60,7 +60,8 @@
       "Bash(tasklist:*)",
       "Bash(exit 0)",
       "Bash(git ls-tree:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(python3 -c:*)"
     ],
     "deny": [],
     "ask": []

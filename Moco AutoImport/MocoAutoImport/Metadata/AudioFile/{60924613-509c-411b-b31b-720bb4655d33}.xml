@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<objects serializationModel="Studio.02.02.00">
-	<object class="AudioFile" id="{60924613-509c-411b-b31b-720bb4655d33}">
-		<property name="assetPath">
-			<value>Characters/Mechaflora Weak Ranged/Mechaflora_Weak_Ranged_Idle_A_10.wav</value>
-		</property>
-	</object>
-</objects>
