@@ -23,6 +23,58 @@ class ImportMixin:
     All methods access shared state through 'self'.
     """
 
+    def _check_fmod_project_running(self) -> bool:
+        """
+        Check if FMOD Studio is running with the current project.
+
+        Returns:
+            True if the same project is open in FMOD Studio (should block import)
+            False otherwise (safe to proceed)
+        """
+        import re
+
+        try:
+            # Use PowerShell to get FMOD Studio processes with command line
+            ps_cmd = (
+                "Get-CimInstance Win32_Process | "
+                "Where-Object { $_.Name -like '*FMOD*Studio*' } | "
+                "Select-Object -ExpandProperty CommandLine"
+            )
+
+            result = subprocess.run(
+                ['powershell', '-Command', ps_cmd],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+
+            if result.returncode != 0 or not result.stdout.strip():
+                return False  # No FMOD Studio running, safe to proceed
+
+            # Get current project path (normalized for comparison)
+            current_project = str(self.project.project_path).lower().replace('/', '\\')
+
+            # Check each command line for matching project
+            for line in result.stdout.strip().split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+
+                # Look for .fspro file in command line
+                if '.fspro' in line.lower():
+                    # Extract project path using regex
+                    match = re.search(r'([A-Za-z]:[^"]*\.fspro)', line, re.IGNORECASE)
+                    if match:
+                        running_project = match.group(1).lower().replace('/', '\\')
+                        if running_project == current_project:
+                            return True  # Same project is running!
+
+            return False  # Different project or no project detected
+
+        except Exception:
+            return False  # Fail-safe: don't block on detection errors
+
     def import_assets(self):
         """Import assets using FMOD JavaScript API via auto-execute script"""
         import threading
@@ -37,6 +89,15 @@ class ImportMixin:
             # Check for version mismatch (should have been caught during analysis)
             if getattr(self, '_version_mismatch', False):
                 messagebox.showerror("Error", "Cannot import due to FMOD Studio version mismatch. Please run Analysis again with matching versions.")
+                return
+
+            # Check if FMOD Studio is running with this project
+            if self._check_fmod_project_running():
+                messagebox.showerror(
+                    "FMOD Studio Running",
+                    "FMOD Studio is currently open with this project.\n\n"
+                    "Please close FMOD Studio before importing to avoid conflicts."
+                )
                 return
 
             asset_id = getattr(self, "selected_asset_id", None)
