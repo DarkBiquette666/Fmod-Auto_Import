@@ -85,33 +85,48 @@ class XMLLoader:
 
     def load_banks(self) -> Dict[str, Dict]:
         """
-        Load all banks from the Bank directory.
+        Load all bank folders from the BankFolder directory.
 
         Returns:
-            Dictionary mapping bank IDs to bank information
+            Dictionary mapping bank folder IDs to bank information
         """
         banks = {}
-        bank_dir = self.metadata_path / "Bank"
+        bank_dir = self.metadata_path / "BankFolder"
 
         if not bank_dir.exists():
             return banks
 
-        # Load all XML files recursively (includes Bank/*.xml and Bank/BankFolder/*.xml)
-        for xml_file in bank_dir.glob("**/*.xml"):
+        # Get master bank folder ID from workspace
+        master_bank_id = None
+        if hasattr(self, 'workspace') and self.workspace:
+            master_bank_id = self.workspace.get('masterBankFolder')
+
+        # Load all XML files from BankFolder directory
+        for xml_file in bank_dir.glob("*.xml"):
             tree = ET.parse(xml_file)
             root = tree.getroot()
 
-            # Look for both MasterBank and Bank classes
+            # Look for BankFolder and MasterBankFolder class objects
             for obj in root.findall(".//object"):
                 obj_class = obj.get('class')
-                if obj_class in ['MasterBank', 'Bank', 'BankFolder']:
+                if obj_class in ['BankFolder', 'MasterBankFolder']:
                     bank_id = obj.get('id')
-                    name_elem = obj.find(".//property[@name='name']/value")
-                    name = name_elem.text if name_elem is not None else "Unnamed"
 
-                    # Get parent relationship if exists
-                    parent_rel = obj.find(".//relationship[@name='folder']/destination")
-                    parent_id = parent_rel.text if parent_rel is not None else None
+                    # MasterBankFolder typically has no name
+                    if obj_class == 'MasterBankFolder':
+                        name = "Master"
+                        parent_id = None
+                    else:
+                        name_elem = obj.find(".//property[@name='name']/value")
+                        name = name_elem.text if name_elem is not None else "Unnamed"
+
+                        # Get parent relationship if exists
+                        parent_rel = obj.find(".//relationship[@name='folder']/destination")
+                        parent_id = parent_rel.text if parent_rel is not None else None
+
+                        # If no explicit parent, set to master bank folder
+                        if not parent_id and master_bank_id:
+                            parent_id = master_bank_id
 
                     banks[bank_id] = {
                         'name': name,
