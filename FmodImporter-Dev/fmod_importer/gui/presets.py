@@ -499,8 +499,10 @@ class PresetsMixin:
                         folder_data = self.project._pending_event_folders.get(resolved_id)
 
                     if folder_data:
+                        # Calculate and display full path
+                        folder_path = resolver.get_folder_path(resolved_id)
                         folder_name = folder_data['name']
-                        self.template_var.set(folder_name)
+                        self.template_var.set(folder_path if folder_path else folder_name)
                         self.selected_template_id = resolved_id
 
             # Resolve destination folder
@@ -514,8 +516,10 @@ class PresetsMixin:
                         folder_data = self.project._pending_event_folders.get(resolved_id)
 
                     if folder_data:
+                        # Calculate and display full path
+                        folder_path = resolver.get_folder_path(resolved_id)
                         folder_name = folder_data['name']
-                        self.dest_var.set(folder_name)
+                        self.dest_var.set(folder_path if folder_path else folder_name)
                         self.selected_dest_id = resolved_id
 
             # Resolve bank
@@ -523,8 +527,10 @@ class PresetsMixin:
             if bank_ref.get('id') or bank_ref.get('name'):
                 resolved_id = resolver.resolve_bank_reference(bank_ref)
                 if resolved_id and hasattr(self, 'bank_var'):
+                    # Calculate and display full path
+                    bank_path = resolver.get_bank_path(resolved_id)
                     bank_name = self.project.banks[resolved_id]['name']
-                    self.bank_var.set(bank_name)
+                    self.bank_var.set(bank_path if bank_path else bank_name)
                     self.selected_bank_id = resolved_id
 
             # Resolve bus
@@ -532,8 +538,10 @@ class PresetsMixin:
             if bus_ref.get('id') or bus_ref.get('path'):
                 resolved_id = resolver.resolve_bus_reference(bus_ref)
                 if resolved_id and hasattr(self, 'bus_var'):
+                    # Calculate and display full path
+                    bus_path = resolver.get_bus_path(resolved_id)
                     bus_name = self.project.buses[resolved_id]['name']
-                    self.bus_var.set(bus_name)
+                    self.bus_var.set(bus_path if bus_path else bus_name)
                     self.selected_bus_id = resolved_id
 
             # Resolve asset folder
