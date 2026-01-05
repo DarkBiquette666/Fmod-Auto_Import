@@ -290,7 +290,7 @@
 
     try {
         var importData = readJsonFile(jsonPath);
-        var resultPath = importData.resultPath;
+        resultPath = importData.resultPath;  // Use global resultPath from wrapper (no 'var')
         var events = importData.events;
 
         var result = {
