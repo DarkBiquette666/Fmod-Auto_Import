@@ -416,11 +416,13 @@ class ImportMixin:
 // Set paths as global variables
 var FMOD_IMPORTER_JSON_PATH = "{str(json_path).replace(chr(92), '/')}";
 var importScriptPath = "{str(script_path).replace(chr(92), '/')}";
-var resultPath = FMOD_IMPORTER_JSON_PATH.replace('.json', '_result.json');
 
 // Fonction pour écrire le fichier résultat (toujours)
 function writeResultFile(success, message, error) {{
     try {{
+        // Calculate result path locally (don't define as global to avoid conflicts)
+        var wrapperResultPath = FMOD_IMPORTER_JSON_PATH.replace('.json', '_result.json');
+
         var result = {{
             success: success,
             message: message || "",
@@ -428,12 +430,12 @@ function writeResultFile(success, message, error) {{
             timestamp: new Date().toISOString()
         }};
 
-        var file = studio.system.getFile(resultPath);
+        var file = studio.system.getFile(wrapperResultPath);
         file.open(studio.system.openMode.WriteOnly);
         file.writeText(JSON.stringify(result, null, 2));
         file.close();
 
-        console.log("Result file written: " + resultPath);
+        console.log("Result file written: " + wrapperResultPath);
     }} catch (writeErr) {{
         console.log("CRITICAL: Cannot write result file: " + writeErr.message);
     }}
@@ -473,7 +475,6 @@ try {{
     console.log("=== FMOD Importer Wrapper Start ===");
     console.log("JSON Path: " + FMOD_IMPORTER_JSON_PATH);
     console.log("Script Path: " + importScriptPath);
-    console.log("Result Path: " + resultPath);
 
     // Lire le script principal
     var importScriptContent = readTextFileSafe(importScriptPath);
