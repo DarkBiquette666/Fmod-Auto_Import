@@ -407,9 +407,14 @@ class ImportMixin:
                         f"Copying audio files to FMOD Assets folder...\n\nPlease wait, this may take several minutes."
                     ))
 
-                    # Create a temporary wrapper script that includes the JSON path
-                    # This is needed because fmodstudiocl.exe doesn't pass arguments to scripts
-                    wrapper_script_path = json_path.parent / "_temp_import_wrapper.js"
+                    # Define log paths
+                    js_log_path = temp_dir / f"fmod_import_js_debug_{uuid.uuid4().hex}.log"
+                    py_log_path = temp_dir / f"fmod_import_py_debug_{uuid.uuid4().hex}.log"
+
+                    # Create a temporary wrapper script in the project directory
+                    # This avoids potential permission issues with PyInstaller's temp folder
+                    project_dir = Path(self.project.project_path).parent
+                    wrapper_script_path = project_dir / f"_temp_import_wrapper_{uuid.uuid4().hex[:8]}.js"
 
                     # Read the main import script content (Python can access _MEIPASS, FMOD Studio cannot)
                     with open(script_path, 'r', encoding='utf-8') as f:
@@ -423,6 +428,7 @@ class ImportMixin:
 
 // Set global variables expected by the import script
 var FMOD_IMPORTER_JSON_PATH = "{str(json_path).replace(chr(92), '/')}";
+var FMOD_IMPORTER_LOG_PATH = "{str(js_log_path).replace(chr(92), '/')}";
 var resultPath = "{str(result_path).replace(chr(92), '/')}";
 
 // === EMBEDDED IMPORT SCRIPT START ===
@@ -454,6 +460,20 @@ var resultPath = "{str(result_path).replace(chr(92), '/')}";
                         text=True,
                         timeout=300  # 5 minute timeout
                     )
+
+                    # Write Python logs (critical for debugging builds)
+                    try:
+                        with open(py_log_path, 'w', encoding='utf-8') as log_file:
+                            log_file.write("=== PYTHON IMPORT LOG ===\n")
+                            log_file.write(f"Timestamp: {uuid.uuid4()}\n")
+                            log_file.write(f"Command: {' '.join(cmd)}\n")
+                            log_file.write(f"Return code: {result.returncode}\n\n")
+                            log_file.write("=== STDOUT ===\n")
+                            log_file.write(result.stdout)
+                            log_file.write("\n\n=== STDERR ===\n")
+                            log_file.write(result.stderr)
+                    except Exception as log_err:
+                        print(f"Failed to write python log: {log_err}")
 
                     # Clean up wrapper script
                     try:
@@ -583,6 +603,9 @@ var resultPath = "{str(result_path).replace(chr(92), '/')}";
                         error_msg = (
                             "Import Status Unknown - No result file created\n\n"
                             "FMOD Studio executed but did not create a result file.\n\n"
+                            "DEBUG LOGS created at:\n"
+                            f"• JS Log: {js_log_path}\n"
+                            f"• Py Log: {py_log_path}\n\n"
                             "Possible causes:\n"
                             "• Script execution failed silently\n"
                             "• FMOD Studio crashed during import\n"
@@ -592,7 +615,7 @@ var resultPath = "{str(result_path).replace(chr(92), '/')}";
                             f"• Project: {Path(self.project.project_path).parent}\n\n"
                             "Recommendation:\n"
                             "1. Close FMOD Studio completely\n"
-                            "2. Check file permissions\n"
+                            "2. Check the logs above for errors\n"
                             "3. Try importing again"
                         )
 

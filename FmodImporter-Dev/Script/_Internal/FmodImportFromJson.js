@@ -19,8 +19,31 @@
     }
 
     var jsonPath = FMOD_IMPORTER_JSON_PATH;
+    var logPath = (typeof FMOD_IMPORTER_LOG_PATH !== 'undefined') ? FMOD_IMPORTER_LOG_PATH : "";
 
     // ========== HELPER FUNCTIONS ==========
+
+    // Debug logging to file
+    function debugLog(message) {
+        // Always log to console
+        debugLog(message);
+        
+        // Log to file if path is available
+        if (logPath && logPath.length > 0) {
+            try {
+                var file = studio.system.getFile(logPath);
+                file.open(studio.system.openMode.WriteOnly | studio.system.openMode.Append);
+                file.writeText("[" + new Date().toISOString() + "] " + message + "\n");
+                file.close();
+            } catch (e) {
+                // Fail silently on log error to not break the script
+            }
+        }
+    }
+
+    debugLog("=== FMOD IMPORT SCRIPT STARTED ===");
+    debugLog("JSON Path: " + jsonPath);
+    debugLog("Result Path: " + ((typeof resultPath !== 'undefined') ? resultPath : "undefined"));
 
     // Read JSON file
     function readJsonFile(path) {
@@ -34,7 +57,7 @@
     // Write JSON result file with robust error handling
     function writeJsonFile(path, data) {
         try {
-            console.log("DEBUG: Writing JSON to: " + path);
+            debugLog("DEBUG: Writing JSON to: " + path);
 
             // Valider le chemin
             if (!path || path.length === 0) {
@@ -47,7 +70,7 @@
                 throw new Error("Failed to serialize data to JSON");
             }
 
-            console.log("DEBUG: JSON serialized (" + jsonString.length + " chars)");
+            debugLog("DEBUG: JSON serialized (" + jsonString.length + " chars)");
 
             // Écrire le fichier
             var file = studio.system.getFile(path);
@@ -59,27 +82,27 @@
             file.writeText(jsonString);
             file.close();
 
-            console.log("DEBUG: File written successfully");
+            debugLog("DEBUG: File written successfully");
             return true;
 
         } catch (writeErr) {
-            console.log("ERROR: writeJsonFile failed: " + writeErr.message);
+            debugLog("ERROR: writeJsonFile failed: " + writeErr.message);
 
             // Fallback : essayer d'écrire dans le dossier du projet
             try {
                 var projectDir = studio.project.filePath.replace(/[^\/\\]+$/, '');
                 var fallbackPath = projectDir + "fmod_import_result_fallback.json";
-                console.log("DEBUG: Attempting fallback write to: " + fallbackPath);
+                debugLog("DEBUG: Attempting fallback write to: " + fallbackPath);
 
                 var fallbackFile = studio.system.getFile(fallbackPath);
                 fallbackFile.open(studio.system.openMode.WriteOnly);
                 fallbackFile.writeText(JSON.stringify(data, null, 2));
                 fallbackFile.close();
 
-                console.log("DEBUG: Fallback write successful");
+                debugLog("DEBUG: Fallback write successful");
                 return true;
             } catch (fallbackErr) {
-                console.log("CRITICAL: Fallback write also failed: " + fallbackErr.message);
+                debugLog("CRITICAL: Fallback write also failed: " + fallbackErr.message);
                 return false;
             }
         }
@@ -528,7 +551,7 @@
             // Silent fail on error result write
         }
     } finally {
-        console.log("=== Import Finally Block ===");
+        debugLog("=== Import Finally Block ===");
 
         // Toujours essayer d'écrire le résultat
         var resultWritten = false;
@@ -537,7 +560,7 @@
             if (typeof resultPath !== 'undefined' && resultPath) {
                 resultWritten = writeJsonFile(resultPath, result);
             } else {
-                console.log("WARNING: resultPath is undefined, using fallback");
+                debugLog("WARNING: resultPath is undefined, using fallback");
 
                 // Fallback: utiliser le chemin du projet
                 var projectDir = studio.project.filePath.replace(/[^\/\\]+$/, '');
@@ -545,7 +568,7 @@
                 resultWritten = writeJsonFile(fallbackPath, result);
             }
         } else {
-            console.log("WARNING: result is undefined, creating emergency result");
+            debugLog("WARNING: result is undefined, creating emergency result");
 
             // Créer un résultat d'urgence
             var emergencyResult = {
@@ -564,7 +587,7 @@
         }
 
         if (!resultWritten) {
-            console.log("CRITICAL: Failed to write result file after all attempts");
+            debugLog("CRITICAL: Failed to write result file after all attempts");
 
             // Dernière tentative : afficher un message modal pour alerter l'utilisateur
             try {
@@ -575,12 +598,12 @@
                     "Please check FMOD Studio console for details."
                 );
             } catch (dialogErr) {
-                console.log("CRITICAL: Cannot even show error dialog: " + dialogErr.message);
+                debugLog("CRITICAL: Cannot even show error dialog: " + dialogErr.message);
             }
         } else {
-            console.log("Result file written successfully");
+            debugLog("Result file written successfully");
         }
 
-        console.log("=== Import Script Complete ===");
+        debugLog("=== Import Script Complete ===");
     }
 })();

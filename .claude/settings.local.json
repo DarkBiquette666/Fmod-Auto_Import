@@ -61,7 +61,12 @@
       "Bash(exit 0)",
       "Bash(git ls-tree:*)",
       "Bash(git log:*)",
-      "Bash(python3 -c:*)"
+      "Bash(python3 -c:*)",
+      "Bash(pip install:*)",
+      "Bash(pyinstaller:*)",
+      "Bash(pip show:*)",
+      "Bash(copy /Y \"d:\\\\Git\\\\Fmod Scripts\\\\FmodImporter-Dev\\\\dist\\\\FmodImporter.exe\" \"d:\\\\Git\\\\Fmod Scripts\\\\FmodImporterTool-Package\\\\FmodImporter.exe\")",
+      "Bash(local variable 'result_path'\".\n\nThis fix ensures resultPath is always available globally, while \nthe wrapper''s writeResultFile function uses a local wrapperResultPath \nto avoid conflicts.\n\nRebuilt .exe with the fix.\nEOF\n\\)\")"
     ],
     "deny": [],
     "ask": []
