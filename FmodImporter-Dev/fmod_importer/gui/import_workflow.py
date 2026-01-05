@@ -416,6 +416,7 @@ class ImportMixin:
 // Set paths as global variables
 var FMOD_IMPORTER_JSON_PATH = "{str(json_path).replace(chr(92), '/')}";
 var importScriptPath = "{str(script_path).replace(chr(92), '/')}";
+var resultPath = FMOD_IMPORTER_JSON_PATH.replace('.json', '_result.json');  // Global for main script
 
 // Fonction pour écrire le fichier résultat (toujours)
 function writeResultFile(success, message, error) {{
