@@ -401,6 +401,11 @@ class ImportMixin:
             def _do_import_in_thread():
                 """Execute import in background thread to prevent UI freeze"""
                 nonlocal result_path  # Required: allows reassignment of outer scope variable
+                
+                # Re-define temp_dir inside thread to avoid scope issues
+                import tempfile
+                temp_dir = Path(tempfile.gettempdir())
+                
                 try:
                     # Update progress message
                     self.root.after(0, lambda: progress.update_message(
