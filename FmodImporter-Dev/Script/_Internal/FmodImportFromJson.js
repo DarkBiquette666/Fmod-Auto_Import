@@ -26,7 +26,7 @@
     // Debug logging to file
     function debugLog(message) {
         // Always log to console
-        debugLog(message);
+        console.log(message);
         
         // Log to file if path is available
         if (logPath && logPath.length > 0) {
