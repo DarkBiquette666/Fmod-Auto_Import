@@ -40,9 +40,9 @@
 ---
 
 ## Package Size
-- **Total:** ~25-30 MB (standalone executable with embedded Python)
-- **Executable:** ~25 MB (includes all dependencies)
-- **Documentation:** ~15 KB
+- **Total:** ~12.5 MB (standalone executable with embedded Python)
+- **Executable:** ~12.4 MB (includes all dependencies)
+- **Documentation:** ~20 KB
 
 **Note:** No Python installation required - everything is bundled!
 
@@ -60,14 +60,13 @@
 
 To distribute this package to other users:
 
-- [x] All scripts included
+- [x] Standalone executable included
 - [x] Complete documentation in English
-- [x] Multi-platform launch scripts
 - [x] Quick start guide
 - [x] License and disclaimer included
 - [x] No temporary files (__pycache__, etc.)
-- [x] Requirements.txt present
-- [x] Lightweight (240 KB)
+- [x] Requirements.txt present (reference only)
+- [x] Application icon embedded
 
 **Package is ready to share!**
 
@@ -88,5 +87,5 @@ Copy the FmodImporterTool-Package folder - users just need to double-click FmodI
 
 ---
 
-**Version:** 0.8.0
-**Last update:** December 2024
+**Version:** 0.8.2
+**Last update:** January 2026

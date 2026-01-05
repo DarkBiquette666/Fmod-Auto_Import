@@ -1,6 +1,6 @@
 # FMOD Importer Tool - Automatic Audio Asset Importer for FMOD Studio
 
-**Version:** 0.8.0
+**Version:** 0.8.2
 **Description:** Standalone Windows application for intelligently importing audio assets into FMOD Studio projects
 
 ---
@@ -45,8 +45,6 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 - Version 2.0 or higher recommended
 - Works with FMOD Studio projects (.fspro)
 
-**That's it!** This is a standalone executable - **no Python installation required!**
-
 ---
 
 ## Usage
@@ -76,6 +74,18 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
    - Select the folder containing your audio files (.wav, .mp3, etc.)
 
 **Note:** If FMOD Studio is not installed in standard paths (`C:\Program Files\FMOD SoundSystem`), you may need to configure the FMOD executable path in Settings (click "Settings" button at bottom).
+
+**💡 Tip - Save Time with Default Settings:**
+Once you've configured your project path and FMOD executable path, you can save them as defaults:
+1. Click the **"Settings"** button at the bottom of the window
+2. Your current paths will be pre-filled in the settings dialog
+3. Click **"Save"** to make them the default values
+4. Next time you launch the tool, these paths will be automatically loaded - no need to browse again!
+
+This is especially useful if you:
+- Always work on the same FMOD project
+- Have FMOD Studio installed in a non-standard location
+- Want to skip repetitive setup steps
 
 ### 2. Configuration
 
@@ -157,20 +167,29 @@ When you click **"Import"**:
 
 Access via the **"Settings"** button at the bottom of the interface.
 
-### Default Values
+### Default Values - Avoid Repetitive Setup
 
-You can save your favorite selections:
-- Default FMOD Project
-- FMOD Studio Executable
-- Default Media Directory
-- Default Template Folder
-- Default Bank
-- Default Destination Folder
-- Default Bus
-- Default Event Separator
-- Default Asset Separator
+**Save time by configuring default values that will be automatically loaded each time you launch the tool.**
 
-These values will be pre-filled on next launch.
+#### How It Works:
+1. Configure your paths and settings in the main interface
+2. Click **"Settings"** button (bottom of window)
+3. The settings dialog opens with your current values pre-filled
+4. Click **"Save"** to store these as defaults
+5. **Next launch:** All saved values are automatically loaded!
+
+#### What You Can Save:
+- **Default FMOD Project** - Your main `.fspro` file path
+- **FMOD Studio Executable** - Path to `fmodstudiocl.exe` or `FMOD Studio.exe`
+- **Default Media Directory** - Your audio files folder
+- **Default Template Folder** - Commonly used template folder
+- **Default Bank** - Your preferred bank
+- **Default Destination Folder** - Where you usually create events
+- **Default Bus** - Your standard mixing bus
+- **Default Event Separator** - Event naming pattern separator (e.g., "_")
+- **Default Asset Separator** - Asset naming pattern separator (e.g., "_")
+
+**💡 Pro Tip:** If you always work on the same project, save the project path and FMOD executable once - you'll never need to browse for them again!
 
 ---
 
@@ -178,12 +197,12 @@ These values will be pre-filled on next launch.
 
 ### Case 1: Create variations of an existing character
 
-**Scenario:** You have a "Weak_Template" template and want to create "Mechaflora Weak Ranged"
+**Scenario:** You have a "WeakTemplate" template and want to create "MechafloraWeakRanged"
 
-1. **Prefix:** `Mechaflora`
-2. **FeatureName:** `Weak_Ranged`
-3. **Template Folder:** Select "Weak_Template" folder
-4. **Destination Folder:** Select/create "Mechaflora Weak Ranged"
+1. **Prefix:** `Sfx`
+2. **FeatureName:** `BlueEyesWhiteDragon`
+3. **Template Folder:** Select "WeakTemplate" folder
+4. **Destination Folder:** Select/create "BlueEyesWhiteDragon"
 5. **Media Files:** Point to new audio files
 6. **Analyze** then **Import**
 
@@ -224,7 +243,7 @@ These values will be pre-filled on next launch.
 ### "Please specify prefix and feature name"
 
 **Cause:** Prefix or FeatureName fields are empty or contain placeholder text
-**Solution:** Fill in both required fields with actual values (not "e.g. Sfx" or "e.g. BlueEyesDragon")
+**Solution:** Fill in both required fields with actual values (not "e.g. Sfx" or "e.g. BlueEyesWhiteDragon")
 
 ### "Please select an audio asset folder"
 
@@ -363,5 +382,5 @@ Full license: [docs/LICENSE.txt](docs/LICENSE.txt)
 
 ---
 
-**Version:** 0.8.0
-**Last update:** December 2024
+**Version:** 0.8.2
+**Last update:** January 2026

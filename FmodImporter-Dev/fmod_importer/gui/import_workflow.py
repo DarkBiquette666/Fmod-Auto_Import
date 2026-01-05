@@ -7,6 +7,7 @@ import os
 import json
 import shutil
 import subprocess
+import sys
 import uuid
 from pathlib import Path
 import tkinter as tk
@@ -378,7 +379,15 @@ class ImportMixin:
                 return
 
             # Execute the import script via FMOD Studio
-            script_path = Path(__file__).resolve().parent.parent.parent / "Script" / "_Internal" / "FmodImportFromJson.js"
+            # Determine base path (handles both dev and PyInstaller)
+            if getattr(sys, 'frozen', False):
+                # Running as compiled exe
+                base_path = sys._MEIPASS
+            else:
+                # Running in development
+                base_path = Path(__file__).resolve().parent.parent.parent
+
+            script_path = Path(base_path) / "Script" / "_Internal" / "FmodImportFromJson.js"
 
             # Create progress dialog
             progress = ProgressDialog(
@@ -401,28 +410,97 @@ class ImportMixin:
                     wrapper_script_path = json_path.parent / "_temp_import_wrapper.js"
 
                     wrapper_script_content = f"""
-// Temporary wrapper script - auto-generated
+// Temporary wrapper script - auto-generated with robust error handling
 // Sets the JSON path as a global variable and runs the import script
 
-// Set JSON path as global variable
+// Set paths as global variables
 var FMOD_IMPORTER_JSON_PATH = "{str(json_path).replace(chr(92), '/')}";
-
-// Load and execute the main import script
 var importScriptPath = "{str(script_path).replace(chr(92), '/')}";
+var resultPath = FMOD_IMPORTER_JSON_PATH.replace('.json', '_result.json');
 
-function readTextFile(path) {{
-    var file = studio.system.getFile(path);
-    file.open(studio.system.openMode.ReadOnly);
-    var size = file.size();
-    var text = file.readText(size);
-    file.close();
-    return text;
+// Fonction pour écrire le fichier résultat (toujours)
+function writeResultFile(success, message, error) {{
+    try {{
+        var result = {{
+            success: success,
+            message: message || "",
+            error: error || "",
+            timestamp: new Date().toISOString()
+        }};
+
+        var file = studio.system.getFile(resultPath);
+        file.open(studio.system.openMode.WriteOnly);
+        file.writeText(JSON.stringify(result, null, 2));
+        file.close();
+
+        console.log("Result file written: " + resultPath);
+    }} catch (writeErr) {{
+        console.log("CRITICAL: Cannot write result file: " + writeErr.message);
+    }}
 }}
 
-var importScriptContent = readTextFile(importScriptPath);
+// Fonction robuste pour lire un fichier texte
+function readTextFileSafe(path) {{
+    try {{
+        var file = studio.system.getFile(path);
+        if (!file) {{
+            throw new Error("File not found: " + path);
+        }}
 
-// Execute the import script (it will use FMOD_IMPORTER_JSON_PATH global variable)
-eval(importScriptContent);
+        file.open(studio.system.openMode.ReadOnly);
+        var size = file.size();
+
+        if (size === 0) {{
+            file.close();
+            throw new Error("File is empty: " + path);
+        }}
+
+        var text = file.readText(size);
+        file.close();
+
+        if (!text || text.length === 0) {{
+            throw new Error("Failed to read file content: " + path);
+        }}
+
+        return text;
+    }} catch (readErr) {{
+        throw new Error("readTextFile failed: " + readErr.message);
+    }}
+}}
+
+// Exécution principale avec gestion d'erreur complète
+try {{
+    console.log("=== FMOD Importer Wrapper Start ===");
+    console.log("JSON Path: " + FMOD_IMPORTER_JSON_PATH);
+    console.log("Script Path: " + importScriptPath);
+    console.log("Result Path: " + resultPath);
+
+    // Lire le script principal
+    var importScriptContent = readTextFileSafe(importScriptPath);
+    console.log("Script loaded successfully (" + importScriptContent.length + " chars)");
+
+    // Exécuter le script principal
+    eval(importScriptContent);
+
+    console.log("=== FMOD Importer Wrapper End (Success) ===");
+
+}} catch (err) {{
+    console.log("=== FMOD Importer Wrapper Error ===");
+    console.log("Error: " + err.message);
+    console.log("Stack: " + (err.stack || "N/A"));
+
+    // Afficher l'erreur à l'utilisateur
+    studio.ui.showModalDialog(
+        "FMOD Importer - Wrapper Error",
+        "Failed to execute import script:\\n\\n" + err.message + "\\n\\nCheck console for details."
+    );
+
+    // TOUJOURS écrire le fichier résultat (même en cas d'erreur)
+    writeResultFile(false, "Wrapper script failed", err.message);
+}}
+
+// Attendre un peu pour que FMOD finalise l'écriture
+studio.system.wait(1000);
 """
 
                     with open(wrapper_script_path, 'w', encoding='utf-8') as f:
@@ -462,11 +540,61 @@ eval(importScriptContent);
                     print("STDERR:", result.stderr)
                     print("Return code:", result.returncode)
 
+                    # Wait for result file to be written (with timeout)
+                    print(f"DEBUG: Waiting for result file: {result_path}")
+                    result_found = False
+                    wait_time = 0
+                    max_wait = 10  # 10 seconds should be enough since FMOD has already exited
+
+                    while wait_time < max_wait:
+                        if result_path.exists():
+                            print(f"DEBUG: Result file found after {wait_time}s")
+                            result_found = True
+                            break
+
+                        time.sleep(1)
+                        wait_time += 1
+
                     # Close progress dialog
                     self.root.after(0, lambda: progress.close())
 
+                    # If not found in temp, search for fallback files
+                    if not result_found:
+                        print(f"WARNING: Result file not found in temp after {max_wait}s")
+
+                        # Search in temp directory first
+                        import glob
+                        temp_dir = result_path.parent
+                        pattern = str(temp_dir / "fmod_import_result_*.json")
+                        recent_results = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+
+                        if recent_results:
+                            result_path = Path(recent_results[0])
+                            result_found = True
+                            print(f"DEBUG: Found fallback result in temp: {result_path}")
+
+                    # If still not found, search in project directory
+                    if not result_found:
+                        project_dir = Path(self.project.project_path).parent
+                        fallback_patterns = [
+                            "fmod_import_result_fallback.json",
+                            "fmod_import_result_emergency.json",
+                            "fmod_import_result_*.json"
+                        ]
+
+                        print(f"DEBUG: Searching for fallback result files in: {project_dir}")
+
+                        for pattern in fallback_patterns:
+                            fallback_files = list(project_dir.glob(pattern))
+                            if fallback_files:
+                                # Prendre le plus récent
+                                result_path = max(fallback_files, key=lambda p: p.stat().st_mtime)
+                                result_found = True
+                                print(f"DEBUG: Found fallback result in project: {result_path}")
+                                break
+
                     # Check result file
-                    if result_path.exists():
+                    if result_found and result_path.exists():
                         with open(result_path, 'r', encoding='utf-8') as f:
                             import_result = json.load(f)
 
@@ -484,44 +612,67 @@ eval(importScriptContent);
 
                         self.root.after(0, _show_success)
                     else:
-                        # Result file not found - search for any recent result files
-                        import glob
-                        temp_dir = result_path.parent
-                        pattern = str(temp_dir / "fmod_import_result_*.json")
-                        recent_results = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+                        # No result file found after all attempts - create emergency result
+                        print("WARNING: Creating emergency result file (import status unknown)")
 
-                        if recent_results:
-                            # Found a result file - use the most recent one
-                            actual_result_path = Path(recent_results[0])
-                            with open(actual_result_path, 'r', encoding='utf-8') as f:
-                                import_result = json.load(f)
+                        # Get number of events that were supposed to be imported
+                        num_events_attempted = len(self.preview_tree.get_children())
 
-                            success_msg = (f"Import Complete!\n\n"
-                                         f"Imported: {import_result.get('imported', 0)}\n"
-                                         f"Failed: {import_result.get('failed', 0)}\n\n"
-                                         f"Note: Result file path mismatch detected.\n"
-                                         f"Expected: {result_path.name}\n"
-                                         f"Found: {actual_result_path.name}")
+                        emergency_result = {
+                            "success": False,
+                            "error": "Result file not created by FMOD Studio script",
+                            "imported": 0,
+                            "skipped": 0,
+                            "failed": num_events_attempted,
+                            "messages": [
+                                "CRITICAL: FMOD Studio did not create result file",
+                                "Possible causes:",
+                                "- Script execution failed silently",
+                                "- FMOD Studio crashed during import",
+                                "- Permissions issue preventing file write",
+                                "",
+                                f"Result file expected at: {result_path}",
+                                f"Also searched in project directory: {Path(self.project.project_path).parent}",
+                                "",
+                                "Please check:",
+                                "1. FMOD Studio installation is working correctly",
+                                "2. You have write permissions in temp and project directories",
+                                "3. Antivirus is not blocking FMOD Studio scripts",
+                                "",
+                                "Recommendation: Try importing again with FMOD Studio closed."
+                            ]
+                        }
 
-                            if import_result.get('messages'):
-                                success_msg += "\n\nMessages:\n" + "\n".join(import_result['messages'][:5])
+                        # Try to save emergency result in project directory
+                        try:
+                            emergency_path = Path(self.project.project_path).parent / "fmod_import_result_emergency.json"
+                            with open(emergency_path, 'w', encoding='utf-8') as f:
+                                json.dump(emergency_result, f, indent=2)
+                            print(f"DEBUG: Emergency result saved to: {emergency_path}")
+                        except Exception as e:
+                            print(f"ERROR: Could not save emergency result: {e}")
 
-                            def _show_success():
-                                if messagebox.askyesno("Import Complete", success_msg + "\n\nDo you want to open the project in FMOD Studio?"):
-                                    self._open_fmod_project()
+                        # Show error message to user
+                        error_msg = (
+                            "Import Status Unknown - No result file created\n\n"
+                            "FMOD Studio executed but did not create a result file.\n\n"
+                            "Possible causes:\n"
+                            "• Script execution failed silently\n"
+                            "• FMOD Studio crashed during import\n"
+                            "• Permissions issue preventing file write\n\n"
+                            f"Searched locations:\n"
+                            f"• Temp: {result_path}\n"
+                            f"• Project: {Path(self.project.project_path).parent}\n\n"
+                            "Recommendation:\n"
+                            "1. Close FMOD Studio completely\n"
+                            "2. Check file permissions\n"
+                            "3. Try importing again"
+                        )
 
-                            self.root.after(0, _show_success)
-                        else:
-                            self.root.after(0, lambda: messagebox.showwarning(
-                                "Import Status Unknown",
-                                "Import executed but result file not found.\n\n"
-                                "Possible causes:\n"
-                                "- Script execution failed silently\n"
-                                "- FMOD Studio crashed during import\n"
-                                "- Permissions issue writing result file\n\n"
-                                f"Result file expected at:\n{result_path}\n\n"
-                                "Check FMOD Studio console for error details."
-                            ))
+                        self.root.after(0, lambda: messagebox.showwarning(
+                            "Import Status Unknown",
+                            error_msg
+                        ))
 
                 except subprocess.TimeoutExpired:
                     self.root.after(0, lambda: progress.close())

@@ -18,6 +18,7 @@
 ### Step 1: Load your FMOD project
 - Click "Browse..." → Select your `.fspro`
 - Click "Load"
+- **Tip:** Save this path in Settings to auto-load it next time!
 
 ### Step 2: Select your audio files
 - Click "Browse..." (Media Files)
@@ -75,10 +76,15 @@ If you already have events to copy:
 ## Tips
 
 - Name your files consistently for better matching
--  Test first on a small project
+- Test first on a small project
 - Always backup your FMOD project before importing
-- Use "Settings" to save your favorite folders
 - Wait for the progress dialog to complete (don't close it manually)
+
+**💡 Save Time - Configure Default Settings:**
+- Click **"Settings"** button (bottom of window) after your first setup
+- Save your project path and FMOD executable as defaults
+- Next time you launch the tool, everything will be pre-filled automatically!
+- Especially useful if you always work on the same project
 
 ---
 

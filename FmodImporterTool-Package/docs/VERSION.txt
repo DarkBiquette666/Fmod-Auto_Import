@@ -1,9 +1,15 @@
 FMOD Importer Tool for FMOD Studio
-Version: 0.8.0
-Release Date: December 2024
+Version: 0.8.2
+Release Date: January 2026
 
 Changelog:
 ----------
+
+v0.8.2 (January 2026)
+- FMOD Studio runtime check to ensure compatibility before import
+- Display full hierarchical paths when loading presets for better clarity
+- Support for both Bank folders and individual Banks in project structure
+- Load banks from BankFolder directory with proper hierarchy preservation
 
 v0.8.0 (December 2024)
 - Progress dialog for import operations with threading

@@ -6,6 +6,7 @@ Contains the main FmodImporterGUI class that combines all mixins.
 import os
 import platform
 import subprocess
+import sys
 import tempfile
 import tkinter as tk
 from tkinter import messagebox, filedialog
@@ -54,6 +55,9 @@ class FmodImporterGUI(
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("FMOD Importer Tool - Asset Importer")
+
+        # Set window icon
+        self._set_window_icon()
 
         # Set window size to accommodate all sections
         self.root.geometry("1440x1150")
@@ -473,6 +477,25 @@ class FmodImporterGUI(
 
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load project:\n{str(e)}")
+
+    def _set_window_icon(self):
+        """Set the window icon for the application."""
+        try:
+            # Determine the base path (handles both dev and PyInstaller)
+            if getattr(sys, 'frozen', False):
+                # Running as compiled exe
+                base_path = sys._MEIPASS
+            else:
+                # Running in development
+                base_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+
+            icon_path = os.path.join(base_path, 'Logo', 'FmodImporterLogo.ico')
+
+            if os.path.exists(icon_path):
+                self.root.iconbitmap(icon_path)
+        except Exception as e:
+            # Silently fail if icon cannot be set
+            print(f"Warning: Could not set window icon: {e}")
 
     def _on_closing(self):
         """Handle window close event - clear pending folders"""
