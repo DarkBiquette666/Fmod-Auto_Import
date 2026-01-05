@@ -451,40 +451,51 @@ var resultPath = "{str(result_path).replace(chr(92), '/')}";
                     self.root.after(0, lambda: progress.update_message(
                         f"Executing FMOD Studio import for {num_events} event(s)...\n\nPlease wait, this may take several minutes."
                     ))
-                    print(f"Executing command: {' '.join(cmd)}")
-
-                    # Execute the command
-                    result = subprocess.run(
-                        cmd,
-                        capture_output=True,
-                        text=True,
-                        timeout=300  # 5 minute timeout
-                    )
-
-                    # Write Python logs (critical for debugging builds)
+                    
+                    # INITIAL LOGGING (Before run)
                     try:
                         with open(py_log_path, 'w', encoding='utf-8') as log_file:
-                            log_file.write("=== PYTHON IMPORT LOG ===\n")
+                            log_file.write("=== PYTHON IMPORT ATTEMPT ===\n")
                             log_file.write(f"Timestamp: {uuid.uuid4()}\n")
-                            log_file.write(f"Command: {' '.join(cmd)}\n")
-                            log_file.write(f"Return code: {result.returncode}\n\n")
-                            log_file.write("=== STDOUT ===\n")
-                            log_file.write(result.stdout)
-                            log_file.write("\n\n=== STDERR ===\n")
-                            log_file.write(result.stderr)
-                    except Exception as log_err:
-                        print(f"Failed to write python log: {log_err}")
+                            log_file.write(f"FMOD Exe Path: {fmod_exe}\n")
+                            log_file.write(f"Wrapper Script: {wrapper_script_path}\n")
+                            log_file.write(f"Project Path: {self.project.project_path}\n")
+                            log_file.write(f"Command: {cmd}\n")
+                            log_file.write(f"Working Directory: {os.getcwd()}\n")
+                            log_file.write("-" * 50 + "\n")
+                            log_file.write("Status: Starting subprocess...\n")
+                    except Exception as e:
+                        print(f"Failed to write initial log: {e}")
 
-                    # Clean up wrapper script
+                    # Execute the command
                     try:
-                        if wrapper_script_path.exists():
-                            wrapper_script_path.unlink()
-                    except:
-                        pass
+                        result = subprocess.run(
+                            cmd,
+                            capture_output=True,
+                            text=True,
+                            timeout=300  # 5 minute timeout
+                        )
+                        
+                        # APPEND RESULT LOGGING
+                        with open(py_log_path, 'a', encoding='utf-8') as log_file:
+                            log_file.write(f"Status: Subprocess finished.\n")
+                            log_file.write(f"Return Code: {result.returncode}\n")
+                            log_file.write("=== STDOUT ===\n")
+                            log_file.write(result.stdout if result.stdout else "(empty)\n")
+                            log_file.write("\n=== STDERR ===\n")
+                            log_file.write(result.stderr if result.stderr else "(empty)\n")
+                            
+                        # Print output for debugging (console)
+                        print("STDOUT:", result.stdout)
+                        print("STDERR:", result.stderr)
+                        
+                    except Exception as exec_err:
+                        # LOG EXCEPTION
+                        with open(py_log_path, 'a', encoding='utf-8') as log_file:
+                            log_file.write(f"\nCRITICAL EXCEPTION during subprocess.run:\n{str(exec_err)}\n")
+                        raise exec_err  # Re-raise to trigger the outer exception handler
 
-                    # Print output for debugging
-                    print("STDOUT:", result.stdout)
-                    print("STDERR:", result.stderr)
+                    # Clean up wrapper script (only if we got here)
                     print("Return code:", result.returncode)
 
                     # Wait for result file to be written (with timeout)
