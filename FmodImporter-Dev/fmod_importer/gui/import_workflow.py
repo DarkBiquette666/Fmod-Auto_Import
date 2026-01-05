@@ -399,6 +399,7 @@ class ImportMixin:
             # Define import function to run in background thread
             def _do_import_in_thread():
                 """Execute import in background thread to prevent UI freeze"""
+                nonlocal result_path  # Required: allows reassignment of outer scope variable
                 try:
                     # Update progress message
                     self.root.after(0, lambda: progress.update_message(
