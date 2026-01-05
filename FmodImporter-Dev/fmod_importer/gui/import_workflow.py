@@ -411,100 +411,23 @@ class ImportMixin:
                     # This is needed because fmodstudiocl.exe doesn't pass arguments to scripts
                     wrapper_script_path = json_path.parent / "_temp_import_wrapper.js"
 
+                    # Read the main import script content (Python can access _MEIPASS, FMOD Studio cannot)
+                    with open(script_path, 'r', encoding='utf-8') as f:
+                        import_script_content = f.read()
+
+                    # Embed the script content directly in the wrapper
+                    # This works around PyInstaller's temp folder being inaccessible to external processes
                     wrapper_script_content = f"""
-// Temporary wrapper script - auto-generated with robust error handling
-// Sets the JSON path as a global variable and runs the import script
+// Temporary wrapper script - auto-generated
+// Embeds the import script content directly (PyInstaller workaround)
 
-// Set paths as global variables
+// Set global variables expected by the import script
 var FMOD_IMPORTER_JSON_PATH = "{str(json_path).replace(chr(92), '/')}";
-var importScriptPath = "{str(script_path).replace(chr(92), '/')}";
-var resultPath = "{str(result_path).replace(chr(92), '/')}";  // Must match Python's result_path exactly
+var resultPath = "{str(result_path).replace(chr(92), '/')}";
 
-// Fonction pour écrire le fichier résultat (toujours)
-function writeResultFile(success, message, error) {{
-    try {{
-        // Calculate result path locally (don't define as global to avoid conflicts)
-        var wrapperResultPath = FMOD_IMPORTER_JSON_PATH.replace('.json', '_result.json');
-
-        var result = {{
-            success: success,
-            message: message || "",
-            error: error || "",
-            timestamp: new Date().toISOString()
-        }};
-
-        var file = studio.system.getFile(wrapperResultPath);
-        file.open(studio.system.openMode.WriteOnly);
-        file.writeText(JSON.stringify(result, null, 2));
-        file.close();
-
-        console.log("Result file written: " + wrapperResultPath);
-    }} catch (writeErr) {{
-        console.log("CRITICAL: Cannot write result file: " + writeErr.message);
-    }}
-}}
-
-// Fonction robuste pour lire un fichier texte
-function readTextFileSafe(path) {{
-    try {{
-        var file = studio.system.getFile(path);
-        if (!file) {{
-            throw new Error("File not found: " + path);
-        }}
-
-        file.open(studio.system.openMode.ReadOnly);
-        var size = file.size();
-
-        if (size === 0) {{
-            file.close();
-            throw new Error("File is empty: " + path);
-        }}
-
-        var text = file.readText(size);
-        file.close();
-
-        if (!text || text.length === 0) {{
-            throw new Error("Failed to read file content: " + path);
-        }}
-
-        return text;
-    }} catch (readErr) {{
-        throw new Error("readTextFile failed: " + readErr.message);
-    }}
-}}
-
-// Exécution principale avec gestion d'erreur complète
-try {{
-    console.log("=== FMOD Importer Wrapper Start ===");
-    console.log("JSON Path: " + FMOD_IMPORTER_JSON_PATH);
-    console.log("Script Path: " + importScriptPath);
-
-    // Lire le script principal
-    var importScriptContent = readTextFileSafe(importScriptPath);
-    console.log("Script loaded successfully (" + importScriptContent.length + " chars)");
-
-    // Exécuter le script principal
-    eval(importScriptContent);
-
-    console.log("=== FMOD Importer Wrapper End (Success) ===");
-
-}} catch (err) {{
-    console.log("=== FMOD Importer Wrapper Error ===");
-    console.log("Error: " + err.message);
-    console.log("Stack: " + (err.stack || "N/A"));
-
-    // Afficher l'erreur à l'utilisateur
-    studio.ui.showModalDialog(
-        "FMOD Importer - Wrapper Error",
-        "Failed to execute import script:\\n\\n" + err.message + "\\n\\nCheck console for details."
-    );
-
-    // TOUJOURS écrire le fichier résultat (même en cas d'erreur)
-    writeResultFile(false, "Wrapper script failed", err.message);
-}}
-
-// Attendre un peu pour que FMOD finalise l'écriture
-studio.system.wait(1000);
+// === EMBEDDED IMPORT SCRIPT START ===
+{import_script_content}
+// === EMBEDDED IMPORT SCRIPT END ===
 """
 
                     with open(wrapper_script_path, 'w', encoding='utf-8') as f:
