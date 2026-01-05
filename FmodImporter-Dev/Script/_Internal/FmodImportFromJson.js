@@ -290,7 +290,7 @@
 
     try {
         var importData = readJsonFile(jsonPath);
-        resultPath = importData.resultPath;  // Use global resultPath from wrapper (no 'var')
+        // resultPath already defined by wrapper - no need to reassign
         var events = importData.events;
 
         var result = {
