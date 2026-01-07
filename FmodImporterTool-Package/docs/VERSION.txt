@@ -1,9 +1,13 @@
 FMOD Importer Tool for FMOD Studio
-Version: 0.8.2
+Version: 0.8.3
 Release Date: January 2026
 
 Changelog:
 ----------
+
+v0.8.3 (January 2026)
+- FIXED: Bank creation logic parenting issue (now correctly parents to folder)
+- CORE: Enforced strict validation against creating banks inside banks
 
 v0.8.2 (January 2026)
 - FMOD Studio runtime check to ensure compatibility before import

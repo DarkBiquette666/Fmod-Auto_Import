@@ -1,42 +1,25 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-block_cipher = None
 
 a = Analysis(
     ['fmod_importer.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        ('Logo/FmodImporterLogo.ico', 'Logo'),
-        ('Script/_Internal/FmodImportFromJson.js', 'Script/_Internal'),
-    ],
-    hiddenimports=[
-        'tkinter',
-        'tkinter.ttk',
-        'tkinter.filedialog',
-        'tkinter.messagebox',
-        'tkinter.scrolledtext',
-        'fmod_importer',
-        'fmod_importer.gui',
-        'fmod_importer.core',
-    ],
+    datas=[('Logo', 'Logo'), ('Script', 'Script')],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
     noarchive=False,
+    optimize=0,
 )
-
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+pyz = PYZ(a.pure)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
-    a.zipfiles,
     a.datas,
     [],
     name='FmodImporter',
@@ -46,11 +29,10 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # No console window for GUI application
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='Logo/FmodImporterLogo.ico',
 )
