@@ -7,6 +7,7 @@ Provides transaction-like semantics for folder creation.
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, Tuple
+import uuid
 
 from .xml_writer import write_pretty_xml
 
