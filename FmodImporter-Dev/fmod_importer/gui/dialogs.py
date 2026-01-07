@@ -361,7 +361,21 @@ class DialogsMixin:
             parent_id = None
             if selection:
                 parent_item = selection[0]
-                parent_id = tree.item(parent_item, 'values')[0]
+                selected_id = tree.item(parent_item, 'values')[0]
+
+                # Architecture Fix: Prevent invalid parenting
+                # If the selected item is a leaf node (like a Bank),
+                # we must not create the new item inside it.
+                # Instead, we create it as a sibling (sharing the same parent).
+                if selected_id in items:
+                    item_data = items[selected_id]
+                    # Check for explicit 'type' (used in Banks)
+                    if item_data.get('type') == 'bank':
+                         # It's a leaf, use its parent
+                        parent_id = item_data.get('parent')
+                    else:
+                        # It's a folder/group, use it as parent
+                        parent_id = selected_id
 
             initial_value = self._get_combined_name()
             name = simpledialog.askstring(f"New {item_type_label}", "Enter name:",

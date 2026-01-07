@@ -27,7 +27,16 @@ class BankManager:
 
         Returns:
             UUID of the created bank folder
+
+        Raises:
+            ValueError: If parent_id refers to a Bank (leaf node)
         """
+        # Validate parent
+        if parent_id and parent_id in banks_dict:
+            parent_data = banks_dict[parent_id]
+            if parent_data.get('type') == 'bank':
+                raise ValueError(f"Cannot create folder '{name}' inside a Bank ('{parent_data['name']}'). Please select a Folder.")
+
         bank_id = "{" + str(uuid.uuid4()) + "}"
 
         # Create XML
@@ -76,7 +85,16 @@ class BankManager:
 
         Returns:
             UUID of the created bank
+
+        Raises:
+            ValueError: If parent_id refers to a Bank (leaf node)
         """
+        # Validate parent
+        if parent_id and parent_id in banks_dict:
+            parent_data = banks_dict[parent_id]
+            if parent_data.get('type') == 'bank':
+                raise ValueError(f"Cannot create bank '{name}' inside another Bank ('{parent_data['name']}'). Please select a Folder.")
+
         bank_id = "{" + str(uuid.uuid4()) + "}"
 
         # Create XML

@@ -5,6 +5,16 @@ All notable changes to the FMOD Importer Tool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-01-07
+
+### Fixed
+- **Bank Creation Parenting Issue**:
+  - Fixed logic where creating a new bank while a bank was selected would attempt to create it *inside* the selected bank (invalid in FMOD).
+  - New behavior: Automatically parents the new bank to the selected bank's folder (creates a sibling).
+- **Architecture Enforcement**:
+  - Added strict validation in `BankManager` to reject requests to create folders or banks inside a Bank object.
+  - Ensures cleaner project structure and prevents "orphaned" banks created by fallback mechanisms.
+
 ## [0.7.0] - 2024-12-20
 
 ### Added
