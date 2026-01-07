@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-
+import platform
 
 a = Analysis(
     ['fmod_importer.py'],
@@ -36,3 +36,11 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
+if platform.system() == 'Darwin':
+    app = BUNDLE(
+        exe,
+        name='FmodImporter.app',
+        icon='Logo/FmodImporterLogo.icns',
+        bundle_identifier='com.darkbiquette.fmodimporter'
+    )

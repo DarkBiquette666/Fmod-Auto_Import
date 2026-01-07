@@ -158,51 +158,93 @@ class FmodImporterGUI(
 
     def _find_fmod_console(self) -> Optional[str]:
         """Find FMOD Console executable"""
-        # Common installation paths for FMOD Studio
-        possible_paths = [
-            r"C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio 2.02.25\fmod_console.exe",
-            r"C:\Program Files\FMOD SoundSystem\FMOD Studio 2.02.25\fmod_console.exe",
-            r"C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio\fmod_console.exe",
-            r"C:\Program Files\FMOD SoundSystem\FMOD Studio\fmod_console.exe",
-        ]
+        if platform.system() == "Windows":
+            # Common installation paths for FMOD Studio
+            possible_paths = [
+                r"C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio 2.02.25\fmod_console.exe",
+                r"C:\Program Files\FMOD SoundSystem\FMOD Studio 2.02.25\fmod_console.exe",
+                r"C:\Program Files (x86)\FMOD SoundSystem\FMOD Studio\fmod_console.exe",
+                r"C:\Program Files\FMOD SoundSystem\FMOD Studio\fmod_console.exe",
+            ]
 
-        for path in possible_paths:
-            if os.path.exists(path):
-                return path
+            for path in possible_paths:
+                if os.path.exists(path):
+                    return path
+        elif platform.system() == "Darwin":
+             # Search in /Applications
+            base_dirs = ["/Applications"]
+            for base_dir in base_dirs:
+                if os.path.exists(base_dir):
+                    for folder in os.listdir(base_dir):
+                        if folder.startswith("FMOD Studio"):
+                            # Path: .../Contents/MacOS/fmod_console
+                            console_path = os.path.join(base_dir, folder, "FMOD Studio.app", "Contents", "MacOS", "fmod_console")
+                            if os.path.exists(console_path):
+                                return console_path
+                            
+                            # Direct
+                            console_path = os.path.join(base_dir, "FMOD Studio.app", "Contents", "MacOS", "fmod_console")
+                            if os.path.exists(console_path):
+                                return console_path
 
         return None
 
     def _find_fmod_studio_exe(self) -> Optional[str]:
-        """Find FMOD Studio command line executable (fmodstudiocl.exe)"""
+        """Find FMOD Studio command line executable (fmodstudiocl)"""
         # Check settings first
         settings = self.load_settings()
         if settings.get('fmod_exe_path') and os.path.exists(settings['fmod_exe_path']):
-            # If it's FMOD Studio.exe, try to find fmodstudiocl.exe in same directory
-            if settings['fmod_exe_path'].endswith("FMOD Studio.exe"):
+            # If it's FMOD Studio.exe (GUI), try to find CLI tool
+            if platform.system() == "Windows" and settings['fmod_exe_path'].endswith("FMOD Studio.exe"):
                 cl_path = settings['fmod_exe_path'].replace("FMOD Studio.exe", "fmodstudiocl.exe")
                 if os.path.exists(cl_path):
                     return cl_path
+            elif platform.system() == "Darwin" and settings['fmod_exe_path'].endswith("FMOD Studio"):
+                # GUI: .../Contents/MacOS/FMOD Studio
+                # CLI: .../Contents/MacOS/fmodstudiocl
+                cl_path = settings['fmod_exe_path'].replace("FMOD Studio", "fmodstudiocl")
+                if os.path.exists(cl_path):
+                    return cl_path
+            
             return settings['fmod_exe_path']
 
-        # Search for FMOD Studio CL in common installation directories
-        base_dirs = [
-            r"C:\Program Files\FMOD SoundSystem",
-            r"C:\Program Files (x86)\FMOD SoundSystem"
-        ]
+        if platform.system() == "Windows":
+            # Search for FMOD Studio CL in common Windows directories
+            base_dirs = [
+                r"C:\Program Files\FMOD SoundSystem",
+                r"C:\Program Files (x86)\FMOD SoundSystem"
+            ]
 
-        for base_dir in base_dirs:
-            if os.path.exists(base_dir):
-                # Look for any FMOD Studio version folder
-                for folder in os.listdir(base_dir):
-                    if folder.startswith("FMOD Studio"):
-                        # Prefer command line version
-                        cl_path = os.path.join(base_dir, folder, "fmodstudiocl.exe")
-                        if os.path.exists(cl_path):
-                            return cl_path
-                        # Fallback to regular exe
-                        exe_path = os.path.join(base_dir, folder, "FMOD Studio.exe")
-                        if os.path.exists(exe_path):
-                            return exe_path
+            for base_dir in base_dirs:
+                if os.path.exists(base_dir):
+                    # Look for any FMOD Studio version folder
+                    for folder in os.listdir(base_dir):
+                        if folder.startswith("FMOD Studio"):
+                            # Prefer command line version
+                            cl_path = os.path.join(base_dir, folder, "fmodstudiocl.exe")
+                            if os.path.exists(cl_path):
+                                return cl_path
+                            # Fallback to regular exe
+                            exe_path = os.path.join(base_dir, folder, "FMOD Studio.exe")
+                            if os.path.exists(exe_path):
+                                return exe_path
+        elif platform.system() == "Darwin":
+            # Search in /Applications
+            base_dirs = ["/Applications"]
+            for base_dir in base_dirs:
+                if os.path.exists(base_dir):
+                    for folder in os.listdir(base_dir):
+                        # FMOD usually installs as "FMOD Studio" folder containing the App
+                        if folder.startswith("FMOD Studio"):
+                            # Path: /Applications/FMOD Studio/FMOD Studio.app/Contents/MacOS/fmodstudiocl
+                            cl_path = os.path.join(base_dir, folder, "FMOD Studio.app", "Contents", "MacOS", "fmodstudiocl")
+                            if os.path.exists(cl_path):
+                                return cl_path
+                            
+                            # Try directly in Applications (if dragged out of folder)
+                            cl_path_direct = os.path.join(base_dir, "FMOD Studio.app", "Contents", "MacOS", "fmodstudiocl")
+                            if os.path.exists(cl_path_direct):
+                                return cl_path_direct
 
         return None
 
@@ -220,29 +262,56 @@ class FmodImporterGUI(
             # Check settings first
             if settings.get('fmod_exe_path') and os.path.exists(settings['fmod_exe_path']):
                 fmod_path = settings['fmod_exe_path']
-                # Make sure we use the GUI version, not the command line version
-                if fmod_path.endswith("fmodstudiocl.exe"):
-                    fmod_exe = fmod_path.replace("fmodstudiocl.exe", "FMOD Studio.exe")
-                else:
-                    fmod_exe = fmod_path
+                
+                if platform.system() == "Windows":
+                    # Make sure we use the GUI version, not the command line version
+                    if fmod_path.endswith("fmodstudiocl.exe"):
+                        fmod_exe = fmod_path.replace("fmodstudiocl.exe", "FMOD Studio.exe")
+                    else:
+                        fmod_exe = fmod_path
+                elif platform.system() == "Darwin":
+                    # Mac: fmodstudiocl -> FMOD Studio
+                    if fmod_path.endswith("fmodstudiocl"):
+                        fmod_exe = fmod_path.replace("fmodstudiocl", "FMOD Studio")
+                    else:
+                        fmod_exe = fmod_path
 
             # If not found in settings, search for it
             if not fmod_exe or not os.path.exists(fmod_exe):
-                base_dirs = [
-                    r"C:\Program Files\FMOD SoundSystem",
-                    r"C:\Program Files (x86)\FMOD SoundSystem"
-                ]
+                if platform.system() == "Windows":
+                    base_dirs = [
+                        r"C:\Program Files\FMOD SoundSystem",
+                        r"C:\Program Files (x86)\FMOD SoundSystem"
+                    ]
 
-                for base_dir in base_dirs:
-                    if os.path.exists(base_dir):
-                        for folder in os.listdir(base_dir):
-                            if folder.startswith("FMOD Studio"):
-                                exe_path = os.path.join(base_dir, folder, "FMOD Studio.exe")
-                                if os.path.exists(exe_path):
-                                    fmod_exe = exe_path
-                                    break
-                    if fmod_exe:
-                        break
+                    for base_dir in base_dirs:
+                        if os.path.exists(base_dir):
+                            for folder in os.listdir(base_dir):
+                                if folder.startswith("FMOD Studio"):
+                                    exe_path = os.path.join(base_dir, folder, "FMOD Studio.exe")
+                                    if os.path.exists(exe_path):
+                                        fmod_exe = exe_path
+                                        break
+                        if fmod_exe:
+                            break
+                elif platform.system() == "Darwin":
+                    # Check /Applications
+                    base_dirs = ["/Applications"]
+                    for base_dir in base_dirs:
+                        if os.path.exists(base_dir):
+                            for folder in os.listdir(base_dir):
+                                if folder.startswith("FMOD Studio"):
+                                    # Path: .../FMOD Studio.app/Contents/MacOS/FMOD Studio
+                                    exe_path = os.path.join(base_dir, folder, "FMOD Studio.app", "Contents", "MacOS", "FMOD Studio")
+                                    if os.path.exists(exe_path):
+                                        fmod_exe = exe_path
+                                        break
+                                    
+                                    # Try direct
+                                    exe_path = os.path.join(base_dir, "FMOD Studio.app", "Contents", "MacOS", "FMOD Studio")
+                                    if os.path.exists(exe_path):
+                                        fmod_exe = exe_path
+                                        break
 
             if not fmod_exe or not os.path.exists(fmod_exe):
                 messagebox.showerror("Error", "FMOD Studio executable not found.\n\nPlease configure the FMOD executable path in Settings.")

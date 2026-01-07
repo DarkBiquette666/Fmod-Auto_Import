@@ -34,31 +34,61 @@ class ImportMixin:
             False otherwise (safe to proceed)
         """
         import re
+        import platform
 
         try:
-            # Use PowerShell to get FMOD Studio processes with command line
-            ps_cmd = (
-                "Get-CimInstance Win32_Process | "
-                "Where-Object { $_.Name -like '*FMOD*Studio*' } | "
-                "Select-Object -ExpandProperty CommandLine"
-            )
-
-            result = subprocess.run(
-                ['powershell', '-Command', ps_cmd],
-                capture_output=True,
-                text=True,
-                timeout=10,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-
-            if result.returncode != 0 or not result.stdout.strip():
-                return False  # No FMOD Studio running, safe to proceed
-
             # Get current project path (normalized for comparison)
-            current_project = str(self.project.project_path).lower().replace('/', '\\')
+            current_project = str(self.project.project_path)
+
+            if platform.system() == "Windows":
+                # Windows: Use PowerShell to get FMOD Studio processes with command line
+                ps_cmd = (
+                    "Get-CimInstance Win32_Process | "
+                    "Where-Object { $_.Name -like '*FMOD*Studio*' } | "
+                    "Select-Object -ExpandProperty CommandLine"
+                )
+
+                result = subprocess.run(
+                    ['powershell', '-Command', ps_cmd],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    creationflags=subprocess.CREATE_NO_WINDOW
+                )
+
+                if result.returncode != 0 or not result.stdout.strip():
+                    return False
+
+                current_project_norm = current_project.lower().replace('/', '\\')
+                process_list = result.stdout.strip().split('\n')
+
+            else:
+                # macOS/Linux: Use pgrep to get command line
+                # -f matches against full command line, -l lists the process name/cmdline
+                try:
+                    result = subprocess.run(
+                        ['pgrep', '-fl', 'FMOD Studio'],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+                except FileNotFoundError:
+                    # pgrep might not be available, try ps
+                    result = subprocess.run(
+                        ['ps', '-A', '-o', 'command'],
+                        capture_output=True,
+                        text=True,
+                        timeout=10
+                    )
+
+                if result.returncode != 0 or not result.stdout.strip():
+                    return False
+
+                current_project_norm = current_project.lower() # Unix paths are case-sensitive usually, but FMOD might normalize
+                process_list = result.stdout.strip().split('\n')
 
             # Check each command line for matching project
-            for line in result.stdout.strip().split('\n'):
+            for line in process_list:
                 line = line.strip()
                 if not line:
                     continue
@@ -66,15 +96,29 @@ class ImportMixin:
                 # Look for .fspro file in command line
                 if '.fspro' in line.lower():
                     # Extract project path using regex
-                    match = re.search(r'([A-Za-z]:[^"]*\.fspro)', line, re.IGNORECASE)
+                    # Windows: drive letter or UNC
+                    # Unix: /path/to/file
+                    if platform.system() == "Windows":
+                        match = re.search(r'([A-Za-z]:[^"]*\.fspro)', line, re.IGNORECASE)
+                    else:
+                        # Match absolute path starting with /
+                        match = re.search(r'(/[^"]*\.fspro)', line, re.IGNORECASE)
+
                     if match:
-                        running_project = match.group(1).lower().replace('/', '\\')
-                        if running_project == current_project:
+                        running_project = match.group(1).lower()
+                        if platform.system() == "Windows":
+                            running_project = running_project.replace('/', '\\')
+                        
+                        # Compare normalized paths
+                        # On Mac, paths might be /Users/name/... or /System/Volumes/Data/Users/...
+                        # Simple substring check is safer than exact equality
+                        if current_project_norm in running_project or running_project in current_project_norm:
                             return True  # Same project is running!
 
             return False  # Different project or no project detected
 
-        except Exception:
+        except Exception as e:
+            print(f"Warning: Failed to check running process: {e}")
             return False  # Fail-safe: don't block on detection errors
 
     def import_assets(self):
