@@ -253,9 +253,11 @@ class ImportMixin:
                 event_payload = {
                     "newEventName": event_name,
                     "destFolderPath": dest_folder_path,
+                    "destFolderId": dest_folder_id,  # Pass UUID to script
                     "audioFilePaths": audio_paths,
                     "assetFolderPath": asset_folder,
                     "bankName": bank_name,
+                    "bankId": bank_id,  # Pass UUID to script
                     "busName": bus_path or bus_name,
                     "isMulti": len(audio_paths) > 1,
                 }

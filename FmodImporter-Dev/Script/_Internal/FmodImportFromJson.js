@@ -169,8 +169,20 @@
         return null;
     }
 
-    // Find or create bank by name
-    function findOrCreateBank(bankName, messages) {
+    // Find or create bank by name/ID
+    function findOrCreateBank(bankId, bankName, messages) {
+        // Try lookup by ID first (most reliable)
+        if (bankId) {
+            try {
+                var bankById = studio.project.lookup(bankId);
+                if (bankById && bankById.isOfType("Bank")) {
+                    return bankById;
+                }
+            } catch (e) {
+                // Lookup failed
+            }
+        }
+
         if (!bankName) return null;
 
         var bank = findBankByName(bankName);
@@ -225,8 +237,20 @@
         return null;
     }
 
-    // Find or create folder by path
-    function findOrCreateFolder(folderPath, messages) {
+    // Find or create folder by path/ID
+    function findOrCreateFolder(folderId, folderPath, messages) {
+        // Try lookup by ID first (most reliable)
+        if (folderId) {
+            try {
+                var folderById = studio.project.lookup(folderId);
+                if (folderById && (folderById.isOfType("EventFolder") || folderById.isOfType("MasterEventFolder"))) {
+                    return folderById;
+                }
+            } catch (e) {
+                // Lookup failed
+            }
+        }
+
         if (!folderPath) return null;
 
         var folder = findFolderByPath(folderPath);
@@ -431,7 +455,7 @@
 
                 // 4. Assign to folder (create if doesn't exist)
                 if (eventData.destFolderPath) {
-                    var folder = findOrCreateFolder(eventData.destFolderPath, result.messages);
+                    var folder = findOrCreateFolder(eventData.destFolderId, eventData.destFolderPath, result.messages);
                     if (folder) {
                         event.folder = folder;
                     }
@@ -439,7 +463,7 @@
 
                 // 5. Assign to bank (create if doesn't exist)
                 if (eventData.bankName) {
-                    var bank = findOrCreateBank(eventData.bankName, result.messages);
+                    var bank = findOrCreateBank(eventData.bankId, eventData.bankName, result.messages);
                     if (bank) {
                         event.relationships.banks.add(bank);
                     }
