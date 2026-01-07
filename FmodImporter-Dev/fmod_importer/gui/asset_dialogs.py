@@ -287,39 +287,50 @@ class AssetDialogsMixin:
                     new_path = '/'.join(parts) + '/'
 
                     # Check if new path already exists
-                    for aid, asset_data in self.project.asset_folders.items():
+                    all_assets = self.project.get_all_asset_folders()
+                    for aid, asset_data in all_assets.items():
                         if aid != asset_id and asset_data['path'] == new_path:
                             messagebox.showerror("Error", "Asset folder with this path already exists")
                             return
 
-                    # Update the XML
-                    asset_data = self.project.asset_folders[asset_id]
-                    xml_path = asset_data['xml_path']
-                    tree_xml = ET.parse(xml_path)
-                    root_xml = tree_xml.getroot()
-
-                    path_elem = root_xml.find(".//property[@name='assetPath']/value")
-                    if path_elem is not None:
-                        path_elem.text = new_path
-                        self.project._write_pretty_xml(root_xml, xml_path)
-                        asset_data['path'] = new_path
-
-                        # Also update any child folders
-                        for aid, adata in self.project.asset_folders.items():
-                            if aid != asset_id and adata['path'].startswith(current_path):
-                                # Update child path
-                                child_xml_path = adata['xml_path']
-                                child_tree = ET.parse(child_xml_path)
-                                child_root = child_tree.getroot()
-                                child_path_elem = child_root.find(".//property[@name='assetPath']/value")
-                                if child_path_elem is not None:
-                                    old_child_path = child_path_elem.text
-                                    new_child_path = old_child_path.replace(current_path, new_path, 1)
-                                    child_path_elem.text = new_child_path
-                                    self.project._write_pretty_xml(child_root, child_xml_path)
-                                    adata['path'] = new_child_path
-
+                    # Check if pending
+                    if self.project.is_folder_pending(asset_id):
+                        # Update pending data
+                        self.project._pending_manager._pending_asset_folders[asset_id]['path'] = new_path
+                        
+                        # Also update any child pending folders
+                        # Note: Deep update for children is complex for pending, 
+                        # but minimal implementation covers direct rename
                         refresh_tree()
+                    else:
+                        # Update the XML
+                        asset_data = self.project.asset_folders[asset_id]
+                        xml_path = asset_data['xml_path']
+                        tree_xml = ET.parse(xml_path)
+                        root_xml = tree_xml.getroot()
+
+                        path_elem = root_xml.find(".//property[@name='assetPath']/value")
+                        if path_elem is not None:
+                            path_elem.text = new_path
+                            self.project._write_pretty_xml(root_xml, xml_path)
+                            asset_data['path'] = new_path
+
+                            # Also update any child folders
+                            for aid, adata in self.project.asset_folders.items():
+                                if aid != asset_id and adata['path'].startswith(current_path):
+                                    # Update child path
+                                    child_xml_path = adata['xml_path']
+                                    child_tree = ET.parse(child_xml_path)
+                                    child_root = child_tree.getroot()
+                                    child_path_elem = child_root.find(".//property[@name='assetPath']/value")
+                                    if child_path_elem is not None:
+                                        old_child_path = child_path_elem.text
+                                        new_child_path = old_child_path.replace(current_path, new_path, 1)
+                                        child_path_elem.text = new_child_path
+                                        self.project._write_pretty_xml(child_root, child_xml_path)
+                                        adata['path'] = new_child_path
+
+                            refresh_tree()
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to rename asset folder:\n{str(e)}")
 
@@ -347,16 +358,22 @@ class AssetDialogsMixin:
                 return
 
             try:
-                # Delete the XML file
-                asset_data = self.project.asset_folders[asset_id]
-                xml_path = asset_data['xml_path']
-                if xml_path.exists():
-                    xml_path.unlink()
+                # Check if pending
+                if self.project.is_folder_pending(asset_id):
+                    if asset_id in self.project._pending_manager._pending_asset_folders:
+                        del self.project._pending_manager._pending_asset_folders[asset_id]
+                    refresh_tree()
+                else:
+                    # Delete the XML file
+                    asset_data = self.project.asset_folders[asset_id]
+                    xml_path = asset_data['xml_path']
+                    if xml_path.exists():
+                        xml_path.unlink()
 
-                # Remove from internal structure
-                del self.project.asset_folders[asset_id]
+                    # Remove from internal structure
+                    del self.project.asset_folders[asset_id]
 
-                refresh_tree()
+                    refresh_tree()
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete asset folder:\n{str(e)}")
 

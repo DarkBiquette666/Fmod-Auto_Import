@@ -15,118 +15,133 @@ class BankManager:
     """Static methods for bank and bank folder operations."""
 
     @staticmethod
-    def create(name: str, parent_id: str, metadata_path: Path, banks_dict: Dict) -> str:
+    def create(name: str, parent_id: str, commit: bool, metadata_path: Path,
+               banks_dict: Dict, pending_manager) -> str:
         """
         Create a new bank folder (BankFolder object).
 
         Args:
             name: Name of the bank folder
             parent_id: Parent bank folder ID (can be None)
+            commit: If True, write to XML immediately.
             metadata_path: Path to the Metadata directory
             banks_dict: Dictionary of banks to update
+            pending_manager: PendingFolderManager instance
 
         Returns:
             UUID of the created bank folder
-
-        Raises:
-            ValueError: If parent_id refers to a Bank (leaf node)
         """
         # Validate parent
-        if parent_id and parent_id in banks_dict:
-            parent_data = banks_dict[parent_id]
+        # Check committed AND pending
+        all_banks = pending_manager.get_all_banks(banks_dict)
+        if parent_id and parent_id in all_banks:
+            parent_data = all_banks[parent_id]
             if parent_data.get('type') == 'bank':
                 raise ValueError(f"Cannot create folder '{name}' inside a Bank ('{parent_data['name']}'). Please select a Folder.")
 
         bank_id = "{" + str(uuid.uuid4()) + "}"
 
-        # Create XML
-        root = ET.Element('objects', serializationModel="Studio.02.02.00")
-        obj = ET.SubElement(root, 'object', {'class': 'BankFolder', 'id': bank_id})
-
-        # Add name property
-        prop = ET.SubElement(obj, 'property', name='name')
-        value = ET.SubElement(prop, 'value')
-        value.text = name
-
-        # Add parent relationship if exists
-        if parent_id:
-            rel = ET.SubElement(obj, 'relationship', name='folder')
-            dest = ET.SubElement(rel, 'destination')
-            dest.text = parent_id
-
-        # Ensure BankFolder directory exists
-        bank_folder_dir = metadata_path / "BankFolder"
-        bank_folder_dir.mkdir(exist_ok=True)
-
-        # Write to file in BankFolder directory
-        bank_file = bank_folder_dir / f"{bank_id}.xml"
-        write_pretty_xml(root, bank_file)
-
-        # Update internal structure
-        banks_dict[bank_id] = {
+        bank_data = {
             'name': name,
-            'path': bank_file,
+            'path': None,
             'parent': parent_id,
             'type': 'folder'
         }
 
+        if commit:
+            # Create XML
+            root = ET.Element('objects', serializationModel="Studio.02.02.00")
+            obj = ET.SubElement(root, 'object', {'class': 'BankFolder', 'id': bank_id})
+
+            # Add name property
+            prop = ET.SubElement(obj, 'property', name='name')
+            value = ET.SubElement(prop, 'value')
+            value.text = name
+
+            # Add parent relationship if exists
+            if parent_id:
+                rel = ET.SubElement(obj, 'relationship', name='folder')
+                dest = ET.SubElement(rel, 'destination')
+                dest.text = parent_id
+
+            # Ensure BankFolder directory exists
+            bank_folder_dir = metadata_path / "BankFolder"
+            bank_folder_dir.mkdir(exist_ok=True)
+
+            # Write to file in BankFolder directory
+            bank_file = bank_folder_dir / f"{bank_id}.xml"
+            write_pretty_xml(root, bank_file)
+
+            # Update internal structure
+            bank_data['path'] = bank_file
+            banks_dict[bank_id] = bank_data
+        else:
+            pending_manager.add_bank(bank_id, bank_data)
+
         return bank_id
 
     @staticmethod
-    def create_bank(name: str, parent_id: str, metadata_path: Path, banks_dict: Dict) -> str:
+    def create_bank(name: str, parent_id: str, commit: bool, metadata_path: Path,
+                   banks_dict: Dict, pending_manager) -> str:
         """
         Create a new individual bank (Bank object).
 
         Args:
             name: Name of the bank
             parent_id: Parent bank folder ID (can be None)
+            commit: If True, write to XML immediately.
             metadata_path: Path to the Metadata directory
             banks_dict: Dictionary of banks to update
+            pending_manager: PendingFolderManager instance
 
         Returns:
             UUID of the created bank
-
-        Raises:
-            ValueError: If parent_id refers to a Bank (leaf node)
         """
         # Validate parent
-        if parent_id and parent_id in banks_dict:
-            parent_data = banks_dict[parent_id]
+        all_banks = pending_manager.get_all_banks(banks_dict)
+        if parent_id and parent_id in all_banks:
+            parent_data = all_banks[parent_id]
             if parent_data.get('type') == 'bank':
                 raise ValueError(f"Cannot create bank '{name}' inside another Bank ('{parent_data['name']}'). Please select a Folder.")
 
         bank_id = "{" + str(uuid.uuid4()) + "}"
 
-        # Create XML
-        root = ET.Element('objects', serializationModel="Studio.02.02.00")
-        obj = ET.SubElement(root, 'object', {'class': 'Bank', 'id': bank_id})
-
-        # Add name property
-        prop = ET.SubElement(obj, 'property', name='name')
-        value = ET.SubElement(prop, 'value')
-        value.text = name
-
-        # Add parent folder relationship if exists
-        if parent_id:
-            rel = ET.SubElement(obj, 'relationship', name='folder')
-            dest = ET.SubElement(rel, 'destination')
-            dest.text = parent_id
-
-        # Ensure Bank directory exists
-        bank_dir = metadata_path / "Bank"
-        bank_dir.mkdir(exist_ok=True)
-
-        # Write to file in Bank directory
-        bank_file = bank_dir / f"{bank_id}.xml"
-        write_pretty_xml(root, bank_file)
-
-        # Update internal structure
-        banks_dict[bank_id] = {
+        bank_data = {
             'name': name,
-            'path': bank_file,
+            'path': None,
             'parent': parent_id,
             'type': 'bank'
         }
+
+        if commit:
+            # Create XML
+            root = ET.Element('objects', serializationModel="Studio.02.02.00")
+            obj = ET.SubElement(root, 'object', {'class': 'Bank', 'id': bank_id})
+
+            # Add name property
+            prop = ET.SubElement(obj, 'property', name='name')
+            value = ET.SubElement(prop, 'value')
+            value.text = name
+
+            # Add parent folder relationship if exists
+            if parent_id:
+                rel = ET.SubElement(obj, 'relationship', name='folder')
+                dest = ET.SubElement(rel, 'destination')
+                dest.text = parent_id
+
+            # Ensure Bank directory exists
+            bank_dir = metadata_path / "Bank"
+            bank_dir.mkdir(exist_ok=True)
+
+            # Write to file in Bank directory
+            bank_file = bank_dir / f"{bank_id}.xml"
+            write_pretty_xml(root, bank_file)
+
+            # Update internal structure
+            bank_data['path'] = bank_file
+            banks_dict[bank_id] = bank_data
+        else:
+            pending_manager.add_bank(bank_id, bank_data)
 
         return bank_id
 

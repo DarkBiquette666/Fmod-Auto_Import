@@ -109,9 +109,9 @@ class ImportMixin:
 
             # 1.5. Commit any pending folders before import (BEFORE checking if asset folder exists)
             try:
-                event_count, asset_count = self.project.commit_pending_folders()
-                if event_count > 0 or asset_count > 0:
-                    print(f"Committed {event_count} event folder(s) and {asset_count} asset folder(s)")
+                event_count, asset_count, bank_count, bus_count = self.project.commit_pending_folders()
+                if any([event_count, asset_count, bank_count, bus_count]):
+                    print(f"Committed changes: {event_count} event folders, {asset_count} asset folders, {bank_count} banks, {bus_count} buses")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to commit pending folders:\n{str(e)}")
                 return

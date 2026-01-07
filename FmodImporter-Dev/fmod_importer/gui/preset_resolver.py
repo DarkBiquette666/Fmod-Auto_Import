@@ -33,28 +33,18 @@ class PresetResolver:
     # ==================== FOLDER RESOLUTION ====================
 
     def resolve_folder_reference(self, ref: dict) -> Optional[str]:
-        """
-        Resolve folder reference (UUID + path).
-
-        3-step resolution:
-        1. Try UUID match
-        2. Try path match (different UUID)
-        3. Create hierarchy if missing
-
-        Args:
-            ref: Dict with 'id' and 'path' keys
-
-        Returns:
-            Folder UUID or None if project not loaded
-        """
+        """Resolve folder reference (UUID + path)."""
         if not self.project:
             return None
 
         folder_id = ref.get('id', '')
         folder_path = ref.get('path', '')
 
+        # Check committed AND pending folders
+        all_folders = self.project.get_all_event_folders()
+
         # Step 1: Try UUID match
-        if folder_id and folder_id in self.project.event_folders:
+        if folder_id and folder_id in all_folders:
             return folder_id
 
         # Step 2: Try path match
@@ -63,7 +53,7 @@ class PresetResolver:
             if existing_id:
                 return existing_id
 
-            # Step 3: Create hierarchy
+            # Step 3: Create hierarchy (Pending only)
             try:
                 new_id = self.create_folder_hierarchy(folder_path)
                 return new_id
@@ -74,20 +64,15 @@ class PresetResolver:
         return None
 
     def find_folder_by_path(self, path: str) -> Optional[str]:
-        """
-        Search event_folders for matching path.
-
-        Args:
-            path: Folder path (e.g., "Events/Enemies/Mechaflora")
-
-        Returns:
-            Folder UUID if found, None otherwise
-        """
+        """Search all (committed+pending) folders for matching path."""
         if not self.project or not path:
             return None
 
-        # Build paths for all folders and search for match
-        for folder_id in self.project.event_folders:
+        all_folders = self.project.get_all_event_folders()
+        
+        # We need to build paths using the pending-aware logic
+        # But get_folder_path() already handles pending folders
+        for folder_id in all_folders:
             folder_path = self.get_folder_path(folder_id)
             if folder_path == path:
                 return folder_id
@@ -95,33 +80,28 @@ class PresetResolver:
         return None
 
     def create_folder_hierarchy(self, full_path: str) -> str:
-        """
-        Create nested folder structure.
-
-        Example: "Events/Enemies/Mechaflora" creates:
-          - Events/ (if missing)
-          - Events/Enemies/ (if missing)
-          - Events/Enemies/Mechaflora/
-
-        Args:
-            full_path: Full folder path with / separators
-
-        Returns:
-            UUID of final (deepest) folder
-        """
+        """Create nested folder structure (Pending)."""
         if not self.project:
             raise ValueError("No project loaded")
 
         parts = full_path.split('/')
-        parts = [p for p in parts if p]  # Remove empty parts
+        parts = [p for p in parts if p]
 
         master_id = self.project.workspace.get('masterEventFolder')
         current_parent = master_id
+        
+        # Get all folders (including those just created in previous loop iterations)
+        # Note: We re-fetch inside loop or update local cache?
+        # get_all_event_folders returns a copy, so we need to be careful.
+        # However, create_event_folder updates the pending manager immediately.
 
         for part in parts:
+            # Re-fetch all folders to include just-created ones
+            all_folders = self.project.get_all_event_folders()
+            
             # Find child with this name
             child_id = None
-            for folder_id, folder_data in self.project.event_folders.items():
+            for folder_id, folder_data in all_folders.items():
                 if (folder_data.get('parent') == current_parent and
                     folder_data.get('name') == part):
                     child_id = folder_id
@@ -129,8 +109,9 @@ class PresetResolver:
 
             # Create if not found
             if not child_id:
-                child_id = self.project.create_event_folder(part, current_parent)
-                print(f"Created folder: {part}")
+                # Use commit=False (Pending)
+                child_id = self.project.create_event_folder(part, current_parent, commit=False)
+                print(f"Created pending folder: {part}")
 
             current_parent = child_id
 
@@ -139,36 +120,32 @@ class PresetResolver:
     # ==================== BANK RESOLUTION ====================
 
     def resolve_bank_reference(self, ref: dict) -> Optional[str]:
-        """
-        Resolve bank reference (try UUID → name match → create).
-
-        Args:
-            ref: Dict with 'id', 'name', 'parent_id', 'parent_name' keys
-
-        Returns:
-            Bank UUID or None if project not loaded
-        """
+        """Resolve bank reference (try UUID → name match → create pending)."""
         if not self.project:
             return None
 
         bank_id = ref.get('id', '')
         bank_name = ref.get('name', '')
+        
+        all_banks = self.project.get_all_banks()
 
         # Step 1: Try UUID match
-        if bank_id and bank_id in self.project.banks:
+        if bank_id and bank_id in all_banks:
             return bank_id
 
         # Step 2: Try name match
         if bank_name:
-            for bid, bdata in self.project.banks.items():
+            for bid, bdata in all_banks.items():
                 if bdata.get('name') == bank_name:
                     return bid
 
-            # Step 3: Create bank
+            # Step 3: Create bank (Pending)
             try:
                 parent_id = ref.get('parent_id', '')
-                new_id = self.project.create_bank(bank_name, parent_id or None)
-                print(f"Created bank: {bank_name}")
+                # Try to create as Bank (not folder) by default for presets?
+                # Usually presets store the Leaf bank.
+                new_id = self.project.create_bank_instance(bank_name, parent_id or None, commit=False)
+                print(f"Created pending bank: {bank_name}")
                 return new_id
             except Exception as e:
                 print(f"Failed to create bank '{bank_name}': {e}")
@@ -179,28 +156,22 @@ class PresetResolver:
     # ==================== BUS RESOLUTION ====================
 
     def resolve_bus_reference(self, ref: dict) -> Optional[str]:
-        """
-        Resolve bus reference (try UUID → path match → create hierarchy).
-
-        Args:
-            ref: Dict with 'id' and 'path' keys
-
-        Returns:
-            Bus UUID or None if project not loaded
-        """
+        """Resolve bus reference (try UUID → path match → create pending hierarchy)."""
         if not self.project:
             return None
 
         bus_id = ref.get('id', '')
         bus_path = ref.get('path', '')
+        
+        all_buses = self.project.get_all_buses()
 
         # Step 1: Try UUID match
-        if bus_id and bus_id in self.project.buses:
+        if bus_id and bus_id in all_buses:
             return bus_id
 
         # Step 2: Try path match
         if bus_path:
-            for bid in self.project.buses:
+            for bid in all_buses:
                 if self.get_bus_path(bid) == bus_path:
                     return bid
 
@@ -209,8 +180,11 @@ class PresetResolver:
                 parts = bus_path.split('/')
                 bus_name = parts[-1] if parts else bus_path
                 master_bus_id = self.project._get_master_bus_id()
-                new_id = self.project.create_bus(bus_name, master_bus_id)
-                print(f"Created bus: {bus_name}")
+                
+                # Check if hierarchy exists? For now, just create at master.
+                # Use commit=False
+                new_id = self.project.create_bus(bus_name, master_bus_id, commit=False)
+                print(f"Created pending bus: {bus_name}")
                 return new_id
             except Exception as e:
                 print(f"Failed to create bus '{bus_path}': {e}")
@@ -221,40 +195,34 @@ class PresetResolver:
     # ==================== ASSET FOLDER RESOLUTION ====================
 
     def resolve_asset_folder_reference(self, ref: dict) -> Optional[str]:
-        """
-        Resolve asset folder reference (try UUID → path match → create).
-
-        Args:
-            ref: Dict with 'id' and 'path' keys
-
-        Returns:
-            Asset folder UUID or None if project not loaded
-        """
+        """Resolve asset folder reference (try UUID → path match → create pending)."""
         if not self.project:
             return None
 
         asset_id = ref.get('id', '')
         asset_path = ref.get('path', '')
+        
+        all_assets = self.project.get_all_asset_folders()
 
         # Step 1: Try UUID match
-        if asset_id and asset_id in self.project.asset_folders:
+        if asset_id and asset_id in all_assets:
             return asset_id
 
         # Step 2: Try path match
         if asset_path:
-            for aid, adata in self.project.asset_folders.items():
+            for aid, adata in all_assets.items():
                 if adata.get('path') == asset_path:
                     return aid
 
-            # Step 3: Create asset folder (simplified - single level)
+            # Step 3: Create asset folder
             try:
-                # Extract parent path and folder name
                 parts = asset_path.rstrip('/').split('/')
                 folder_name = parts[-1] if parts else ''
                 parent_path = '/'.join(parts[:-1]) + '/' if len(parts) > 1 else ''
 
-                new_id = self.project.create_asset_folder(folder_name, parent_path)
-                print(f"Created asset folder: {folder_name}")
+                # Use commit=False
+                new_id = self.project.create_asset_folder(folder_name, parent_path, commit=False)
+                print(f"Created pending asset folder: {folder_name}")
                 return new_id
             except Exception as e:
                 print(f"Failed to create asset folder '{asset_path}': {e}")
@@ -265,27 +233,13 @@ class PresetResolver:
     # ==================== PATH BUILDING HELPERS ====================
 
     def get_folder_path(self, folder_id: str) -> str:
-        """
-        Build full path from folder ID.
-
-        Traverses parent hierarchy to build path like "Events/Enemies/Mechaflora".
-        Checks both committed (event_folders) and pending (_pending_event_folders).
-
-        Args:
-            folder_id: Folder UUID
-
-        Returns:
-            Full path string
-        """
+        """Build full path from folder ID (checking committed and pending)."""
         if not self.project or not folder_id:
             return ""
 
-        # Merge committed and pending folders
-        all_folders = {**self.project.event_folders}
-        if hasattr(self.project, '_pending_event_folders'):
-            all_folders.update(self.project._pending_event_folders)
+        # Use helper from project that merges both lists
+        all_folders = self.project.get_all_event_folders()
 
-        # Build path from folder chain
         path_parts = []
         current_id = folder_id
         master_id = self.project.workspace.get('masterEventFolder')
@@ -298,29 +252,20 @@ class PresetResolver:
         return '/'.join(path_parts)
 
     def get_bus_path(self, bus_id: str) -> str:
-        """
-        Build full path from bus ID.
-
-        Traverses parent hierarchy to build path like "bus:/SFX/Enemies".
-
-        Args:
-            bus_id: Bus UUID
-
-        Returns:
-            Full path string with "bus:/" prefix
-        """
+        """Build full path from bus ID (checking committed and pending)."""
         if not self.project or not bus_id:
             return ""
+            
+        all_buses = self.project.get_all_buses()
 
         path_parts = []
         current_id = bus_id
         master_bus_id = self.project._get_master_bus_id()
 
-        while current_id and current_id in self.project.buses:
-            bus_data = self.project.buses[current_id]
+        while current_id and current_id in all_buses:
+            bus_data = all_buses[current_id]
             bus_name = bus_data.get('name', '')
 
-            # Stop at master bus
             if current_id == master_bus_id:
                 break
 
@@ -330,59 +275,42 @@ class PresetResolver:
         return "bus:/" + '/'.join(path_parts)
 
     def get_bank_name_and_parent(self, bank_id: str) -> Tuple[str, str]:
-        """
-        Get bank name and parent ID.
-
-        Args:
-            bank_id: Bank UUID
-
-        Returns:
-            Tuple of (bank_name, parent_bank_id)
-        """
-        if not self.project or not bank_id or bank_id not in self.project.banks:
+        """Get bank name and parent ID."""
+        if not self.project or not bank_id:
+            return ("", "")
+            
+        all_banks = self.project.get_all_banks()
+        
+        if bank_id not in all_banks:
             return ("", "")
 
-        bank_data = self.project.banks[bank_id]
-        bank_name = bank_data.get('name', '')
-        parent_id = bank_data.get('parent', '')
-
-        return (bank_name, parent_id)
+        bank_data = all_banks[bank_id]
+        return (bank_data.get('name', ''), bank_data.get('parent', ''))
 
     def get_bank_path(self, bank_id: str) -> str:
-        """
-        Build full path from bank ID.
-
-        Traverses parent hierarchy to build path like "SFX/Characters".
-
-        Args:
-            bank_id: Bank UUID
-
-        Returns:
-            Full path string (no prefix, unlike buses)
-        """
+        """Build full path from bank ID."""
         if not self.project or not bank_id:
             return ""
 
-        if bank_id not in self.project.banks:
+        all_banks = self.project.get_all_banks()
+        if bank_id not in all_banks:
             return ""
 
         path_parts = []
         current_id = bank_id
         master_bank_id = self.project.workspace.get('masterBankFolder')
 
-        while current_id and current_id in self.project.banks:
-            bank_data = self.project.banks[current_id]
+        while current_id and current_id in all_banks:
+            bank_data = all_banks[current_id]
             bank_name = bank_data.get('name', '')
 
-            # Stop at master bank (don't include in path)
             if current_id == master_bank_id:
                 break
 
             path_parts.insert(0, bank_name)
             current_id = bank_data.get('parent')
 
-        # If no path parts, return just the bank name
         if not path_parts:
-            return self.project.banks[bank_id].get('name', '')
+            return all_banks[bank_id].get('name', '')
 
         return '/'.join(path_parts)

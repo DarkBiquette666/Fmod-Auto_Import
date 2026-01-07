@@ -15,75 +15,84 @@ class BusManager:
     """Static methods for bus (mixer group) operations."""
 
     @staticmethod
-    def create(name: str, parent_id: str, metadata_path: Path, buses_dict: Dict) -> str:
+    def create(name: str, parent_id: str, commit: bool, metadata_path: Path,
+               buses_dict: Dict, pending_manager) -> str:
         """
         Create a new bus (MixerGroup).
 
         Args:
             name: Name of the bus
             parent_id: Parent bus ID (output destination)
+            commit: If True, write to XML immediately.
             metadata_path: Path to the Metadata directory
             buses_dict: Dictionary of buses to update
+            pending_manager: PendingFolderManager instance
 
         Returns:
             UUID of the created bus
         """
         bus_id = "{" + str(uuid.uuid4()) + "}"
 
-        # Create XML structure for MixerGroup
-        root = ET.Element('objects', serializationModel="Studio.02.02.00")
-        obj = ET.SubElement(root, 'object', {'class': 'MixerGroup', 'id': bus_id})
-
-        # Add name property
-        prop = ET.SubElement(obj, 'property', name='name')
-        value = ET.SubElement(prop, 'value')
-        value.text = name
-
-        # Add effectChain
-        effect_chain_id = "{" + str(uuid.uuid4()) + "}"
-        rel_effect = ET.SubElement(obj, 'relationship', name='effectChain')
-        dest_effect = ET.SubElement(rel_effect, 'destination')
-        dest_effect.text = effect_chain_id
-
-        # Add panner
-        panner_id = "{" + str(uuid.uuid4()) + "}"
-        rel_panner = ET.SubElement(obj, 'relationship', name='panner')
-        dest_panner = ET.SubElement(rel_panner, 'destination')
-        dest_panner.text = panner_id
-
-        # Add output (parent relationship)
-        if parent_id:
-            rel_output = ET.SubElement(obj, 'relationship', name='output')
-            dest_output = ET.SubElement(rel_output, 'destination')
-            dest_output.text = parent_id
-
-        # Add effect chain object
-        effect_chain_obj = ET.SubElement(root, 'object', {'class': 'MixerBusEffectChain', 'id': effect_chain_id})
-        fader_id = "{" + str(uuid.uuid4()) + "}"
-        rel_effects = ET.SubElement(effect_chain_obj, 'relationship', name='effects')
-        dest_fader = ET.SubElement(rel_effects, 'destination')
-        dest_fader.text = fader_id
-
-        # Add panner object
-        ET.SubElement(root, 'object', {'class': 'MixerBusPanner', 'id': panner_id})
-
-        # Add fader object
-        ET.SubElement(root, 'object', {'class': 'MixerBusFader', 'id': fader_id})
-
-        # Ensure Group folder exists
-        group_folder = metadata_path / "Group"
-        group_folder.mkdir(exist_ok=True)
-
-        # Write to file
-        bus_file = group_folder / f"{bus_id}.xml"
-        write_pretty_xml(root, bus_file)
-
-        # Update internal structure
-        buses_dict[bus_id] = {
+        bus_data = {
             'name': name,
-            'path': bus_file,
+            'path': None,
             'parent': parent_id
         }
+
+        if commit:
+            # Create XML structure for MixerGroup
+            root = ET.Element('objects', serializationModel="Studio.02.02.00")
+            obj = ET.SubElement(root, 'object', {'class': 'MixerGroup', 'id': bus_id})
+
+            # Add name property
+            prop = ET.SubElement(obj, 'property', name='name')
+            value = ET.SubElement(prop, 'value')
+            value.text = name
+
+            # Add effectChain
+            effect_chain_id = "{" + str(uuid.uuid4()) + "}"
+            rel_effect = ET.SubElement(obj, 'relationship', name='effectChain')
+            dest_effect = ET.SubElement(rel_effect, 'destination')
+            dest_effect.text = effect_chain_id
+
+            # Add panner
+            panner_id = "{" + str(uuid.uuid4()) + "}"
+            rel_panner = ET.SubElement(obj, 'relationship', name='panner')
+            dest_panner = ET.SubElement(rel_panner, 'destination')
+            dest_panner.text = panner_id
+
+            # Add output (parent relationship)
+            if parent_id:
+                rel_output = ET.SubElement(obj, 'relationship', name='output')
+                dest_output = ET.SubElement(rel_output, 'destination')
+                dest_output.text = parent_id
+
+            # Add effect chain object
+            effect_chain_obj = ET.SubElement(root, 'object', {'class': 'MixerBusEffectChain', 'id': effect_chain_id})
+            fader_id = "{" + str(uuid.uuid4()) + "}"
+            rel_effects = ET.SubElement(effect_chain_obj, 'relationship', name='effects')
+            dest_fader = ET.SubElement(rel_effects, 'destination')
+            dest_fader.text = fader_id
+
+            # Add panner object
+            ET.SubElement(root, 'object', {'class': 'MixerBusPanner', 'id': panner_id})
+
+            # Add fader object
+            ET.SubElement(root, 'object', {'class': 'MixerBusFader', 'id': fader_id})
+
+            # Ensure Group folder exists
+            group_folder = metadata_path / "Group"
+            group_folder.mkdir(exist_ok=True)
+
+            # Write to file
+            bus_file = group_folder / f"{bus_id}.xml"
+            write_pretty_xml(root, bus_file)
+
+            # Update internal structure
+            bus_data['path'] = bus_file
+            buses_dict[bus_id] = bus_data
+        else:
+            pending_manager.add_bus(bus_id, bus_data)
 
         return bus_id
 

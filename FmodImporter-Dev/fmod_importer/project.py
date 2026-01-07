@@ -97,17 +97,23 @@ class FMODProject:
             self.event_folders, self._pending_manager
         )
 
-    def create_bank(self, name: str, parent_id: str = None) -> str:
+    def create_bank(self, name: str, parent_id: str = None, commit: bool = True) -> str:
         """Create a new bank folder (delegates to BankManager) - DEPRECATED, use create_bank_folder()"""
-        return BankManager.create(name, parent_id, self.metadata_path, self.banks)
+        return self.create_bank_folder(name, parent_id, commit)
 
-    def create_bank_folder(self, name: str, parent_id: str = None) -> str:
+    def create_bank_folder(self, name: str, parent_id: str = None, commit: bool = True) -> str:
         """Create a new bank folder (BankFolder object)"""
-        return BankManager.create(name, parent_id, self.metadata_path, self.banks)
+        return BankManager.create(
+            name, parent_id, commit, self.metadata_path,
+            self.banks, self._pending_manager
+        )
 
-    def create_bank_instance(self, name: str, parent_id: str = None) -> str:
+    def create_bank_instance(self, name: str, parent_id: str = None, commit: bool = True) -> str:
         """Create a new individual bank (Bank object)"""
-        return BankManager.create_bank(name, parent_id, self.metadata_path, self.banks)
+        return BankManager.create_bank(
+            name, parent_id, commit, self.metadata_path,
+            self.banks, self._pending_manager
+        )
 
     def delete_bank(self, bank_id: str):
         """Delete a bank or bank folder (delegates to BankManager)"""
@@ -120,12 +126,15 @@ class FMODProject:
             self.asset_folders, self._pending_manager, self.workspace
         )
 
-    def create_bus(self, name: str, parent_id: str = None) -> str:
+    def create_bus(self, name: str, parent_id: str = None, commit: bool = True) -> str:
         """Create a new bus (delegates to BusManager)"""
         # If no parent specified, route to Master Bus
         if not parent_id:
             parent_id = self._get_master_bus_id()
-        return BusManager.create(name, parent_id, self.metadata_path, self.buses)
+        return BusManager.create(
+            name, parent_id, commit, self.metadata_path,
+            self.buses, self._pending_manager
+        )
 
     def delete_bus(self, bus_id: str):
         """Delete a bus (delegates to BusManager)"""
@@ -135,16 +144,18 @@ class FMODProject:
         """Delete an event folder (delegates to EventFolderManager)"""
         EventFolderManager.delete(folder_id, self.event_folders, self.metadata_path)
 
-    def commit_pending_folders(self) -> Tuple[int, int]:
+    def commit_pending_folders(self) -> Tuple[int, int, int, int]:
         """
-        Commit all pending folders to XML files (delegates to PendingFolderManager).
+        Commit all pending items to XML files.
 
         Returns:
-            Tuple of (num_event_folders_committed, num_asset_folders_committed)
+            Tuple of (events, assets, banks, buses) committed
         """
         return self._pending_manager.commit_all(
             self.event_folders,
             self.asset_folders,
+            self.banks,
+            self.buses,
             self.workspace,
             self.metadata_path
         )
@@ -159,18 +170,20 @@ class FMODProject:
         return self._pending_manager.clear_all()
 
     def get_all_event_folders(self) -> Dict[str, Dict]:
-        """
-        Get all event folders (both committed and pending).
-        Useful for tree displays.
-        """
+        """Get all event folders (both committed and pending)."""
         return self._pending_manager.get_all_event_folders(self.event_folders)
 
     def get_all_asset_folders(self) -> Dict[str, Dict]:
-        """
-        Get all asset folders (both committed and pending).
-        Useful for tree displays.
-        """
+        """Get all asset folders (both committed and pending)."""
         return self._pending_manager.get_all_asset_folders(self.asset_folders)
+
+    def get_all_banks(self) -> Dict[str, Dict]:
+        """Get all banks (both committed and pending)."""
+        return self._pending_manager.get_all_banks(self.banks)
+
+    def get_all_buses(self) -> Dict[str, Dict]:
+        """Get all buses (both committed and pending)."""
+        return self._pending_manager.get_all_buses(self.buses)
 
     def is_folder_pending(self, folder_id: str) -> bool:
         """Check if a folder is pending (not yet committed to XML)"""

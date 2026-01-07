@@ -430,17 +430,26 @@ class DialogsMixin:
                                             initialvalue=item_name, parent=dialog)
             if new_name and new_name != item_name:
                 try:
-                    item_data = items[item_id]
-                    xml_path = item_data['path']
-                    tree_xml = ET.parse(xml_path)
-                    root_xml = tree_xml.getroot()
-
-                    name_elem = root_xml.find(".//property[@name='name']/value")
-                    if name_elem is not None:
-                        name_elem.text = new_name
-                        self.project._write_pretty_xml(root_xml, xml_path)
-                        item_data['name'] = new_name
+                    # Check if pending
+                    if self.project.is_folder_pending(item_id):
+                        # Determine if bank or bus and update
+                        if item_id in self.project._pending_manager._pending_banks:
+                            self.project._pending_manager._pending_banks[item_id]['name'] = new_name
+                        elif item_id in self.project._pending_manager._pending_buses:
+                            self.project._pending_manager._pending_buses[item_id]['name'] = new_name
                         refresh_tree()
+                    else:
+                        item_data = items[item_id]
+                        xml_path = item_data['path']
+                        tree_xml = ET.parse(xml_path)
+                        root_xml = tree_xml.getroot()
+
+                        name_elem = root_xml.find(".//property[@name='name']/value")
+                        if name_elem is not None:
+                            name_elem.text = new_name
+                            self.project._write_pretty_xml(root_xml, xml_path)
+                            item_data['name'] = new_name
+                            refresh_tree()
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to rename:\n{str(e)}")
 
@@ -453,8 +462,17 @@ class DialogsMixin:
             item_id = tree.item(item, 'values')[0]
 
             try:
-                delete_fn(item_id)
-                refresh_tree()
+                # Check if pending
+                if self.project.is_folder_pending(item_id):
+                    # Remove from pending
+                    if item_id in self.project._pending_manager._pending_banks:
+                        del self.project._pending_manager._pending_banks[item_id]
+                    elif item_id in self.project._pending_manager._pending_buses:
+                        del self.project._pending_manager._pending_buses[item_id]
+                    refresh_tree()
+                else:
+                    delete_fn(item_id)
+                    refresh_tree()
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete:\n{str(e)}")
 
@@ -715,18 +733,24 @@ class DialogsMixin:
                                             initialvalue=folder_name, parent=dialog)
             if new_name and new_name != folder_name:
                 try:
-                    # Update the name in the XML
-                    folder_data = self.project.event_folders[folder_id]
-                    xml_path = folder_data['path']
-                    tree_xml = ET.parse(xml_path)
-                    root_xml = tree_xml.getroot()
-
-                    name_elem = root_xml.find(".//property[@name='name']/value")
-                    if name_elem is not None:
-                        name_elem.text = new_name
-                        self.project._write_pretty_xml(root_xml, xml_path)
-                        folder_data['name'] = new_name
+                    # Check if pending
+                    if self.project.is_folder_pending(folder_id):
+                        # Update pending data directly
+                        self.project._pending_manager._pending_event_folders[folder_id]['name'] = new_name
                         refresh_tree()
+                    else:
+                        # Update the name in the XML
+                        folder_data = self.project.event_folders[folder_id]
+                        xml_path = folder_data['path']
+                        tree_xml = ET.parse(xml_path)
+                        root_xml = tree_xml.getroot()
+
+                        name_elem = root_xml.find(".//property[@name='name']/value")
+                        if name_elem is not None:
+                            name_elem.text = new_name
+                            self.project._write_pretty_xml(root_xml, xml_path)
+                            folder_data['name'] = new_name
+                            refresh_tree()
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to rename folder:\n{str(e)}")
 
@@ -744,8 +768,15 @@ class DialogsMixin:
                 return
 
             try:
-                self.project.delete_folder(folder_id)
-                refresh_tree()
+                # Check if pending
+                if self.project.is_folder_pending(folder_id):
+                    # Remove from pending
+                    if folder_id in self.project._pending_manager._pending_event_folders:
+                        del self.project._pending_manager._pending_event_folders[folder_id]
+                    refresh_tree()
+                else:
+                    self.project.delete_folder(folder_id)
+                    refresh_tree()
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to delete folder:\n{str(e)}")
 
