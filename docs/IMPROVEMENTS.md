@@ -78,9 +78,15 @@ class CreateBankCommand(Command):
 There are **zero** automated tests. Every refactor relies on manual "click-testing" by the developer. This is high-risk and slow.
 
 ### The Solution
-Integrate `pytest`.
-*   **Core Logic Tests:** Test `PendingFolderManager`, `NamingPattern`, and `Matcher` in isolation. These don't need the GUI.
-*   **Project Tests:** Test loading/saving XML without actually writing to disk (using temporary files or mocks).
+Integrate `unittest` (standard library) or `pytest`.
+
+### Test Suite Checklist
+- [x] **`test_naming_pattern.py`**: Validate regex logic, iterator stripping, separators, and flexible matching.
+- [ ] **`test_matcher.py`**: Verify fuzzy matching logic (Levenshtein distance) and best-match selection.
+- [ ] **`test_managers.py`**: Test `BankManager`, `BusManager`, `EventFolderManager` ensuring `commit=False` works correctly.
+- [ ] **`test_preset_resolver.py`**: Test resolution logic (UUID vs Path) and pending item creation.
+- [ ] **`test_xml_loader.py`**: Test parsing of FMOD XML structures and error handling for malformed files.
+- [ ] **`test_integration_import.py`**: Mock end-to-end import flow (generating JSON without running FMOD).
 
 **Benefit:** Fearless refactoring. Immediate regression detection.
 
