@@ -39,6 +39,19 @@ class BankManager:
             if parent_data.get('type') == 'bank':
                 raise ValueError(f"Cannot create folder '{name}' inside a Bank ('{parent_data['name']}'). Please select a Folder.")
 
+        # Check duplicates
+        for bid, bdata in banks_dict.items():
+            if bdata['name'] == name and bdata.get('parent') == parent_id:
+                if commit:
+                    raise ValueError(f"Bank folder '{name}' already exists")
+                return bid
+        
+        pending_id = pending_manager.find_bank(name, parent_id)
+        if pending_id:
+            if commit:
+                raise ValueError(f"Bank folder '{name}' is already pending creation")
+            return pending_id
+
         bank_id = "{" + str(uuid.uuid4()) + "}"
 
         bank_data = {
@@ -103,6 +116,19 @@ class BankManager:
             parent_data = all_banks[parent_id]
             if parent_data.get('type') == 'bank':
                 raise ValueError(f"Cannot create bank '{name}' inside another Bank ('{parent_data['name']}'). Please select a Folder.")
+
+        # Check duplicates
+        for bid, bdata in banks_dict.items():
+            if bdata['name'] == name and bdata.get('parent') == parent_id:
+                if commit:
+                    raise ValueError(f"Bank '{name}' already exists")
+                return bid
+        
+        pending_id = pending_manager.find_bank(name, parent_id)
+        if pending_id:
+            if commit:
+                raise ValueError(f"Bank '{name}' is already pending creation")
+            return pending_id
 
         bank_id = "{" + str(uuid.uuid4()) + "}"
 

@@ -324,3 +324,34 @@ class PendingFolderManager:
         """Get all buses (committed + pending)."""
         return {**committed, **self._pending_buses}
 
+    def find_event_folder(self, name: str, parent_id: str) -> str:
+        """Find a pending event folder by name and parent."""
+        for folder_id, data in self._pending_event_folders.items():
+            if data['name'] == name and data['parent'] == parent_id:
+                return folder_id
+        return None
+
+    def find_asset_folder(self, path: str) -> str:
+        """Find a pending asset folder by path."""
+        for asset_id, data in self._pending_asset_folders.items():
+            if data['path'] == path:
+                return asset_id
+        return None
+
+    def find_bank(self, name: str, parent_id: str) -> str:
+        """Find a pending bank or bank folder by name and parent."""
+        for bank_id, data in self._pending_banks.items():
+            # Parent can be None in data vs None passed in
+            data_parent = data.get('parent')
+            if data['name'] == name and data_parent == parent_id:
+                return bank_id
+        return None
+
+    def find_bus(self, name: str, parent_id: str) -> str:
+        """Find a pending bus by name and parent."""
+        for bus_id, data in self._pending_buses.items():
+            data_parent = data.get('parent')
+            if data['name'] == name and data_parent == parent_id:
+                return bus_id
+        return None
+

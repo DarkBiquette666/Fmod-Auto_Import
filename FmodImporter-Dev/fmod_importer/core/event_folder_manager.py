@@ -31,6 +31,25 @@ class EventFolderManager:
         Returns:
             New folder ID
         """
+        # Check for duplicates in COMMITTED folders
+        for fid, fdata in event_folders_dict.items():
+            if fdata['name'] == name and fdata['parent'] == parent_id:
+                if commit:
+                    raise ValueError(f"Folder '{name}' already exists in parent '{parent_id}'")
+                else:
+                    return fid  # Return existing ID if we are just staging (idempotent)
+
+        # Check for duplicates in PENDING folders
+        pending_id = pending_manager.find_event_folder(name, parent_id)
+        if pending_id:
+            if commit:
+                # If we are trying to commit, but it's already pending, we should probably commit the pending one?
+                # For now, raise error to be safe, or return pending ID (but it won't be committed yet).
+                # Ideally: commit=True means "I want this on disk NOW".
+                raise ValueError(f"Folder '{name}' is already pending creation.")
+            else:
+                return pending_id
+
         folder_id = "{" + str(uuid.uuid4()) + "}"
 
         # Build folder data

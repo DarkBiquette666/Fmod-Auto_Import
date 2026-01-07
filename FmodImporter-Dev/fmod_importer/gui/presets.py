@@ -489,69 +489,96 @@ class PresetsMixin:
             resolver = PresetResolver(self.project)
 
             # Resolve template folder
-            template_ref = fmod_refs.get('template_folder', {})
-            if template_ref.get('id') or template_ref.get('path'):
-                resolved_id = resolver.resolve_folder_reference(template_ref)
-                if resolved_id and hasattr(self, 'template_var'):
-                    # Check both committed and pending folders
-                    folder_data = self.project.event_folders.get(resolved_id)
-                    if not folder_data and hasattr(self.project, '_pending_event_folders'):
-                        folder_data = self.project._pending_event_folders.get(resolved_id)
+            try:
+                template_ref = fmod_refs.get('template_folder', {})
+                if template_ref.get('id') or template_ref.get('path'):
+                    resolved_id = resolver.resolve_folder_reference(template_ref)
+                    if resolved_id and hasattr(self, 'template_var'):
+                        # Check both committed and pending folders
+                        folder_data = self.project.event_folders.get(resolved_id)
+                        if not folder_data and hasattr(self.project, '_pending_event_folders'):
+                            folder_data = self.project._pending_event_folders.get(resolved_id)
+                        # Also check the pending manager directly via project methods if needed
+                        if not folder_data:
+                             all_folders = self.project.get_all_event_folders()
+                             folder_data = all_folders.get(resolved_id)
 
-                    if folder_data:
-                        # Calculate and display full path
-                        folder_path = resolver.get_folder_path(resolved_id)
-                        folder_name = folder_data['name']
-                        self.template_var.set(folder_path if folder_path else folder_name)
-                        self.selected_template_id = resolved_id
+                        if folder_data:
+                            # Calculate and display full path
+                            folder_path = resolver.get_folder_path(resolved_id)
+                            folder_name = folder_data['name']
+                            self.template_var.set(folder_path if folder_path else folder_name)
+                            self.selected_template_id = resolved_id
+            except Exception as e:
+                print(f"Error resolving template folder: {e}")
 
             # Resolve destination folder
-            dest_ref = fmod_refs.get('destination_folder', {})
-            if dest_ref.get('id') or dest_ref.get('path'):
-                resolved_id = resolver.resolve_folder_reference(dest_ref)
-                if resolved_id and hasattr(self, 'dest_var'):
-                    # Check both committed and pending folders
-                    folder_data = self.project.event_folders.get(resolved_id)
-                    if not folder_data and hasattr(self.project, '_pending_event_folders'):
-                        folder_data = self.project._pending_event_folders.get(resolved_id)
+            try:
+                dest_ref = fmod_refs.get('destination_folder', {})
+                if dest_ref.get('id') or dest_ref.get('path'):
+                    resolved_id = resolver.resolve_folder_reference(dest_ref)
+                    if resolved_id and hasattr(self, 'dest_var'):
+                        all_folders = self.project.get_all_event_folders()
+                        folder_data = all_folders.get(resolved_id)
 
-                    if folder_data:
-                        # Calculate and display full path
-                        folder_path = resolver.get_folder_path(resolved_id)
-                        folder_name = folder_data['name']
-                        self.dest_var.set(folder_path if folder_path else folder_name)
-                        self.selected_dest_id = resolved_id
+                        if folder_data:
+                            # Calculate and display full path
+                            folder_path = resolver.get_folder_path(resolved_id)
+                            folder_name = folder_data['name']
+                            self.dest_var.set(folder_path if folder_path else folder_name)
+                            self.selected_dest_id = resolved_id
+            except Exception as e:
+                print(f"Error resolving destination folder: {e}")
 
             # Resolve bank
-            bank_ref = fmod_refs.get('bank', {})
-            if bank_ref.get('id') or bank_ref.get('name'):
-                resolved_id = resolver.resolve_bank_reference(bank_ref)
-                if resolved_id and hasattr(self, 'bank_var'):
-                    # Calculate and display full path
-                    bank_path = resolver.get_bank_path(resolved_id)
-                    bank_name = self.project.banks[resolved_id]['name']
-                    self.bank_var.set(bank_path if bank_path else bank_name)
-                    self.selected_bank_id = resolved_id
+            try:
+                bank_ref = fmod_refs.get('bank', {})
+                if bank_ref.get('id') or bank_ref.get('name'):
+                    resolved_id = resolver.resolve_bank_reference(bank_ref)
+                    if resolved_id and hasattr(self, 'bank_var'):
+                        # Calculate and display full path
+                        bank_path = resolver.get_bank_path(resolved_id)
+                        # Need to get name from all_banks
+                        all_banks = self.project.get_all_banks()
+                        bank_data = all_banks.get(resolved_id, {})
+                        bank_name = bank_data.get('name', '')
+                        
+                        self.bank_var.set(bank_path if bank_path else bank_name)
+                        self.selected_bank_id = resolved_id
+            except Exception as e:
+                print(f"Error resolving bank: {e}")
 
             # Resolve bus
-            bus_ref = fmod_refs.get('bus', {})
-            if bus_ref.get('id') or bus_ref.get('path'):
-                resolved_id = resolver.resolve_bus_reference(bus_ref)
-                if resolved_id and hasattr(self, 'bus_var'):
-                    # Calculate and display full path
-                    bus_path = resolver.get_bus_path(resolved_id)
-                    bus_name = self.project.buses[resolved_id]['name']
-                    self.bus_var.set(bus_path if bus_path else bus_name)
-                    self.selected_bus_id = resolved_id
+            try:
+                bus_ref = fmod_refs.get('bus', {})
+                if bus_ref.get('id') or bus_ref.get('path'):
+                    resolved_id = resolver.resolve_bus_reference(bus_ref)
+                    if resolved_id and hasattr(self, 'bus_var'):
+                        # Calculate and display full path
+                        bus_path = resolver.get_bus_path(resolved_id)
+                        
+                        all_buses = self.project.get_all_buses()
+                        bus_data = all_buses.get(resolved_id, {})
+                        bus_name = bus_data.get('name', '')
+                        
+                        self.bus_var.set(bus_path if bus_path else bus_name)
+                        self.selected_bus_id = resolved_id
+            except Exception as e:
+                print(f"Error resolving bus: {e}")
 
             # Resolve asset folder
-            asset_ref = fmod_refs.get('asset_folder', {})
-            if asset_ref.get('id') or asset_ref.get('path'):
-                resolved_id = resolver.resolve_asset_folder_reference(asset_ref)
-                if resolved_id and hasattr(self, 'asset_var'):
-                    asset_path = self.project.asset_folders[resolved_id].get('path', '')
-                    self.asset_var.set(asset_path)
-                    self.selected_asset_id = resolved_id
+            try:
+                asset_ref = fmod_refs.get('asset_folder', {})
+                if asset_ref.get('id') or asset_ref.get('path'):
+                    resolved_id = resolver.resolve_asset_folder_reference(asset_ref)
+                    if resolved_id and hasattr(self, 'asset_var'):
+                        all_assets = self.project.get_all_asset_folders()
+                        asset_data = all_assets.get(resolved_id, {})
+                        asset_path = asset_data.get('path', '')
+                        self.asset_var.set(asset_path)
+                        self.selected_asset_id = resolved_id
+            except Exception as e:
+                print(f"Error resolving asset folder: {e}")
 
         # Trigger pattern preview update if available
         if hasattr(self, '_update_pattern_preview'):

@@ -31,6 +31,20 @@ class BusManager:
         Returns:
             UUID of the created bus
         """
+        # Check duplicates in committed
+        for bus_id, bus_data in buses_dict.items():
+            if bus_data['name'] == name and bus_data.get('parent') == parent_id:
+                if commit:
+                    raise ValueError(f"Bus '{name}' already exists")
+                return bus_id
+
+        # Check duplicates in pending
+        pending_id = pending_manager.find_bus(name, parent_id)
+        if pending_id:
+            if commit:
+                raise ValueError(f"Bus '{name}' is already pending creation")
+            return pending_id
+
         bus_id = "{" + str(uuid.uuid4()) + "}"
 
         bus_data = {
