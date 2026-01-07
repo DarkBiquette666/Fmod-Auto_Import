@@ -561,12 +561,16 @@ var resultPath = "{str(result_path).replace(chr(92), '/')}";
                         with open(result_path, 'r', encoding='utf-8') as f:
                             import_result = json.load(f)
 
-                        success_msg = (f"Import Complete!\n\n"
-                                     f"Imported: {import_result.get('imported', 0)}\n"
-                                     f"Failed: {import_result.get('failed', 0)}")
-
-                        if import_result.get('messages'):
-                            success_msg += "\n\nMessages:\n" + "\n".join(import_result['messages'][:5])
+                        imported = import_result.get('imported', 0)
+                        failed = import_result.get('failed', 0)
+                        
+                        if failed == 0:
+                            success_msg = f"Successfully imported {imported} events."
+                        else:
+                            success_msg = (f"Import completed with errors.\n\n"
+                                         f"Imported: {imported}\n"
+                                         f"Failed: {failed}\n\n"
+                                         "Please check FMOD Studio console for details.")
 
                         # Show success message and ask if user wants to open the project
                         def _show_success():
