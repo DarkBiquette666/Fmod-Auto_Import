@@ -182,12 +182,12 @@ class DialogsMixin:
         dialog.wait_window()
         return result[0]
 
-    def _show_hierarchical_dialog(self, title: str, items: dict, create_fn=None, delete_fn=None, create_folder_fn=None, create_bank_fn=None):
+    def _show_hierarchical_dialog(self, title: str, items_getter, create_fn=None, delete_fn=None, create_folder_fn=None, create_bank_fn=None):
         """Show a dialog with tree view for hierarchical items (Banks, Buses).
 
         Args:
             title: Dialog title
-            items: Dictionary of items to display
+            items_getter: Function that returns dictionary of items
             create_fn: Function to create new items (for single-type dialogs like buses)
             delete_fn: Function to delete items
             create_folder_fn: Function to create folders (for dual-type dialogs like banks)
@@ -199,6 +199,9 @@ class DialogsMixin:
         dialog.transient(self.root)
         dialog.grab_set()
         self._center_dialog(dialog)
+
+        # Initial fetch
+        items = items_getter()
 
         frame = ttk.Frame(dialog, padding="10")
         frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -259,12 +262,21 @@ class DialogsMixin:
                 # Show type prefix for banks (folder vs bank)
                 display_name = item_data['name']
                 item_type = item_data.get('type')
+                
+                # Check for pending status
+                if self.project.is_folder_pending(item_id):
+                    # Add pending indicator
+                    pass # Handled by tag? Or just implied by existence in list
+
                 if item_type == 'folder':
                     display_name = f"📁 {display_name}"
                 elif item_type == 'bank':
                     display_name = f"💾 {display_name}"
+                
+                # Add tag for pending items
+                tags = ('pending',) if self.project.is_folder_pending(item_id) else ()
 
-                node = tree.insert(parent_item, 'end', text=display_name, values=(item_id,))
+                node = tree.insert(parent_item, 'end', text=display_name, values=(item_id,), tags=tags)
                 build_tree(node, item_id, search_filter)
 
         def find_root_items():
@@ -323,8 +335,14 @@ class DialogsMixin:
 
         def refresh_tree(search_filter=""):
             """Rebuild tree after changes, preserving expanded state"""
+            nonlocal items
+            items = items_getter()  # REFRESH ITEMS
+            
             expanded_ids = get_expanded_items()
             tree.delete(*tree.get_children())
+            
+            # Configure pending tag
+            tree.tag_configure('pending', font=('TkDefaultFont', 9, 'italic'), foreground='gray')
 
             # Build tree from roots
             roots = find_root_items()
@@ -341,8 +359,10 @@ class DialogsMixin:
                     display_name = f"📁 {display_name}"
                 elif item_type == 'bank':
                     display_name = f"💾 {display_name}"
+                
+                tags = ('pending',) if self.project.is_folder_pending(root_id) else ()
 
-                root_node = tree.insert('', 'end', text=display_name, values=(root_id,))
+                root_node = tree.insert('', 'end', text=display_name, values=(root_id,), tags=tags)
                 build_tree(root_node, root_id, search_filter)
 
             restore_expanded_state(expanded_ids)

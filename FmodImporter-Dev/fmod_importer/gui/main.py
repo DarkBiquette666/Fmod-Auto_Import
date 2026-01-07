@@ -338,9 +338,9 @@ class FmodImporterGUI(
 
         selected = self._show_hierarchical_dialog(
             "Select Bank",
-            self.project.get_all_banks(),
-            create_folder_fn=lambda name, parent_id: self.project.create_bank_folder(name, parent_id),
-            create_bank_fn=lambda name, parent_id: self.project.create_bank_instance(name, parent_id),
+            lambda: self.project.get_all_banks(),
+            create_folder_fn=lambda name, parent_id: self.project.create_bank_folder(name, parent_id, commit=False),
+            create_bank_fn=lambda name, parent_id: self.project.create_bank_instance(name, parent_id, commit=False),
             delete_fn=lambda item_id: self.project.delete_bank(item_id)
         )
         if selected:
@@ -360,8 +360,8 @@ class FmodImporterGUI(
 
         selected = self._show_hierarchical_dialog(
             "Select Bus",
-            self.project.get_all_buses(),
-            create_fn=lambda name, parent_id: self.project.create_bus(name),
+            lambda: self.project.get_all_buses(),
+            create_fn=lambda name, parent_id: self.project.create_bus(name, parent_id, commit=False),
             delete_fn=lambda item_id: self.project.delete_bus(item_id)
         )
         if selected:
