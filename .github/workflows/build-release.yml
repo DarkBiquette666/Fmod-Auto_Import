@@ -3,8 +3,8 @@ name: Build Multi-Platform Release
 on:
   push:
     tags:
-      - 'v*'  # Triggers on version tags like v1.0.0
-  workflow_dispatch:  # Allows manual triggering
+      - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -17,14 +17,18 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact_name: FmodImporter-Windows.exe
-            build_name: FmodImporter.exe
+            artifact_name: FmodImporter-Windows
+            target_path: FmodImporter-Dev/dist/FmodImporter.exe
+            asset_to_upload: FmodImporter.exe
           - os: macos-latest
             artifact_name: FmodImporter-macOS
-            build_name: FmodImporter
+            target_path: FmodImporter-Dev/dist/FmodImporter.app
+            asset_to_upload: FmodImporter.app
+          # Linux kept as best-effort, usually requires specific glibc
           - os: ubuntu-latest
             artifact_name: FmodImporter-Linux
-            build_name: FmodImporter
+            target_path: FmodImporter-Dev/dist/FmodImporter
+            asset_to_upload: FmodImporter
 
     steps:
       - name: Checkout code
@@ -40,23 +44,42 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyinstaller
 
-      - name: Build with PyInstaller (Windows)
-        if: matrix.os == 'windows-latest'
+      - name: Build with PyInstaller
         run: |
           cd FmodImporter-Dev
-          pyinstaller --onefile --windowed --name FmodImporter fmod_importer.py
+          pyinstaller FmodImporter.spec --clean --noconfirm
 
-      - name: Build with PyInstaller (macOS/Linux)
-        if: matrix.os != 'windows-latest'
+      # macOS: Zip the .app bundle because artifact upload/download messes up permissions/symlinks often
+      # and it's standard for distribution.
+      - name: Zip macOS App
+        if: runner.os == 'macOS'
         run: |
-          cd FmodImporter-Dev
-          pyinstaller --onefile --windowed --name FmodImporter fmod_importer.py
+          cd FmodImporter-Dev/dist
+          zip -r FmodImporter-macOS.zip FmodImporter.app
 
-      - name: Upload artifact
+      # Windows: Just rename for clarity if needed, or keep as is.
+      
+      # Upload Artifacts
+      - name: Upload Artifact (Windows)
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: FmodImporter-Dev/dist/${{ matrix.build_name }}
+          name: FmodImporter-Windows
+          path: FmodImporter-Dev/dist/FmodImporter.exe
+
+      - name: Upload Artifact (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: FmodImporter-macOS-Zip
+          path: FmodImporter-Dev/dist/FmodImporter-macOS.zip
+
+      - name: Upload Artifact (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: FmodImporter-Linux
+          path: FmodImporter-Dev/dist/FmodImporter
 
   release:
     name: Create Release
@@ -68,25 +91,41 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: FmodImporter-Windows
+          path: release/windows
 
-      - name: Prepare release files
+      - name: Download macOS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: FmodImporter-macOS-Zip
+          path: release/macos
+
+      # Optional Linux
+      - name: Download Linux Artifact
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: FmodImporter-Linux
+          path: release/linux
+
+      - name: Rename and Move Files
         run: |
-          mkdir -p release
-          cp artifacts/FmodImporter-Windows.exe/FmodImporter.exe release/FmodImporter-Windows.exe
-          cp artifacts/FmodImporter-macOS/FmodImporter release/FmodImporter-macOS
-          cp artifacts/FmodImporter-Linux/FmodImporter release/FmodImporter-Linux
+          mkdir -p final_release
+          mv release/windows/FmodImporter.exe final_release/FmodImporter-Windows.exe
+          mv release/macos/FmodImporter-macOS.zip final_release/FmodImporter-macOS.zip
+          # Check if Linux exists
+          if [ -f release/linux/FmodImporter ]; then
+            mv release/linux/FmodImporter final_release/FmodImporter-Linux
+            chmod +x final_release/FmodImporter-Linux
+          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            release/FmodImporter-Windows.exe
-            release/FmodImporter-macOS
-            release/FmodImporter-Linux
+          files: final_release/*
           draft: false
           prerelease: false
         env:
