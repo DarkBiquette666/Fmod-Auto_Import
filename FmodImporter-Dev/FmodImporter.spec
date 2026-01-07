@@ -41,6 +41,6 @@ if platform.system() == 'Darwin':
     app = BUNDLE(
         exe,
         name='FmodImporter.app',
-        icon='Logo/FmodImporterLogo.icns',
+        # icon='Logo/FmodImporterLogo.icns',
         bundle_identifier='com.darkbiquette.fmodimporter'
     )
