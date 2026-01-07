@@ -24,11 +24,6 @@ jobs:
             artifact_name: FmodImporter-macOS
             target_path: FmodImporter-Dev/dist/FmodImporter.app
             asset_to_upload: FmodImporter.app
-          # Linux kept as best-effort, usually requires specific glibc
-          - os: ubuntu-latest
-            artifact_name: FmodImporter-Linux
-            target_path: FmodImporter-Dev/dist/FmodImporter
-            asset_to_upload: FmodImporter
 
     steps:
       - name: Checkout code
@@ -57,8 +52,6 @@ jobs:
           cd FmodImporter-Dev/dist
           zip -r FmodImporter-macOS.zip FmodImporter.app
 
-      # Windows: Just rename for clarity if needed, or keep as is.
-      
       # Upload Artifacts
       - name: Upload Artifact (Windows)
         if: runner.os == 'Windows'
@@ -73,13 +66,6 @@ jobs:
         with:
           name: FmodImporter-macOS-Zip
           path: FmodImporter-Dev/dist/FmodImporter-macOS.zip
-
-      - name: Upload Artifact (Linux)
-        if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: FmodImporter-Linux
-          path: FmodImporter-Dev/dist/FmodImporter
 
   release:
     name: Create Release
@@ -103,24 +89,11 @@ jobs:
           name: FmodImporter-macOS-Zip
           path: release/macos
 
-      # Optional Linux
-      - name: Download Linux Artifact
-        continue-on-error: true
-        uses: actions/download-artifact@v4
-        with:
-          name: FmodImporter-Linux
-          path: release/linux
-
       - name: Rename and Move Files
         run: |
           mkdir -p final_release
           mv release/windows/FmodImporter.exe final_release/FmodImporter-Windows.exe
           mv release/macos/FmodImporter-macOS.zip final_release/FmodImporter-macOS.zip
-          # Check if Linux exists
-          if [ -f release/linux/FmodImporter ]; then
-            mv release/linux/FmodImporter final_release/FmodImporter-Linux
-            chmod +x final_release/FmodImporter-Linux
-          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
