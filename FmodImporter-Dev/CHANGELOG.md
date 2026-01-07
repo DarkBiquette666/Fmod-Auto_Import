@@ -5,6 +5,24 @@ All notable changes to the FMOD Importer Tool will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-01-07
+
+### Added
+- **Transactional Import Flow**: Core logic refactored to support "Deferred Creation" (staging). Folders, Banks, and Buses are now created in memory only and committed to disk upon clicking "Import", preventing project "pollution" during preset experimentation.
+- **macOS Compatibility**: Full source compatibility for macOS. Added FMOD Studio `.app` detection, `pgrep` process monitoring, and native path handling.
+- **Automated Unit Testing**: Added a new test suite under `tests/` using `unittest`. Included comprehensive coverage for `NamingPattern` and `PendingFolderManager`.
+- **Enhanced CI/CD**: Updated GitHub Actions to build and release both Windows `.exe` and macOS `.app` bundles (zipped) using an optimized `.spec` configuration.
+
+### Fixed
+- **Duplicate Resource Creation**: Implemented strict deduplication in Managers to prevent duplicate creation of folders or banks during preset loading or multiple "New" clicks.
+- **GUID-based Import**: Aligned Python XML generation and FMOD JavaScript import logic to use GUIDs for resource lookup, ensuring the script uses the exact elements created by the tool.
+- **Preset Loading Robustness**: Added per-field error handling in `PresetsMixin` to ensure a single failed reference doesn't abort the entire preset load.
+- **UI Selection Consistency**: Fixed a bug where newly created items were not automatically selected in tree dialogs.
+
+### Style
+- **Stealth Launch**: Hidden the terminal window in the build version for a cleaner user experience.
+- **Simplified Messaging**: Refactored the import result popup to show user-friendly summary statistics instead of technical JSON data.
+
 ## [0.8.3] - 2026-01-07
 
 ### Fixed
