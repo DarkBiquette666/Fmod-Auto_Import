@@ -188,3 +188,45 @@ class BankManager:
             if bank_path.exists():
                 bank_path.unlink()
             del banks_dict[bank_id]
+
+    @staticmethod
+    def add_event_to_bank(bank_id: str, event_id: str, metadata_path: Path):
+        """
+        Add an event to a bank's XML relationship.
+
+        Args:
+            bank_id: UUID of the bank
+            event_id: UUID of the event to add
+            metadata_path: Path to the Metadata directory
+        """
+        bank_path = metadata_path / "Bank" / f"{bank_id}.xml"
+        if not bank_path.exists():
+            # Might be a bank folder instead of a bank
+            return
+
+        try:
+            tree = ET.parse(bank_path)
+            root = tree.getroot()
+            
+            bank_obj = root.find(".//object[@class='Bank']")
+            if bank_obj is None:
+                return
+
+            rel_events = bank_obj.find("relationship[@name='events']")
+            if rel_events is None:
+                rel_events = ET.SubElement(bank_obj, 'relationship', {'name': 'events'})
+            
+            # Check if already exists
+            exists = False
+            for dest in rel_events.findall('destination'):
+                if dest.text == event_id:
+                    exists = True
+                    break
+            
+            if not exists:
+                dest = ET.SubElement(rel_events, 'destination')
+                dest.text = event_id
+                write_pretty_xml(root, bank_path)
+                
+        except Exception as e:
+            print(f"Error adding event {event_id} to bank {bank_id}: {e}")

@@ -12,6 +12,7 @@ from typing import Dict, List
 
 from .xml_writer import write_pretty_xml
 from .audio_file_manager import AudioFileManager
+from .bank_manager import BankManager
 
 
 class EventCreator:
@@ -151,6 +152,10 @@ class EventCreator:
         # Write new event file
         event_file = event_dir / f"{new_event_id}.xml"
         write_pretty_xml(new_root, event_file)
+
+        # Bi-directional bank assignment
+        if bank_id:
+            BankManager.add_event_to_bank(bank_id, new_event_id, metadata_path)
 
         return new_event_id
 
@@ -340,6 +345,10 @@ class EventCreator:
         # Write new event file
         event_file = event_dir / f"{new_event_id}.xml"
         write_pretty_xml(root, event_file)
+        
+        # Bi-directional bank assignment
+        if bank_id:
+            BankManager.add_event_to_bank(bank_id, new_event_id, metadata_path)
         
         return new_event_id
 
