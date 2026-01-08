@@ -118,128 +118,77 @@ class WidgetsMixin:
         pattern_setup_frame = ttk.LabelFrame(main_frame, text="Pattern Setup", padding="10")
         pattern_setup_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
 
+        # Mode Selection
+        mode_frame = ttk.Frame(pattern_setup_frame)
+        mode_frame.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
+
+        ttk.Label(mode_frame, text="Import Mode:").pack(side=tk.LEFT, padx=(0, 10))
+
+        self.import_mode_var = tk.StringVar(value="template")
+        self.mode_template_rb = ttk.Radiobutton(mode_frame, text="Match Template",
+                                                variable=self.import_mode_var, value="template",
+                                                command=self._on_mode_changed)
+        self.mode_template_rb.pack(side=tk.LEFT, padx=5)
+
+        self.mode_pattern_rb = ttk.Radiobutton(mode_frame, text="Generate from Pattern",
+                                               variable=self.import_mode_var, value="pattern",
+                                               command=self._on_mode_changed)
+        self.mode_pattern_rb.pack(side=tk.LEFT, padx=5)
+
         # Fuzzy matching note
-        note_label = ttk.Label(
+        self.note_label = ttk.Label(
             pattern_setup_frame,
-            text="NOTE: Template folder is optional. Without templates, events will be created from scratch with minimal structure. The system will fuzzy match when templates are provided.",
+            text="NOTE: Matches files to existing events in the Template Folder using fuzzy logic.",
             foreground='#0066CC',
             font=('TkDefaultFont', 9, 'italic'),
             wraplength=900
         )
-        note_label.grid(row=0, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
+        self.note_label.grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(0, 10))
 
         # Template Folder (OPTIONAL)
-        ttk.Label(pattern_setup_frame, text="Template Folder (Optional):").grid(row=1, column=0, sticky=tk.W, pady=5)
-        template_frame = ttk.Frame(pattern_setup_frame)
-        template_frame.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        self.template_label_title = ttk.Label(pattern_setup_frame, text="Template Folder:")
+        self.template_label_title.grid(row=2, column=0, sticky=tk.W, pady=5)
+        
+        self.template_frame = ttk.Frame(pattern_setup_frame)
+        self.template_frame.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         self.template_var = tk.StringVar(value="(No folder selected)")
-        self.template_label = ttk.Label(template_frame, textvariable=self.template_var, relief="sunken")
-        self.template_label.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
-        ttk.Button(template_frame, text="Select...", command=self.select_template_folder).grid(row=0, column=1, padx=5)
+        self.template_path_label = ttk.Label(self.template_frame, textvariable=self.template_var, relief="sunken")
+        self.template_path_label.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
+        self.template_btn = ttk.Button(self.template_frame, text="Select...", command=self.select_template_folder)
+        self.template_btn.grid(row=0, column=1, padx=5)
 
         # Auto-create toggle checkbox
         self.auto_create_var = tk.BooleanVar(value=True)
         self.auto_create_checkbox = ttk.Checkbutton(
-            template_frame,
-            text="Auto-create events",
+            self.template_frame,
+            text="Auto-create missing events",
             variable=self.auto_create_var
         )
         self.auto_create_checkbox.grid(row=0, column=2, padx=(10, 0))
 
-        template_frame.columnconfigure(0, weight=1)
+        self.template_frame.columnconfigure(0, weight=1)
 
         # Prefix
-        ttk.Label(pattern_setup_frame, text="Prefix:").grid(row=2, column=0, sticky=tk.W, pady=5)
+        ttk.Label(pattern_setup_frame, text="Prefix:").grid(row=3, column=0, sticky=tk.W, pady=5)
         self.prefix_entry = ttk.Entry(pattern_setup_frame, width=60)
         self.prefix_entry.insert(0, "e.g. Sfx")
         self.prefix_entry.config(foreground='gray')
         self.prefix_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.prefix_entry, 'e.g. Sfx'))
         self.prefix_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.prefix_entry, 'e.g. Sfx'))
-        self.prefix_entry.grid(row=2, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        self.prefix_entry.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
         # FeatureName
-        ttk.Label(pattern_setup_frame, text="FeatureName:").grid(row=3, column=0, sticky=tk.W, pady=5)
+        ttk.Label(pattern_setup_frame, text="FeatureName:").grid(row=4, column=0, sticky=tk.W, pady=5)
         self.feature_entry = ttk.Entry(pattern_setup_frame, width=60)
         self.feature_entry.insert(0, "e.g. BlueEyesWhiteDragon")
         self.feature_entry.config(foreground='gray')
         self.feature_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.feature_entry, 'e.g. BlueEyesWhiteDragon'))
         self.feature_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.feature_entry, 'e.g. BlueEyesWhiteDragon'))
-        self.feature_entry.grid(row=3, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        self.feature_entry.grid(row=4, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
 
-        # Event Pattern - ALL ON ONE LINE
-        ttk.Label(pattern_setup_frame, text="Event Pattern:").grid(row=4, column=0, sticky=tk.W, pady=5)
-        pattern_frame = ttk.Frame(pattern_setup_frame)
-        pattern_frame.grid(row=4, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
-
-        # Pattern entry (fixed width)
-        self.pattern_var = tk.StringVar(value="$prefix$feature$action")
-        self.pattern_entry = ttk.Entry(pattern_frame, textvariable=self.pattern_var, width=30)
-        self.pattern_entry.grid(row=0, column=0, padx=(0, 10))
-
-        # Separator label + entry
-        ttk.Label(pattern_frame, text="Separator:").grid(row=0, column=1, padx=(0, 5))
-        self.event_separator_entry = ttk.Entry(pattern_frame, width=8)
-        self.event_separator_entry.insert(0, "")  # Empty by default (CamelCase)
-        self.event_separator_entry.grid(row=0, column=2, padx=(0, 10))
-
-        # Help button
-        self.pattern_help_btn = ttk.Button(pattern_frame, text="?", width=2, command=self.show_pattern_help)
-        self.pattern_help_btn.grid(row=0, column=3, padx=(0, 10))
-
-        # Preview (wraps text at 600px to prevent column resize)
-        ttk.Label(pattern_frame, text="Preview:").grid(row=0, column=4, padx=(10, 5))
-        self.pattern_preview_var = tk.StringVar(value="[prefix][feature][action]")
-        self.pattern_preview_label = ttk.Label(pattern_frame, textvariable=self.pattern_preview_var,
-                                                foreground='gray', font=('TkDefaultFont', 9, 'italic'),
-                                                wraplength=600)
-        self.pattern_preview_label.grid(row=0, column=5, sticky=tk.W)
-
-        # Asset Pattern - ALL ON ONE LINE
-        ttk.Label(pattern_setup_frame, text="Asset Pattern:").grid(row=5, column=0, sticky=tk.W, pady=5)
-        asset_pattern_frame = ttk.Frame(pattern_setup_frame)
-        asset_pattern_frame.grid(row=5, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
-
-        # Pattern entry with placeholder (fixed width)
-        self.asset_pattern_entry = ttk.Entry(asset_pattern_frame, width=30)
-        self.asset_pattern_entry.insert(0, "(Optional)")
-        self.asset_pattern_entry.config(foreground='gray')
-        self.asset_pattern_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.asset_pattern_entry, "(Optional)"))
-        self.asset_pattern_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.asset_pattern_entry, "(Optional)"))
-        self.asset_pattern_entry.grid(row=0, column=0, padx=(0, 10))
-
-        # Separator label + entry
-        ttk.Label(asset_pattern_frame, text="Separator:").grid(row=0, column=1, padx=(0, 5))
-        self.asset_separator_entry = ttk.Entry(asset_pattern_frame, width=8)
-        self.asset_separator_entry.insert(0, "")  # Empty by default
-        self.asset_separator_entry.grid(row=0, column=2, padx=(0, 10))
-
-        # Help button
-        asset_pattern_help_btn = ttk.Button(asset_pattern_frame, text="?", width=2, command=self.show_asset_pattern_help)
-        asset_pattern_help_btn.grid(row=0, column=3, padx=(0, 10))
-
-        # Preview (wraps text at 600px to prevent column resize)
-        ttk.Label(asset_pattern_frame, text="Preview:").grid(row=0, column=4, padx=(10, 5))
-        self.asset_pattern_preview_var = tk.StringVar(value="[same as Event Pattern]")
-        self.asset_pattern_preview_label = ttk.Label(asset_pattern_frame, textvariable=self.asset_pattern_preview_var,
-                                                       foreground='gray', font=('TkDefaultFont', 9, 'italic'),
-                                                       wraplength=600)
-        self.asset_pattern_preview_label.grid(row=0, column=5, sticky=tk.W)
-
-        # Note on second row
-        asset_note_label = ttk.Label(asset_pattern_frame, text="Use this if your audio files have different pattern than events",
-                                      foreground='gray', font=('TkDefaultFont', 8, 'italic'))
-        asset_note_label.grid(row=1, column=0, columnspan=6, sticky=tk.W, pady=(2, 0))
-
-        # Bind pattern/prefix/feature changes to update preview
-        self.pattern_var.trace_add('write', self._update_pattern_preview)
-        self.prefix_entry.bind('<KeyRelease>', lambda e: self._update_pattern_preview())
-        self.feature_entry.bind('<KeyRelease>', lambda e: self._update_pattern_preview())
-        self.event_separator_entry.bind('<KeyRelease>', lambda e: self._update_pattern_preview())
-
-        # Bind asset pattern changes to update preview
-        self.asset_pattern_entry.bind('<KeyRelease>', lambda e: self._update_asset_pattern_preview())
-        self.asset_separator_entry.bind('<KeyRelease>', lambda e: self._update_asset_pattern_preview())
+        # Delegate pattern pattern UI creation to a separate method
+        self._create_pattern_input_widgets(pattern_setup_frame, start_row=5)
 
         pattern_setup_frame.columnconfigure(1, weight=1)
 
@@ -498,6 +447,244 @@ class WidgetsMixin:
         preview_frame.columnconfigure(0, weight=1)
         preview_frame.rowconfigure(0, weight=1)
 
+    def _create_pattern_input_widgets(self, parent_frame, start_row):
+        """
+        Create Event Pattern and Asset Pattern input widgets.
+
+        Args:
+            parent_frame: The parent frame to add widgets to
+            start_row: The row number to start adding widgets at
+        """
+        # Store start_row for use in _on_mode_changed
+        self._pattern_start_row = start_row
+        self._pattern_parent_frame = parent_frame
+
+        # Event Pattern - ALL ON ONE LINE
+        self.event_pattern_label = ttk.Label(parent_frame, text="Event Pattern:")
+        self.event_pattern_label.grid(row=start_row, column=0, sticky=tk.W, pady=5)
+        self.event_pattern_frame = ttk.Frame(parent_frame)
+        self.event_pattern_frame.grid(row=start_row, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+
+        # Pattern entry (fixed width)
+        self.pattern_var = tk.StringVar(value="$prefix$feature$action")
+        self.pattern_entry = ttk.Entry(self.event_pattern_frame, textvariable=self.pattern_var, width=30)
+        self.pattern_entry.grid(row=0, column=0, padx=(0, 10))
+
+        # Separator label + entry
+        self.event_separator_label = ttk.Label(self.event_pattern_frame, text="Separator:")
+        self.event_separator_label.grid(row=0, column=1, padx=(0, 5))
+        self.event_separator_entry = ttk.Entry(self.event_pattern_frame, width=8)
+        self.event_separator_entry.insert(0, "")  # Empty by default (CamelCase)
+        self.event_separator_entry.grid(row=0, column=2, padx=(0, 10))
+
+        # Help button
+        self.pattern_help_btn = ttk.Button(self.event_pattern_frame, text="?", width=2, command=self.show_pattern_help)
+        self.pattern_help_btn.grid(row=0, column=3, padx=(0, 10))
+
+        # Preview (wraps text at 600px to prevent column resize)
+        ttk.Label(self.event_pattern_frame, text="Preview:").grid(row=0, column=4, padx=(10, 5))
+        self.pattern_preview_var = tk.StringVar(value="[prefix][feature][action]")
+        self.pattern_preview_label = ttk.Label(self.event_pattern_frame, textvariable=self.pattern_preview_var,
+                                                foreground='gray', font=('TkDefaultFont', 9, 'italic'),
+                                                wraplength=600)
+        self.pattern_preview_label.grid(row=0, column=5, sticky=tk.W)
+
+        # Asset Pattern - ALL ON ONE LINE
+        self.asset_pattern_label = ttk.Label(parent_frame, text="Asset Pattern:")
+        self.asset_pattern_label.grid(row=start_row+1, column=0, sticky=tk.W, pady=5)
+        self.asset_pattern_frame = ttk.Frame(parent_frame)
+        self.asset_pattern_frame.grid(row=start_row+1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+
+        # Pattern entry with placeholder (fixed width)
+        self.asset_pattern_entry = ttk.Entry(self.asset_pattern_frame, width=30)
+        self.asset_pattern_entry.insert(0, "(Optional)")
+        self.asset_pattern_entry.config(foreground='gray')
+        self.asset_pattern_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.asset_pattern_entry, "(Optional)"))
+        self.asset_pattern_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.asset_pattern_entry, "(Optional)"))
+        self.asset_pattern_entry.grid(row=0, column=0, padx=(0, 10))
+
+        # Separator label + entry
+        self.asset_separator_label = ttk.Label(self.asset_pattern_frame, text="Separator:")
+        self.asset_separator_label.grid(row=0, column=1, padx=(0, 5))
+        self.asset_separator_entry = ttk.Entry(self.asset_pattern_frame, width=8)
+        self.asset_separator_entry.insert(0, "")  # Empty by default
+        self.asset_separator_entry.grid(row=0, column=2, padx=(0, 10))
+
+        # Help button
+        self.asset_pattern_help_btn = ttk.Button(self.asset_pattern_frame, text="?", width=2, command=self.show_asset_pattern_help)
+        self.asset_pattern_help_btn.grid(row=0, column=3, padx=(0, 10))
+
+        # Preview (wraps text at 600px to prevent column resize)
+        ttk.Label(self.asset_pattern_frame, text="Preview:").grid(row=0, column=4, padx=(10, 5))
+        self.asset_pattern_preview_var = tk.StringVar(value="[same as Event Pattern]")
+        self.asset_pattern_preview_label = ttk.Label(self.asset_pattern_frame, textvariable=self.asset_pattern_preview_var,
+                                                       foreground='gray', font=('TkDefaultFont', 9, 'italic'),
+                                                       wraplength=600)
+        self.asset_pattern_preview_label.grid(row=0, column=5, sticky=tk.W)
+
+        # Note on second row (will be updated based on mode)
+        self.asset_note_label = ttk.Label(self.asset_pattern_frame, text="Use this if your audio files have different pattern than events",
+                                      foreground='gray', font=('TkDefaultFont', 8, 'italic'))
+        self.asset_note_label.grid(row=1, column=0, columnspan=6, sticky=tk.W, pady=(2, 0))
+
+        # Bind pattern/prefix/feature changes to update preview
+        self.pattern_var.trace_add('write', self._update_pattern_preview)
+        self.prefix_entry.bind('<KeyRelease>', lambda e: self._update_pattern_preview())
+        self.feature_entry.bind('<KeyRelease>', lambda e: self._update_pattern_preview())
+        self.event_separator_entry.bind('<KeyRelease>', lambda e: self._update_pattern_preview())
+
+        # Bind asset pattern changes to update preview
+        self.asset_pattern_entry.bind('<KeyRelease>', lambda e: self._update_asset_pattern_preview())
+        self.asset_separator_entry.bind('<KeyRelease>', lambda e: self._update_asset_pattern_preview())
+
+    def _on_mode_changed(self):
+        """Handle import mode change (Template vs Pattern)"""
+        if not hasattr(self, 'import_mode_var'):
+            return
+
+        mode = self.import_mode_var.get()
+        
+        if mode == "template":
+            # Enable and SHOW template widgets
+            if hasattr(self, 'template_label_title'): 
+                self.template_label_title.grid()
+                self.template_label_title.config(state='normal')
+            if hasattr(self, 'template_frame'): 
+                self.template_frame.grid()
+            if hasattr(self, 'template_path_label'): self.template_path_label.config(state='normal')
+            if hasattr(self, 'template_btn'): self.template_btn.config(state='normal')
+            if hasattr(self, 'auto_create_checkbox'): self.auto_create_checkbox.config(state='normal')
+            
+            # Update note
+            if hasattr(self, 'note_label'):
+                self.note_label.config(
+                    text="NOTE: Matches files to existing events in the Template Folder using fuzzy logic."
+                )
+            
+            # Update Asset Pattern placeholder to Optional (Template Mode)
+            if hasattr(self, 'asset_pattern_entry'):
+                current_val = self.asset_pattern_entry.get()
+                # Clear if it was the pattern-mode default
+                if current_val == "e.g. $prefix_$feature_$action":
+                    self.asset_pattern_entry.delete(0, tk.END)
+                
+                # Set Optional placeholder
+                if not self.asset_pattern_entry.get():
+                    self.asset_pattern_entry.insert(0, "(Optional)")
+                    self.asset_pattern_entry.config(foreground='gray')
+                
+                # Rebind focus events for Optional placeholder
+                self.asset_pattern_entry.bind('<FocusIn>', lambda e: self._clear_placeholder(self.asset_pattern_entry, "(Optional)"))
+                self.asset_pattern_entry.bind('<FocusOut>', lambda e: self._restore_placeholder(self.asset_pattern_entry, "(Optional)"))
+
+            # Reset Event Pattern if it was empty/optional (Template Mode default is explicit)
+            if hasattr(self, 'pattern_var'):
+                 if not self.pattern_var.get() or self.pattern_var.get() == "(Optional)":
+                     self.pattern_var.set("$prefix$feature$action")
+
+            # SHOW separator fields (Template Mode)
+            if hasattr(self, 'event_separator_label'):
+                self.event_separator_label.grid()
+            if hasattr(self, 'event_separator_entry'):
+                self.event_separator_entry.grid()
+            if hasattr(self, 'asset_separator_label'):
+                self.asset_separator_label.grid()
+            if hasattr(self, 'asset_separator_entry'):
+                self.asset_separator_entry.grid()
+
+            # REORDER: Event Pattern first, Asset Pattern second (Template Mode)
+            if hasattr(self, '_pattern_start_row'):
+                start_row = self._pattern_start_row
+                # Event Pattern at row start_row
+                if hasattr(self, 'event_pattern_label'):
+                    self.event_pattern_label.grid_configure(row=start_row)
+                    self.event_pattern_label.config(text="Event Pattern:")
+                if hasattr(self, 'event_pattern_frame'):
+                    self.event_pattern_frame.grid_configure(row=start_row)
+                # Asset Pattern at row start_row+1
+                if hasattr(self, 'asset_pattern_label'):
+                    self.asset_pattern_label.grid_configure(row=start_row+1)
+                    self.asset_pattern_label.config(text="Asset Pattern:")
+                if hasattr(self, 'asset_pattern_frame'):
+                    self.asset_pattern_frame.grid_configure(row=start_row+1)
+
+            # Update asset note for Template mode
+            if hasattr(self, 'asset_note_label'):
+                self.asset_note_label.config(text="Use this if your audio files have different pattern than events")
+
+        else:
+            # Disable and HIDE template widgets
+            if hasattr(self, 'template_label_title'): 
+                self.template_label_title.grid_remove() # Hide the label
+            if hasattr(self, 'template_frame'): 
+                self.template_frame.grid_remove() # Hide the frame with entry/buttons
+            
+            # Update note
+            if hasattr(self, 'note_label'):
+                self.note_label.config(
+                    text="NOTE: Uses Asset Name Pattern to parse files and Event Name Pattern to name new events."
+                )
+
+            # Update Asset Pattern placeholder to Mandatory (Pattern Mode)
+            if hasattr(self, 'asset_pattern_entry'):
+                current_val = self.asset_pattern_entry.get()
+                # Clear if it was the template-mode optional placeholder
+                if current_val == "(Optional)":
+                    self.asset_pattern_entry.delete(0, tk.END)
+                
+                # Set default pattern if empty
+                if not self.asset_pattern_entry.get():
+                    self.asset_pattern_entry.insert(0, "$prefix_$feature_$action")
+                    self.asset_pattern_entry.config(foreground='black') # Actual value, not placeholder
+                
+                # Rebind focus events (no placeholder behavior needed for default value)
+                self.asset_pattern_entry.bind('<FocusIn>', lambda e: None)
+                self.asset_pattern_entry.bind('<FocusOut>', lambda e: None)
+
+            # Reset Event Pattern to Optional (Pattern Mode)
+            if hasattr(self, 'pattern_var'):
+                 # In Pattern mode, Event Pattern is optional (defaults to Asset Pattern)
+                 # We can leave it as is, or clear it to encourage inheritance.
+                 # Let's clear it if it matches the Template default to show the inheritance capability
+                 if self.pattern_var.get() == "$prefix$feature$action":
+                     self.pattern_var.set("")
+                     # We might want a placeholder here, but Entry textvariables make placeholders tricky.
+                     # We'll handle the "preview" text in _update_pattern_preview
+
+            # HIDE separator fields (Pattern Mode)
+            if hasattr(self, 'event_separator_label'):
+                self.event_separator_label.grid_remove()
+            if hasattr(self, 'event_separator_entry'):
+                self.event_separator_entry.grid_remove()
+            if hasattr(self, 'asset_separator_label'):
+                self.asset_separator_label.grid_remove()
+            if hasattr(self, 'asset_separator_entry'):
+                self.asset_separator_entry.grid_remove()
+
+            # REORDER: Asset Pattern first, Event Pattern second (Pattern Mode - INVERTED)
+            if hasattr(self, '_pattern_start_row'):
+                start_row = self._pattern_start_row
+                # Asset Pattern at row start_row (SOURCE - how files are named)
+                if hasattr(self, 'asset_pattern_label'):
+                    self.asset_pattern_label.grid_configure(row=start_row)
+                    self.asset_pattern_label.config(text="Asset Name Pattern:")
+                if hasattr(self, 'asset_pattern_frame'):
+                    self.asset_pattern_frame.grid_configure(row=start_row)
+                # Event Pattern at row start_row+1 (DESTINATION - how events will be named)
+                if hasattr(self, 'event_pattern_label'):
+                    self.event_pattern_label.grid_configure(row=start_row+1)
+                    self.event_pattern_label.config(text="Event Name Pattern:")
+                if hasattr(self, 'event_pattern_frame'):
+                    self.event_pattern_frame.grid_configure(row=start_row+1)
+
+            # Update asset note for Pattern mode
+            if hasattr(self, 'asset_note_label'):
+                self.asset_note_label.config(text="Define how your audio files are named (this is the SOURCE pattern)")
+
+        # Force update of previews
+        self._update_asset_pattern_preview()
+        self._update_pattern_preview()
+
     def _clear_placeholder(self, entry: ttk.Entry, placeholder: str):
         """Clear placeholder text when entry gets focus"""
         if entry.get() == placeholder:
@@ -620,7 +807,7 @@ class WidgetsMixin:
         return entry
 
     def _update_pattern_preview(self, *args):
-        """Update the pattern preview label based on current values"""
+        """Update the EVENT pattern preview label based on current values"""
         # Import here to avoid circular imports
         from ..naming import NamingPattern
 
@@ -630,10 +817,22 @@ class WidgetsMixin:
 
         try:
             pattern_str = self.pattern_var.get()
+            import_mode = self.import_mode_var.get() if hasattr(self, 'import_mode_var') else "template"
 
-            # Get separator value if event_separator_entry exists
+            # Check for empty pattern logic based on mode
+            if not pattern_str:
+                if import_mode == "pattern":
+                    self.pattern_preview_var.set("[same as Asset Name Pattern]")
+                    self.pattern_preview_label.config(foreground='gray')
+                    return
+                else:
+                    # In template mode, empty pattern is usually invalid or just empty
+                    self.pattern_preview_var.set("")
+                    return
+
+            # Get separator ONLY in template mode
             event_separator = None
-            if hasattr(self, 'event_separator_entry'):
+            if import_mode == "template" and hasattr(self, 'event_separator_entry'):
                 event_separator = self.event_separator_entry.get()
                 # Empty string is valid (CamelCase), so pass it as-is
 
@@ -663,8 +862,7 @@ class WidgetsMixin:
 
     def _update_asset_pattern_preview(self, *args):
         """
-        Update the asset pattern preview label based on current values.
-        Similar to _update_pattern_preview but for asset pattern.
+        Update the ASSET pattern preview label based on current values.
         """
         # Import here to avoid circular imports
         from ..naming import NamingPattern
@@ -674,17 +872,32 @@ class WidgetsMixin:
             return
 
         try:
-            asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional)")
+            import_mode = self.import_mode_var.get() if hasattr(self, 'import_mode_var') else "template"
+            
+            # Determine placeholder based on mode for fetching value
+            placeholder = "(Optional)" if import_mode == "template" else "e.g. $prefix_$feature_$action"
+            # However, in pattern mode we set the default value directly, so placeholder check might be redundant if we just check text
+            # But let's keep _get_entry_value for safety
+            
+            asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, placeholder)
 
-            # If empty or placeholder, show default message
-            if not asset_pattern_str:
-                self.asset_pattern_preview_var.set("[same as Event Pattern]")
-                self.asset_pattern_preview_label.config(foreground='gray')
-                return
+            # Logic branching based on mode
+            if import_mode == "template":
+                # Template Mode: Asset Pattern is Optional (falls back to Event Pattern)
+                if not asset_pattern_str:
+                    self.asset_pattern_preview_var.set("[same as Event Name Pattern]")
+                    self.asset_pattern_preview_label.config(foreground='gray')
+                    return
+            else:
+                # Pattern Mode: Asset Pattern is Mandatory (Source of Truth)
+                if not asset_pattern_str:
+                    self.asset_pattern_preview_var.set("[Required in this mode]")
+                    self.asset_pattern_preview_label.config(foreground='red')
+                    return
 
-            # Get separator value if asset_separator_entry exists
+            # Get separator ONLY in template mode
             asset_separator = None
-            if hasattr(self, 'asset_separator_entry'):
+            if import_mode == "template" and hasattr(self, 'asset_separator_entry'):
                 asset_separator = self.asset_separator_entry.get()
                 # Empty string is valid (CamelCase), so pass it as-is
 

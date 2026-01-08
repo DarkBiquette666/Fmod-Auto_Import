@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2025-01-08
+
+### Added
+- **Import Mode Selection**: New "Generate from Pattern" mode alongside existing "Match Template" mode
+  - **Match Template**: Matches audio files to existing FMOD events using fuzzy logic (original behavior)
+  - **Generate from Pattern**: Creates new events based on asset file naming patterns
+- **Dynamic Pattern Field Order**: Pattern fields reorder based on selected mode
+  - Template mode: Event Pattern first, Asset Pattern second
+  - Pattern mode: Asset Name Pattern first (SOURCE), Event Name Pattern second (DESTINATION)
+- **Separator fields**: Restored separator fields for Template mode pattern matching
+- **Smart inheritance**: In Pattern mode, if Event Pattern is empty, it inherits from Asset Pattern
+
+### Fixed
+- Fixed missing `_create_pattern_input_widgets` method that was causing application crash
+- Restored separator field functionality for Template mode (was accidentally removed)
+
+### Changed
+- Updated labels dynamically based on mode ("Event Pattern" vs "Event Name Pattern", etc.)
+- Improved note text to explain each mode's behavior
+
+## [0.9.0] - 2025-01-07
+
+### Added
+- macOS application bundle support with proper icon
+
 ## [0.8.0] - 2024-12-20
 
 ### Added

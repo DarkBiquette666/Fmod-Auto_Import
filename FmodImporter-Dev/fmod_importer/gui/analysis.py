@@ -86,14 +86,11 @@ class AnalysisMixin:
                 messagebox.showwarning("Warning", "Please fill in Prefix and Feature Name")
                 return
 
-            # Get and validate naming pattern
+            # Get event pattern string (validation deferred)
             pattern_str = self.pattern_var.get()
-            event_separator = self.event_separator_entry.get() if hasattr(self, 'event_separator_entry') else None
-            pattern = NamingPattern(pattern_str, separator=event_separator)
-            valid, error = pattern.validate()
-            if not valid:
-                messagebox.showerror("Invalid Pattern", f"The naming pattern is invalid:\n{error}")
-                return
+
+            # Check Import Mode to determine if we need separators
+            import_mode = self.import_mode_var.get() if hasattr(self, 'import_mode_var') else 'template'
 
             # Normalize feature and prepare user values for pattern matching
             normalized_feature = feature.replace(' ', '_')
@@ -131,13 +128,15 @@ class AnalysisMixin:
 
             # Get template folder (OPTIONAL)
             template_events = []
-            if self.selected_template_id:
-                # Load events from template folder
-                template_events = self.project.get_events_in_folder(self.selected_template_id)
-                # Note: empty template folder is OK - just means all events will be auto-created
+            
+            if import_mode == 'template':
+                if self.selected_template_id:
+                    # Load events from template folder
+                    template_events = self.project.get_events_in_folder(self.selected_template_id)
+                    # Note: empty template folder is OK - just means all events will be auto-created
             else:
-                # No template folder selected - all events will be auto-created
-                pass
+                # Pattern mode: Ignore template folder
+                template_events = []
 
             # Collect audio files
             audio_files = AudioMatcher.collect_audio_files(media_path)
@@ -168,21 +167,58 @@ class AnalysisMixin:
                 expected_events[formatted_name] = template_event_copy
 
             # Get asset pattern (optional - for parsing files with different separators)
-            asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, "(Optional)")
-            asset_separator = self.asset_separator_entry.get() if hasattr(self, 'asset_separator_entry') else None
+            # Handle different placeholders based on mode
+            asset_placeholder = "(Optional)" if import_mode == 'template' else "e.g. $prefix_$feature_$action"
+            asset_pattern_str = self._get_entry_value(self.asset_pattern_entry, asset_placeholder)
 
-            parse_pattern = pattern  # Default: use same pattern and separator for parsing
-            if asset_pattern_str:
-                # User provided a different pattern for parsing assets
-                parse_pattern = NamingPattern(asset_pattern_str, separator=asset_separator)
-                valid, error = parse_pattern.validate()
-                if not valid:
-                    messagebox.showerror("Invalid Asset Pattern", f"The asset pattern is invalid:\n{error}")
-                    return
-            elif asset_separator and asset_separator != event_separator:
-                # Only asset separator provided (different from event separator)
-                # Use event pattern with asset separator
-                parse_pattern = NamingPattern(pattern_str, separator=asset_separator)
+            # Validate Asset Pattern in Pattern Mode
+            if import_mode == 'pattern' and not asset_pattern_str:
+                messagebox.showerror("Missing Information", "In 'Generate from Pattern' mode, the Asset Name Pattern is mandatory.\n\nPlease specify how your audio files are named (e.g. $prefix_$feature_$action).")
+                return
+
+            # Determine patterns based on mode and availability
+            if import_mode == 'pattern':
+                # Mode: Generate from Pattern (NO separators)
+                # Asset Pattern is Source (Parsing)
+                parse_pattern = NamingPattern(asset_pattern_str, separator=None)
+
+                # Event Pattern is Destination (Building)
+                # If Event Pattern is empty, inherit from Asset Pattern
+                if not pattern_str:
+                    pattern = NamingPattern(asset_pattern_str, separator=None)
+                else:
+                    pattern = NamingPattern(pattern_str, separator=None)
+
+            else:
+                # Mode: Match Template (WITH separators)
+                # Get separators from UI
+                event_separator = self.event_separator_entry.get() if hasattr(self, 'event_separator_entry') else None
+                asset_separator = self.asset_separator_entry.get() if hasattr(self, 'asset_separator_entry') else None
+
+                # Event Pattern is Source (and usually Destination)
+                pattern = NamingPattern(pattern_str, separator=event_separator)
+
+                # Asset Pattern is optional override for parsing
+                if asset_pattern_str:
+                    # Use asset separator if provided, otherwise use event separator
+                    if asset_separator and asset_separator != event_separator:
+                        parse_pattern = NamingPattern(asset_pattern_str, separator=asset_separator)
+                    else:
+                        # Use event separator for consistency
+                        parse_pattern = NamingPattern(asset_pattern_str, separator=event_separator)
+                else:
+                    parse_pattern = pattern
+
+            # Validate generated patterns
+            valid, error = parse_pattern.validate()
+            if not valid:
+                messagebox.showerror("Invalid Asset Pattern", f"The asset/parse pattern is invalid:\n{error}")
+                return
+                
+            valid, error = pattern.validate()
+            if not valid:
+                messagebox.showerror("Invalid Event Pattern", f"The event/build pattern is invalid:\n{error}")
+                return
 
             # Match audio files to events using the naming patterns
             # parse_pattern: used to extract components from asset filenames

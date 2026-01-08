@@ -274,13 +274,19 @@ class PresetsMixin:
         fmod_exe_path = settings.get('fmod_exe_path', '')
 
         # Get pattern configuration
+        import_mode = self.import_mode_var.get() if hasattr(self, 'import_mode_var') else "template"
         prefix = self._get_entry_value(self.prefix_entry, 'e.g. Sfx') if hasattr(self, 'prefix_entry') else ""
         feature_name = self._get_entry_value(self.feature_entry, 'e.g. BlueEyesDragon') if hasattr(self, 'feature_entry') else ""
 
         event_pattern = self.pattern_var.get() if hasattr(self, 'pattern_var') else ""
         event_separator = self.event_separator_entry.get() if hasattr(self, 'event_separator_entry') else ""
 
-        asset_pattern = self._get_entry_value(self.asset_pattern_entry, '') if hasattr(self, 'asset_pattern_entry') else ""
+        # Asset pattern placeholder depends on mode
+        asset_placeholder = "(Optional)"
+        if import_mode == "pattern":
+            asset_placeholder = "e.g. $prefix_$feature_$action"
+
+        asset_pattern = self._get_entry_value(self.asset_pattern_entry, asset_placeholder) if hasattr(self, 'asset_pattern_entry') else ""
         asset_separator = self.asset_separator_entry.get() if hasattr(self, 'asset_separator_entry') else ""
 
         auto_create = self.auto_create_var.get() if hasattr(self, 'auto_create_var') else True
@@ -362,6 +368,7 @@ class PresetsMixin:
                 'fmod_exe_path': fmod_exe_path
             },
             'pattern_config': {
+                'import_mode': import_mode,
                 'prefix': prefix,
                 'feature_name': feature_name,
                 'event_pattern': event_pattern,
@@ -439,6 +446,14 @@ class PresetsMixin:
         # Step 3: Apply pattern configuration
         pattern_config = data.get('pattern_config', {})
 
+        # Apply import mode
+        import_mode = pattern_config.get('import_mode', 'template')
+        if hasattr(self, 'import_mode_var'):
+            self.import_mode_var.set(import_mode)
+            # Update UI state
+            if hasattr(self, '_on_mode_changed'):
+                self._on_mode_changed()
+
         # Apply prefix
         prefix = pattern_config.get('prefix', '')
         if prefix and hasattr(self, 'prefix_entry'):
@@ -471,6 +486,11 @@ class PresetsMixin:
             if asset_pattern:
                 self.asset_pattern_entry.insert(0, asset_pattern)
                 self.asset_pattern_entry.config(foreground='black')
+            else:
+                # Set appropriate placeholder if empty
+                placeholder = "e.g. $prefix_$feature_$action" if import_mode == "pattern" else "(Optional)"
+                self.asset_pattern_entry.insert(0, placeholder)
+                self.asset_pattern_entry.config(foreground='gray')
 
         # Apply asset separator
         asset_separator = pattern_config.get('asset_separator', '')
