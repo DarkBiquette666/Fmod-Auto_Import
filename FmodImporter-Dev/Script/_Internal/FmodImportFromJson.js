@@ -5,7 +5,8 @@
  * It is called by the Python FMOD Importer Tool via fmodstudiocl.exe
  *
  * Supports two modes:
- * - Template mode: Clone an existing event (preserves effects/parameters)
+ * - Template mode: Uses native FMOD Duplicate action to copy an existing event,
+ *   preserving ALL properties: effects, parameters, mixer settings, etc.
  * - From-scratch mode: Create a new empty event
  */
 
@@ -202,6 +203,42 @@
         }
     }
 
+    // Clear audio modules from an event (used when duplicating from template)
+    // Removes SingleSound and MultiSound modules so we can add our own audio
+    function clearAudioModules(event) {
+        if (!event) return;
+
+        try {
+            // Clear audio from all group tracks
+            var tracks = event.groupTracks;
+            for (var t = 0; t < tracks.length; t++) {
+                var track = tracks[t];
+                var modules = track.modules;
+
+                // Iterate backwards to safely remove
+                for (var m = modules.length - 1; m >= 0; m--) {
+                    var module = modules[m];
+                    if (module.isOfType("SingleSound") || module.isOfType("MultiSound")) {
+                        module.delete();
+                    }
+                }
+            }
+
+            // Also clear from timeline if present
+            if (event.timeline) {
+                var timelineModules = event.timeline.modules;
+                for (var tm = timelineModules.length - 1; tm >= 0; tm--) {
+                    var tlModule = timelineModules[tm];
+                    if (tlModule.isOfType("SingleSound") || tlModule.isOfType("MultiSound")) {
+                        tlModule.delete();
+                    }
+                }
+            }
+        } catch (e) {
+            // Silent fail - we'll add new audio anyway
+        }
+    }
+
     // Find bus by path or name
     function findBusByPath(busPath) {
         if (!busPath) return null;
@@ -382,62 +419,43 @@
                 var event;
 
                 if (eventData.templateEventPath) {
-                    // MODE A: Clone from template by copying its structure
+                    // MODE A: Duplicate from template using native FMOD action
+                    // This preserves ALL template properties: effects, parameters, mixer settings
                     var template = findEventByPath(eventData.templateEventPath);
                     if (template && template.isOfType("Event")) {
                         try {
-                            // Create new event
-                            event = studio.project.create("Event");
+                            // Collect existing event IDs before duplication
+                            var existingEvents = studio.project.model.Event.findInstances();
+                            var existingIds = {};
+                            for (var ei = 0; ei < existingEvents.length; ei++) {
+                                existingIds[existingEvents[ei].id] = true;
+                            }
 
-                            // Copy basic properties with defensive checks
-                            if (template.isOneshot !== undefined) event.isOneshot = template.isOneshot;
-                            if (template.isStream !== undefined) event.isStream = template.isStream;
-                            if (template.is3D !== undefined) event.is3D = template.is3D;
-                            if (template.minDistance !== undefined) event.minDistance = template.minDistance;
-                            if (template.maxDistance !== undefined) event.maxDistance = template.maxDistance;
+                            // Navigate to template and trigger native Duplicate action
+                            // This copies EVERYTHING: effects, parameters, mixer settings, etc.
+                            studio.window.navigateTo(template);
+                            studio.window.triggerAction(studio.window.actions.Duplicate);
 
-                            // Copy master track properties with error handling
-                            if (template.masterTrack && event.masterTrack) {
-                                try {
-                                    if (template.masterTrack.volume !== undefined)
-                                        event.masterTrack.volume = template.masterTrack.volume;
-                                    if (template.masterTrack.pitch !== undefined)
-                                        event.masterTrack.pitch = template.masterTrack.pitch;
-                                } catch (masterErr) {
-                                    result.messages.push("WARN: Could not copy master track properties: " + masterErr.message);
+                            // Find the newly created event (the one not in existingIds)
+                            var allEventsAfter = studio.project.model.Event.findInstances();
+                            for (var ea = 0; ea < allEventsAfter.length; ea++) {
+                                if (!existingIds[allEventsAfter[ea].id]) {
+                                    event = allEventsAfter[ea];
+                                    break;
                                 }
                             }
 
-                            // Copy existing group tracks from template (without audio)
-                            var templateTracks = template.groupTracks;
-                            for (var t = 0; t < templateTracks.length; t++) {
-                                try {
-                                    var templateTrack = templateTracks[t];
-                                    // Add track to new event
-                                    var newTrack = event.addGroupTrack();
-
-                                    // Copy track properties with defensive checks
-                                    if (templateTrack.volume !== undefined) newTrack.volume = templateTrack.volume;
-                                    if (templateTrack.pitch !== undefined) newTrack.pitch = templateTrack.pitch;
-
-                                    // Copy effects chain (but not sound modules)
-                                    var modules = templateTrack.modules;
-                                    for (var m = 0; m < modules.length; m++) {
-                                        var module = modules[m];
-                                        // Skip audio modules (we'll add our own audio later)
-                                        if (module.isOfType("SingleSound") || module.isOfType("MultiSound")) {
-                                            continue;
-                                        }
-                                        // TODO: Copy effect modules if needed (requires more complex cloning)
-                                    }
-                                } catch (trackErr) {
-                                    result.messages.push("WARN: Could not copy group track " + t + ": " + trackErr.message);
-                                }
+                            if (!event) {
+                                throw new Error("Could not find duplicated event after Duplicate action");
                             }
 
-                            result.messages.push("INFO: Created event from template '" + template.name + "'");
-                        } catch (cloneErr) {
-                            result.messages.push("WARN: Failed to clone template '" + eventData.templateEventPath + "': " + cloneErr.message + ", creating from scratch");
+                            // Clear existing audio modules from the duplicated event
+                            // (template may have placeholder audio that we need to replace)
+                            clearAudioModules(event);
+
+                            result.messages.push("INFO: Duplicated event from template '" + template.name + "' (preserving effects)");
+                        } catch (dupErr) {
+                            result.messages.push("WARN: Failed to duplicate template '" + eventData.templateEventPath + "': " + dupErr.message + ", creating from scratch");
                             event = studio.project.create("Event");
                         }
                     } else {
