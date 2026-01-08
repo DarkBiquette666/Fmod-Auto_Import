@@ -42,15 +42,29 @@
 
 ---
 
-## With a Template (recommended)
+## Import Modes (New in v0.10.0)
 
-If you already have events to copy:
+### Match Template Mode (Default)
 
-1. Select a **Template Folder** (source folder)
-2. Select a different **Event Folder** (destination)
-3. Add your new audio files
-4. **Analyze** → tool matches automatically
-5. **Import** → events are copied with your new media
+If you have existing events to copy:
+
+1. Keep **"Match Template"** selected
+2. Select a **Template Folder** (source folder)
+3. Select a different **Event Folder** (destination)
+4. Add your new audio files
+5. **Analyze** → tool matches automatically
+6. **Import** → events are copied with your new media
+
+### Generate from Pattern Mode
+
+If you want to create events from file names:
+
+1. Select **"Generate from Pattern"** mode
+2. Template Folder will be hidden (not needed)
+3. Enter **Asset Name Pattern** (e.g., `$prefix_$feature_$action`)
+4. Leave **Event Name Pattern** empty to use same pattern, or customize
+5. **Analyze** → tool parses file names
+6. **Import** → events are created based on patterns
 
 ---
 

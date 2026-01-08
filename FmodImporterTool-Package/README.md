@@ -1,7 +1,7 @@
 # FMOD Importer Tool - Automatic Audio Asset Importer for FMOD Studio
 
-**Version:** 0.8.2
-**Description:** Standalone Windows application for intelligently importing audio assets into FMOD Studio projects
+**Version:** 0.10.0
+**Description:** Standalone Windows/macOS application for intelligently importing audio assets into FMOD Studio projects
 
 ---
 
@@ -100,27 +100,79 @@ This is especially useful if you:
 
 **Optional fields:**
 
-- **Template Folder**: Existing template folder to copy from
+- **Template Folder**: Existing template folder to copy from (only in Match Template mode)
 
-### 3. Recommended Workflow
+### 3. Import Modes
 
-#### **Option A: Import from Template**
+FMOD Importer offers two import modes, selectable via radio buttons in the Pattern Setup section:
 
-1. Select an existing **Template Folder**
-2. Click **"Analyze"**
-3. Tool automatically detects template events
-4. Verify matches in the list
-5. Click **"Import"**
+#### **Match Template Mode** (Default)
 
-#### **Option B: Direct Import (no template)**
+Use this mode when you have existing FMOD events to use as templates.
 
-1. Do NOT select a Template Folder
-2. Click **"Analyze"**
-3. Tool creates basic events for each audio file
-4. Check the event list
-5. Click **"Import"**
+**How it works:**
+1. You select a **Template Folder** containing existing events
+2. The tool matches your audio files to template events using fuzzy matching
+3. New events are created based on the template structure
 
-### 4. Icon Interpretation
+**Pattern order:**
+- **Event Pattern** (first): Defines how FMOD events are named
+- **Asset Pattern** (second, optional): Override for parsing audio file names differently
+
+**Separator fields:** Visible and usable for fine-tuning pattern matching.
+
+#### **Generate from Pattern Mode** (New in v0.10.0)
+
+Use this mode when you want to create events purely based on file naming patterns, without templates.
+
+**How it works:**
+1. Template Folder is hidden (not needed)
+2. You define how your audio files are named (Asset Name Pattern)
+3. The tool parses file names and creates events accordingly
+
+**Pattern order (INVERTED):**
+- **Asset Name Pattern** (first): Defines how your audio files are named (SOURCE)
+- **Event Name Pattern** (second, optional): Defines how events should be named (DESTINATION)
+
+**Smart inheritance:** If Event Name Pattern is empty, it inherits from Asset Name Pattern.
+
+**Separator fields:** Hidden (not needed in this mode).
+
+#### **Which mode should I use?**
+
+| Scenario | Recommended Mode |
+|----------|-----------------|
+| You have template events to copy | Match Template |
+| You want fuzzy matching with existing events | Match Template |
+| You need separator fields for pattern matching | Match Template |
+| You're creating events from scratch | Generate from Pattern |
+| Your files are named consistently and you want direct mapping | Generate from Pattern |
+| You don't have any template events | Generate from Pattern |
+
+### 4. Recommended Workflow
+
+#### **Option A: Match Template Mode**
+
+1. Select **"Match Template"** mode (default)
+2. Select an existing **Template Folder**
+3. Configure Event Pattern and optionally Asset Pattern
+4. Click **"Analyze"**
+5. Tool automatically matches files to template events
+6. Verify matches in the list
+7. Click **"Import"**
+
+#### **Option B: Generate from Pattern Mode**
+
+1. Select **"Generate from Pattern"** mode
+2. Template Folder section will be hidden
+3. Configure **Asset Name Pattern** (how your files are named)
+4. Optionally configure **Event Name Pattern** (or leave empty to inherit)
+5. Click **"Analyze"**
+6. Tool creates events based on parsed file names
+7. Check the event list
+8. Click **"Import"**
+
+### 5. Icon Interpretation
 
 In the import event list:
 
@@ -129,7 +181,7 @@ In the import event list:
 - **?**: No match found
 - **+**: Auto-created event (no template)
 
-### 5. Match Management
+### 6. Match Management
 
 **Orphan Media Files** (files without event):
 - Right-click to manually assign to an event
@@ -137,7 +189,7 @@ In the import event list:
 **Orphan Events** (events without media):
 - Right-click to manually assign an audio file
 
-### 6. Import Progress
+### 7. Import Progress
 
 When you click **"Import"**:
 - A progress dialog will appear showing the import status
@@ -152,7 +204,7 @@ When you click **"Import"**:
 
 **Note:** You can still interact with the main window during import, but avoid starting another import until the current one completes.
 
-### 7. Finalization
+### 8. Finalization
 
 1. Verify all matches
 2. Click **"Import"**
@@ -195,37 +247,51 @@ Access via the **"Settings"** button at the bottom of the interface.
 
 ## Common Use Cases
 
-### Case 1: Create variations of an existing character
+### Case 1: Create variations of an existing character (Match Template)
 
 **Scenario:** You have a "WeakTemplate" template and want to create "MechafloraWeakRanged"
 
-1. **Prefix:** `Sfx`
-2. **FeatureName:** `BlueEyesWhiteDragon`
-3. **Template Folder:** Select "WeakTemplate" folder
-4. **Destination Folder:** Select/create "BlueEyesWhiteDragon"
-5. **Media Files:** Point to new audio files
-6. **Analyze** then **Import**
+1. **Import Mode:** Match Template (default)
+2. **Prefix:** `Sfx`
+3. **FeatureName:** `BlueEyesWhiteDragon`
+4. **Template Folder:** Select "WeakTemplate" folder
+5. **Destination Folder:** Select/create "BlueEyesWhiteDragon"
+6. **Media Files:** Point to new audio files
+7. **Analyze** then **Import**
 
-### Case 2: Quick import without template
+### Case 2: Quick import from file names (Generate from Pattern)
 
-**Scenario:** You just have audio files to import quickly
+**Scenario:** You have consistently named files like `Sfx_Dragon_Attack.wav`, `Sfx_Dragon_Idle.wav`
 
-1. Do **NOT** select a Template Folder
-2. **Destination Folder:** Choose where to create events
-3. **Bank, Bus:** Select appropriate values
-4. **Media Files:** Point to your files
+1. **Import Mode:** Generate from Pattern
+2. **Asset Name Pattern:** `$prefix_$feature_$action`
+3. **Event Name Pattern:** Leave empty (will use same pattern)
+4. **Destination Folder:** Choose where to create events
+5. **Bank, Bus:** Select appropriate values
+6. **Media Files:** Point to your files
+7. **Analyze** then **Import**
+
+### Case 3: Transform file naming to different event naming (Generate from Pattern)
+
+**Scenario:** Your files are named `sfx_dragon_attack.wav` but you want events named `SfxDragonAttack`
+
+1. **Import Mode:** Generate from Pattern
+2. **Asset Name Pattern:** `$prefix_$feature_$action` (with underscore separator in files)
+3. **Event Name Pattern:** `$prefix$feature$action` (CamelCase for events)
+4. **Destination Folder:** Choose target folder
 5. **Analyze** then **Import**
 
-### Case 3: Reorganize existing events
+### Case 4: Reorganize existing events (Match Template)
 
 **Scenario:** You want to copy events to a new folder with new media
 
-1. **Template Folder:** Source folder
-2. **Destination Folder:** New target folder
-3. **Media Files:** New audio files
-4. **Analyze** to see matches
-5. Adjust manually if needed
-6. **Import**
+1. **Import Mode:** Match Template
+2. **Template Folder:** Source folder
+3. **Destination Folder:** New target folder
+4. **Media Files:** New audio files
+5. **Analyze** to see matches
+6. Adjust manually if needed
+7. **Import**
 
 ---
 
@@ -382,5 +448,5 @@ Full license: [docs/LICENSE.txt](docs/LICENSE.txt)
 
 ---
 
-**Version:** 0.8.2
-**Last update:** January 2026
+**Version:** 0.10.0
+**Last update:** January 2025
