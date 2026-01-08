@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.6] - 2026-01-08
+
+### Fixed
+- **XML Validation (Critical)**: Fixed "Invalid Component" errors for auto-created events by removing invalid Fader from Mixer Input and adding default Automatable Properties.
+- **Project Compatibility**: Template-based import now also respects the project's serialization version (e.g. 2.03) instead of forcing legacy version 2.02, preventing corruption of copied events.
+## [0.10.5] - 2026-01-08
+
+### Fixed
+- **XML Version Mismatch**: Auto-created events now use the project's actual serialization version (e.g., "Studio.02.03.00") instead of a hardcoded value, preventing "malformed" flags in newer FMOD Studio versions.
+- **XML Cleanup**: Removed empty `markerTracks` relationship that could cause validation warnings.
+## [0.10.4] - 2026-01-08
+
+### Fixed
+- **Invalid Event XML**: Fixed "malformed component" errors in auto-created events by adding missing `start` and `voiceStealing` properties to `MultiSound` objects.
+- **Bank Assignment**: Added validation to verify that selected Bank, Bus, and Destination Folder IDs actually exist in the current project before importing. This prevents silent failures when using Presets with outdated IDs.
+## [0.10.3] - 2026-01-08
+
+### Fixed
+- **Auto-Create Events**: Fixed regression where events without templates were ignored during import.
+  - Implemented `create_from_scratch` in Python event creator to handle file-to-event generation without templates.
+## [0.10.2] - 2026-01-08
+
+### Fixed
+- **Import Regression**: Reverted to Python-based XML manipulation to fix regression where events were not being created.
+- **FX Copying**: Implemented deep XML copy in Python to ensure FX and assignments are correctly preserved from templates.
+- **Robustness**: Import now runs in a separate thread with a progress dialog and ensures FMOD Studio is closed to prevent corruption.
+
+## [0.10.1] - 2025-01-08
+
+### Fixed
+- **Template Import**: Fixed template events being created from scratch instead of duplicated
+  - Previously only copied volume/pitch, missing all effects (compressor, EQ, reverb, etc.)
+  - Now uses FMOD Studio's native Duplicate action to preserve ALL template properties
+  - Master track effects, group track effects, mixer settings, and parameters are now correctly copied
+
 ## [0.10.0] - 2025-01-08
 
 ### Added

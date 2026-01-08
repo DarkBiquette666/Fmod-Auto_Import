@@ -1,9 +1,24 @@
 FMOD Importer Tool for FMOD Studio
-Version: 0.9.0
+Version: 0.10.6
 Release Date: January 2026
 
 Changelog:
 ----------
+
+v0.10.6 (January 2026)
+- FIXED: XML Version Mismatch (auto-created events use dynamic version)
+- FIXED: Cleaned up empty markerTracks from Event XML
+- FIXED: Removed invalid Fader from MixerInput (Auto-Create)
+- FIXED: Added default Automatable Properties (maxVoices=1, voiceStealing=Virtualize)
+- FIXED: XML Version Mismatch (auto-created events use dynamic version)
+- FIXED: Cleaned up empty markerTracks from Event XML
+- FIXED: Invalid Event XML (missing properties in auto-created events)
+- FIXED: Validation for Bank/Bus/Folder IDs to prevent stale preset errors
+- FIXED: Auto-Create regression: Events without templates are now correctly created from scratch.
+- FIXED: Import regression where events were not created (switched to Python-based XML import)
+- FIXED: Missing FX copying from templates (implemented deep XML copy)
+- ADDED: Progress dialog for import operations with background threading
+- SAFETY: Strict check for closed FMOD Studio to prevent project corruption
 
 v0.9.0 (January 2026)
 - CORE: Transactional flow (deferred creation) for Folders, Banks, and Buses
