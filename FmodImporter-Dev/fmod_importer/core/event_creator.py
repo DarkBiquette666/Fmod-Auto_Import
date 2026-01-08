@@ -21,7 +21,8 @@ class EventCreator:
     def copy_from_template(template_event_id: str, new_name: str,
                           dest_folder_id: str, bank_id: str, bus_id: str,
                           audio_files: List[str], audio_asset_folder: str,
-                          metadata_path: Path, project_path: Path, workspace: Dict) -> str:
+                          metadata_path: Path, project_path: Path, workspace: Dict,
+                          serialization_model: str = "Studio.02.02.00") -> str:
         """
         Copy an event from template and assign audio files to it.
 
@@ -44,6 +45,7 @@ class EventCreator:
             metadata_path: Path to the Metadata directory
             project_path: Path to the project file
             workspace: Workspace dictionary with master folder references
+            serialization_model: FMOD serialization model version string
 
         Returns:
             New event ID
@@ -64,7 +66,7 @@ class EventCreator:
         new_event_id = "{" + str(uuid.uuid4()) + "}"
 
         # Deep copy the entire XML structure
-        new_root = ET.Element('objects', serializationModel="Studio.02.02.00")
+        new_root = ET.Element('objects', serializationModel=serialization_model)
 
         # Map old IDs to new IDs
         id_map = {}
@@ -133,153 +135,10 @@ class EventCreator:
 
         # Create audio files and add them to the event
         if audio_files:
-            # Create AudioFile objects and SingleSound objects
-            single_sound_ids = []
-
-            for audio_file_path in audio_files:
-                # Get the source audio file
-                audio_file_src = Path(audio_file_path)
-
-                # Create the FMOD asset path (relative to Assets folder)
-                # Combine the asset folder path with the filename
-                asset_relative_path = audio_asset_folder + audio_file_src.name
-
-                # Copy audio file to FMOD project Assets folder
-                assets_folder = project_path.parent / "Assets"
-                dest_folder = assets_folder / Path(audio_asset_folder)
-                dest_folder.mkdir(parents=True, exist_ok=True)
-
-                dest_file = dest_folder / audio_file_src.name
-                shutil.copy2(audio_file_src, dest_file)
-
-                # Create AudioFile using the AudioFileManager
-                # Pass the actual file path for reading properties, and the FMOD asset path
-                audio_file_id = AudioFileManager.create(
-                    str(audio_file_src), asset_relative_path,
-                    metadata_path, workspace
-                )
-
-                # Create SingleSound object
-                single_sound_id = "{" + str(uuid.uuid4()) + "}"
-                single_sound_obj = ET.SubElement(new_root, 'object', {'class': 'SingleSound', 'id': single_sound_id})
-
-                # Add audioFile relationship
-                rel_audio = ET.SubElement(single_sound_obj, 'relationship', name='audioFile')
-                dest_audio = ET.SubElement(rel_audio, 'destination')
-                dest_audio.text = audio_file_id
-
-                single_sound_ids.append(single_sound_id)
-
-            # Create MultiSound object
-            multi_sound_id = "{" + str(uuid.uuid4()) + "}"
-            multi_sound_obj = ET.SubElement(new_root, 'object', {'class': 'MultiSound', 'id': multi_sound_id})
-
-            # Add length property (calculate from first audio file)
-            try:
-                with wave.open(audio_files[0], 'rb') as wav_file:
-                    length_seconds = wav_file.getnframes() / float(wav_file.getframerate())
-                    prop_ms_length = ET.SubElement(multi_sound_obj, 'property', name='length')
-                    value_ms_length = ET.SubElement(prop_ms_length, 'value')
-                    value_ms_length.text = str(length_seconds)
-            except Exception:
-                # If we can't read the file, use a default length
-                prop_ms_length = ET.SubElement(multi_sound_obj, 'property', name='length')
-                value_ms_length = ET.SubElement(prop_ms_length, 'value')
-                value_ms_length.text = "0.0"
-
-            # Add sounds relationship
-            rel_sounds = ET.SubElement(multi_sound_obj, 'relationship', name='sounds')
-            for ss_id in single_sound_ids:
-                dest_sound = ET.SubElement(rel_sounds, 'destination')
-                dest_sound.text = ss_id
-
-            # Find or create GroupTrack
-            group_track = new_root.find(".//object[@class='GroupTrack']")
-            if group_track is None:
-                # Create a new GroupTrack if it doesn't exist
-                group_track_id = "{" + str(uuid.uuid4()) + "}"
-                group_track = ET.SubElement(new_root, 'object', {'class': 'GroupTrack', 'id': group_track_id})
-
-                # Create EventMixerGroup for the track
-                mixer_group_id = "{" + str(uuid.uuid4()) + "}"
-                mixer_group = ET.SubElement(new_root, 'object', {'class': 'EventMixerGroup', 'id': mixer_group_id})
-
-                # Add name property to mixer group
-                prop_mg_name = ET.SubElement(mixer_group, 'property', name='name')
-                value_mg_name = ET.SubElement(prop_mg_name, 'value')
-                value_mg_name.text = "Audio 1"
-
-                # Add effectChain to mixer group
-                effect_chain_id = "{" + str(uuid.uuid4()) + "}"
-                rel_effect_chain = ET.SubElement(mixer_group, 'relationship', name='effectChain')
-                dest_effect_chain = ET.SubElement(rel_effect_chain, 'destination')
-                dest_effect_chain.text = effect_chain_id
-
-                # Add panner to mixer group
-                panner_id = "{" + str(uuid.uuid4()) + "}"
-                rel_panner = ET.SubElement(mixer_group, 'relationship', name='panner')
-                dest_panner = ET.SubElement(rel_panner, 'destination')
-                dest_panner.text = panner_id
-
-                # Add output to EventMixerMaster
-                event_mixer_master = new_root.find(".//object[@class='EventMixerMaster']")
-                if event_mixer_master is not None:
-                    rel_output = ET.SubElement(mixer_group, 'relationship', name='output')
-                    dest_output = ET.SubElement(rel_output, 'destination')
-                    dest_output.text = event_mixer_master.get('id')
-
-                # Create effect chain
-                effect_chain = ET.SubElement(new_root, 'object', {'class': 'MixerBusEffectChain', 'id': effect_chain_id})
-                fader_id = "{" + str(uuid.uuid4()) + "}"
-                rel_effects = ET.SubElement(effect_chain, 'relationship', name='effects')
-                dest_fader = ET.SubElement(rel_effects, 'destination')
-                dest_fader.text = fader_id
-
-                # Create panner
-                ET.SubElement(new_root, 'object', {'class': 'MixerBusPanner', 'id': panner_id})
-
-                # Create fader
-                ET.SubElement(new_root, 'object', {'class': 'MixerBusFader', 'id': fader_id})
-
-                # Add mixerGroup relationship to GroupTrack
-                rel_mixer = ET.SubElement(group_track, 'relationship', name='mixerGroup')
-                dest_mixer = ET.SubElement(rel_mixer, 'destination')
-                dest_mixer.text = mixer_group_id
-
-                # Add GroupTrack to Event's groupTracks relationship
-                event_obj = new_root.find(".//object[@class='Event']")
-                if event_obj is not None:
-                    rel_group_tracks = event_obj.find(".//relationship[@name='groupTracks']")
-                    if rel_group_tracks is None:
-                        rel_group_tracks = ET.SubElement(event_obj, 'relationship', name='groupTracks')
-                    dest_group_track = ET.SubElement(rel_group_tracks, 'destination')
-                    dest_group_track.text = group_track_id
-
-            # Update GroupTrack to reference MultiSound
-            rel_modules = group_track.find(".//relationship[@name='modules']")
-            if rel_modules is None:
-                rel_modules = ET.SubElement(group_track, 'relationship', name='modules')
-            else:
-                # Clear existing modules
-                for dest in list(rel_modules.findall('destination')):
-                    rel_modules.remove(dest)
-
-            dest_module = ET.SubElement(rel_modules, 'destination')
-            dest_module.text = multi_sound_id
-
-            # Update Timeline to reference MultiSound
-            timeline = new_root.find(".//object[@class='Timeline']")
-            if timeline is not None:
-                rel_timeline_modules = timeline.find(".//relationship[@name='modules']")
-                if rel_timeline_modules is None:
-                    rel_timeline_modules = ET.SubElement(timeline, 'relationship', name='modules')
-                else:
-                    # Clear existing modules
-                    for dest in list(rel_timeline_modules.findall('destination')):
-                        rel_timeline_modules.remove(dest)
-
-                dest_timeline_module = ET.SubElement(rel_timeline_modules, 'destination')
-                dest_timeline_module.text = multi_sound_id
+            EventCreator._assign_audio_to_event(
+                new_root, new_event_id, audio_files, audio_asset_folder,
+                metadata_path, project_path, workspace
+            )
 
         # Ensure Event directory exists
         event_dir = metadata_path / "Event"
@@ -290,3 +149,367 @@ class EventCreator:
         write_pretty_xml(new_root, event_file)
 
         return new_event_id
+
+    @staticmethod
+    def create_from_scratch(new_name: str, dest_folder_id: str, bank_id: str,
+                           bus_id: str, audio_files: List[str], audio_asset_folder: str,
+                           metadata_path: Path, project_path: Path, workspace: Dict,
+                           serialization_model: str = "Studio.02.02.00") -> str:
+        """
+        Create a new event from scratch (Auto-Create) without a template.
+        """
+        new_event_id = "{" + str(uuid.uuid4()) + "}"
+        
+        # Basic structure using provided serialization model
+        root = ET.Element('objects', serializationModel=serialization_model)
+        
+        # 1. Create Event Object
+        event_obj = ET.SubElement(root, 'object', {'class': 'Event', 'id': new_event_id})
+        
+        # Properties
+        prop_name = ET.SubElement(event_obj, 'property', {'name': 'name'})
+        val_name = ET.SubElement(prop_name, 'value')
+        val_name.text = new_name
+        
+        prop_output = ET.SubElement(event_obj, 'property', {'name': 'outputFormat'})
+        val_output = ET.SubElement(prop_output, 'value')
+        val_output.text = "1"  # Mono default, will be overridden by tracks usually
+        
+        # Relationships
+        rel_folder = ET.SubElement(event_obj, 'relationship', {'name': 'folder'})
+        dest_folder = ET.SubElement(rel_folder, 'destination')
+        dest_folder.text = dest_folder_id
+        
+        rel_mixer = ET.SubElement(event_obj, 'relationship', {'name': 'mixer'})
+        dest_mixer = ET.SubElement(rel_mixer, 'destination')
+        # We'll create mixer master later
+        
+        rel_master = ET.SubElement(event_obj, 'relationship', {'name': 'masterTrack'})
+        dest_master = ET.SubElement(rel_master, 'destination')
+        # We'll create master track later
+        
+        rel_mixer_input = ET.SubElement(event_obj, 'relationship', {'name': 'mixerInput'})
+        dest_mixer_input = ET.SubElement(rel_mixer_input, 'destination')
+        # We'll create mixer input later
+        
+        rel_automatable = ET.SubElement(event_obj, 'relationship', {'name': 'automatableProperties'})
+        dest_automatable = ET.SubElement(rel_automatable, 'destination')
+        # We'll create automatable properties later
+        
+        rel_marker = ET.SubElement(event_obj, 'relationship', {'name': 'markerTracks'})
+        dest_marker = ET.SubElement(rel_marker, 'destination')
+        # We'll create marker track later
+        
+        rel_group = ET.SubElement(event_obj, 'relationship', {'name': 'groupTracks'})
+        # Will be populated by audio assignment
+        
+        rel_timeline = ET.SubElement(event_obj, 'relationship', {'name': 'timeline'})
+        dest_timeline = ET.SubElement(rel_timeline, 'destination')
+        # We'll create timeline later
+        
+        rel_banks = ET.SubElement(event_obj, 'relationship', {'name': 'banks'})
+        dest_banks = ET.SubElement(rel_banks, 'destination')
+        dest_banks.text = bank_id
+        
+        # 2. Create Mixer
+        mixer_id = "{" + str(uuid.uuid4()) + "}"
+        mixer_obj = ET.SubElement(root, 'object', {'class': 'EventMixer', 'id': mixer_id})
+        rel_master_bus = ET.SubElement(mixer_obj, 'relationship', {'name': 'masterBus'})
+        dest_master_bus = ET.SubElement(rel_master_bus, 'destination')
+        dest_mixer.text = mixer_id
+        
+        # 3. Create Master Track
+        master_track_id = "{" + str(uuid.uuid4()) + "}"
+        master_track_obj = ET.SubElement(root, 'object', {'class': 'MasterTrack', 'id': master_track_id})
+        dest_master.text = master_track_id
+        
+        # Mixer Bus (Master) - Connects to Master Track
+        master_bus_id = "{" + str(uuid.uuid4()) + "}"
+        master_bus_obj = ET.SubElement(root, 'object', {'class': 'EventMixerMaster', 'id': master_bus_id})
+        dest_master_bus.text = master_bus_id
+        
+        # Master Bus Properties/Relationships
+        # NOTE: EventMixerMaster should NOT have a 'name' property in FMOD 2.03+
+        
+        rel_bus_effect = ET.SubElement(master_bus_obj, 'relationship', {'name': 'effectChain'})
+        dest_bus_effect = ET.SubElement(rel_bus_effect, 'destination')
+        
+        rel_bus_panner = ET.SubElement(master_bus_obj, 'relationship', {'name': 'panner'})
+        dest_bus_panner = ET.SubElement(rel_bus_panner, 'destination')
+        
+        rel_bus_mixer = ET.SubElement(master_bus_obj, 'relationship', {'name': 'mixer'})
+        dest_bus_mixer = ET.SubElement(rel_bus_mixer, 'destination')
+        dest_bus_mixer.text = mixer_id
+        
+        # Link Master Track to Master Bus
+        rel_track_mixer = ET.SubElement(master_track_obj, 'relationship', {'name': 'mixerGroup'})
+        dest_track_mixer = ET.SubElement(rel_track_mixer, 'destination')
+        dest_track_mixer.text = master_bus_id
+        
+        # 4. Create Effect Chain & Panner for Master
+        effect_chain_id = "{" + str(uuid.uuid4()) + "}"
+        effect_chain_obj = ET.SubElement(root, 'object', {'class': 'MixerBusEffectChain', 'id': effect_chain_id})
+        dest_bus_effect.text = effect_chain_id
+        
+        rel_chain_effects = ET.SubElement(effect_chain_obj, 'relationship', {'name': 'effects'})
+        dest_chain_fader = ET.SubElement(rel_chain_effects, 'destination')
+        
+        fader_id = "{" + str(uuid.uuid4()) + "}"
+        fader_obj = ET.SubElement(root, 'object', {'class': 'MixerBusFader', 'id': fader_id})
+        dest_chain_fader.text = fader_id
+        
+        panner_id = "{" + str(uuid.uuid4()) + "}"
+        panner_obj = ET.SubElement(root, 'object', {'class': 'MixerBusPanner', 'id': panner_id})
+        dest_bus_panner.text = panner_id
+        
+        # 5. Create MixerInput
+        mixer_input_id = "{" + str(uuid.uuid4()) + "}"
+        mixer_input_obj = ET.SubElement(root, 'object', {'class': 'MixerInput', 'id': mixer_input_id})
+        dest_mixer_input.text = mixer_input_id
+        
+        rel_input_effect = ET.SubElement(mixer_input_obj, 'relationship', {'name': 'effectChain'})
+        dest_input_effect = ET.SubElement(rel_input_effect, 'destination')
+        
+        rel_input_panner = ET.SubElement(mixer_input_obj, 'relationship', {'name': 'panner'})
+        dest_input_panner = ET.SubElement(rel_input_panner, 'destination')
+        
+        rel_input_output = ET.SubElement(mixer_input_obj, 'relationship', {'name': 'output'})
+        dest_input_output = ET.SubElement(rel_input_output, 'destination')
+        dest_input_output.text = bus_id
+        
+        # Create Input components
+        input_chain_id = "{" + str(uuid.uuid4()) + "}"
+        input_chain_obj = ET.SubElement(root, 'object', {'class': 'MixerBusEffectChain', 'id': input_chain_id})
+        dest_input_effect.text = input_chain_id
+        
+        # Input Chain Effects (MUST contain a fader)
+        rel_input_effects = ET.SubElement(input_chain_obj, 'relationship', {'name': 'effects'})
+        dest_input_fader = ET.SubElement(rel_input_effects, 'destination')
+        
+        input_fader_id = "{" + str(uuid.uuid4()) + "}"
+        ET.SubElement(root, 'object', {'class': 'MixerBusFader', 'id': input_fader_id})
+        dest_input_fader.text = input_fader_id
+        
+        input_panner_id = "{" + str(uuid.uuid4()) + "}"
+        input_panner_obj = ET.SubElement(root, 'object', {'class': 'MixerBusPanner', 'id': input_panner_id})
+        dest_input_panner.text = input_panner_id
+        
+        # 6. Automatable Properties
+        auto_prop_id = "{" + str(uuid.uuid4()) + "}"
+        auto_prop_obj = ET.SubElement(root, 'object', {'class': 'EventAutomatableProperties', 'id': auto_prop_id})
+        dest_automatable.text = auto_prop_id
+
+        # Add defaults attributes
+        prop_max_voices = ET.SubElement(auto_prop_obj, 'property', {'name': 'maxVoices'})
+        val_max_voices = ET.SubElement(prop_max_voices, 'value')
+        val_max_voices.text = "1"
+
+        prop_voice_stealing = ET.SubElement(auto_prop_obj, 'property', {'name': 'voiceStealing'})
+        val_voice_stealing = ET.SubElement(prop_voice_stealing, 'value')
+        val_voice_stealing.text = "3" # Virtualize
+        
+        prop_priority = ET.SubElement(auto_prop_obj, 'property', {'name': 'priority'})
+        val_priority = ET.SubElement(prop_priority, 'value')
+        val_priority.text = "4"
+        
+        # 7. Marker Track
+        marker_track_id = "{" + str(uuid.uuid4()) + "}"
+        ET.SubElement(root, 'object', {'class': 'MarkerTrack', 'id': marker_track_id})
+        dest_marker.text = marker_track_id
+        
+        # 8. Timeline
+        timeline_id = "{" + str(uuid.uuid4()) + "}"
+        timeline_obj = ET.SubElement(root, 'object', {'class': 'Timeline', 'id': timeline_id})
+        dest_timeline.text = timeline_id
+        
+        # 8. Assign Audio (Creates GroupTracks and links to timeline)
+        if audio_files:
+            EventCreator._assign_audio_to_event(
+                root, new_event_id, audio_files, audio_asset_folder,
+                metadata_path, project_path, workspace
+            )
+            
+        # Ensure Event directory exists
+        event_dir = metadata_path / "Event"
+        event_dir.mkdir(exist_ok=True)
+        
+        # Write new event file
+        event_file = event_dir / f"{new_event_id}.xml"
+        write_pretty_xml(root, event_file)
+        
+        return new_event_id
+
+    @staticmethod
+    def _assign_audio_to_event(root: ET.Element, event_id: str,
+                              audio_files: List[str], audio_asset_folder: str,
+                              metadata_path: Path, project_path: Path, workspace: Dict):
+        """
+        Helper to create audio assets, MultiSounds, and GroupTracks for an event.
+        Shared by copy_from_template and create_from_scratch.
+        """
+        # Create AudioFile objects and SingleSound objects
+        single_sound_ids = []
+
+        for audio_file_path in audio_files:
+            # Get the source audio file
+            audio_file_src = Path(audio_file_path)
+
+            # Create the FMOD asset path (relative to Assets folder)
+            # Combine the asset folder path with the filename
+            asset_relative_path = audio_asset_folder + audio_file_src.name
+
+            # Copy audio file to FMOD project Assets folder
+            assets_folder = project_path.parent / "Assets"
+            dest_folder = assets_folder / Path(audio_asset_folder)
+            dest_folder.mkdir(parents=True, exist_ok=True)
+
+            dest_file = dest_folder / audio_file_src.name
+            shutil.copy2(audio_file_src, dest_file)
+
+            # Create AudioFile using the AudioFileManager
+            # Pass the actual file path for reading properties, and the FMOD asset path
+            audio_file_id = AudioFileManager.create(
+                str(audio_file_src), asset_relative_path,
+                metadata_path, workspace
+            )
+
+            # Create SingleSound object
+            single_sound_id = "{" + str(uuid.uuid4()) + "}"
+            single_sound_obj = ET.SubElement(root, 'object', {'class': 'SingleSound', 'id': single_sound_id})
+
+            # Add audioFile relationship
+            rel_audio = ET.SubElement(single_sound_obj, 'relationship', name='audioFile')
+            dest_audio = ET.SubElement(rel_audio, 'destination')
+            dest_audio.text = audio_file_id
+
+            single_sound_ids.append(single_sound_id)
+
+        # Create MultiSound object
+        multi_sound_id = "{" + str(uuid.uuid4()) + "}"
+        multi_sound_obj = ET.SubElement(root, 'object', {'class': 'MultiSound', 'id': multi_sound_id})
+
+        # Add name property
+        prop_ms_name = ET.SubElement(multi_sound_obj, 'property', name='name')
+        value_ms_name = ET.SubElement(prop_ms_name, 'value')
+        # Use first audio file name as default name
+        if audio_files:
+            value_ms_name.text = Path(audio_files[0]).stem
+        else:
+            value_ms_name.text = "MultiSound"
+
+        # Add start property (Required for Timeline!)
+        prop_ms_start = ET.SubElement(multi_sound_obj, 'property', name='start')
+        value_ms_start = ET.SubElement(prop_ms_start, 'value')
+        value_ms_start.text = "0"
+
+        # Add voiceStealing property
+        prop_ms_vs = ET.SubElement(multi_sound_obj, 'property', name='voiceStealing')
+        value_ms_vs = ET.SubElement(prop_ms_vs, 'value')
+        value_ms_vs.text = "3"
+
+        # Add length property (calculate from first audio file)
+        try:
+            with wave.open(audio_files[0], 'rb') as wav_file:
+                length_seconds = wav_file.getnframes() / float(wav_file.getframerate())
+                prop_ms_length = ET.SubElement(multi_sound_obj, 'property', name='length')
+                value_ms_length = ET.SubElement(prop_ms_length, 'value')
+                value_ms_length.text = str(length_seconds)
+        except Exception:
+            # If we can't read the file, use a default length
+            prop_ms_length = ET.SubElement(multi_sound_obj, 'property', name='length')
+            value_ms_length = ET.SubElement(prop_ms_length, 'value')
+            value_ms_length.text = "1.0"  # Default to 1s if unknown
+
+        # Add sounds relationship
+        rel_sounds = ET.SubElement(multi_sound_obj, 'relationship', name='sounds')
+        for ss_id in single_sound_ids:
+            dest_sound = ET.SubElement(rel_sounds, 'destination')
+            dest_sound.text = ss_id
+
+        # Find or create GroupTrack
+        group_track = root.find(".//object[@class='GroupTrack']")
+        if group_track is None:
+            # Create a new GroupTrack if it doesn't exist
+            group_track_id = "{" + str(uuid.uuid4()) + "}"
+            group_track = ET.SubElement(root, 'object', {'class': 'GroupTrack', 'id': group_track_id})
+
+            # Create EventMixerGroup for the track
+            mixer_group_id = "{" + str(uuid.uuid4()) + "}"
+            mixer_group = ET.SubElement(root, 'object', {'class': 'EventMixerGroup', 'id': mixer_group_id})
+
+            # Add name property to mixer group
+            prop_mg_name = ET.SubElement(mixer_group, 'property', name='name')
+            value_mg_name = ET.SubElement(prop_mg_name, 'value')
+            value_mg_name.text = "Audio 1"
+
+            # Add effectChain to mixer group
+            effect_chain_id = "{" + str(uuid.uuid4()) + "}"
+            rel_effect_chain = ET.SubElement(mixer_group, 'relationship', name='effectChain')
+            dest_effect_chain = ET.SubElement(rel_effect_chain, 'destination')
+            dest_effect_chain.text = effect_chain_id
+
+            # Add panner to mixer group
+            panner_id = "{" + str(uuid.uuid4()) + "}"
+            rel_panner = ET.SubElement(mixer_group, 'relationship', name='panner')
+            dest_panner = ET.SubElement(rel_panner, 'destination')
+            dest_panner.text = panner_id
+
+            # Add output to EventMixerMaster
+            event_mixer_master = root.find(".//object[@class='EventMixerMaster']")
+            if event_mixer_master is not None:
+                rel_output = ET.SubElement(mixer_group, 'relationship', name='output')
+                dest_output = ET.SubElement(rel_output, 'destination')
+                dest_output.text = event_mixer_master.get('id')
+
+            # Create effect chain
+            effect_chain = ET.SubElement(root, 'object', {'class': 'MixerBusEffectChain', 'id': effect_chain_id})
+            fader_id = "{" + str(uuid.uuid4()) + "}"
+            rel_effects = ET.SubElement(effect_chain, 'relationship', name='effects')
+            dest_fader = ET.SubElement(rel_effects, 'destination')
+            dest_fader.text = fader_id
+
+            # Create panner
+            ET.SubElement(root, 'object', {'class': 'MixerBusPanner', 'id': panner_id})
+
+            # Create fader
+            ET.SubElement(root, 'object', {'class': 'MixerBusFader', 'id': fader_id})
+
+            # Add mixerGroup relationship to GroupTrack
+            rel_mixer = ET.SubElement(group_track, 'relationship', name='mixerGroup')
+            dest_mixer = ET.SubElement(rel_mixer, 'destination')
+            dest_mixer.text = mixer_group_id
+
+            # Add GroupTrack to Event's groupTracks relationship
+            event_obj = root.find(".//object[@class='Event']")
+            if event_obj is not None:
+                rel_group_tracks = event_obj.find(".//relationship[@name='groupTracks']")
+                if rel_group_tracks is None:
+                    rel_group_tracks = ET.SubElement(event_obj, 'relationship', name='groupTracks')
+                dest_group_track = ET.SubElement(rel_group_tracks, 'destination')
+                dest_group_track.text = group_track_id
+
+        # Update GroupTrack to reference MultiSound
+        rel_modules = group_track.find(".//relationship[@name='modules']")
+        if rel_modules is None:
+            rel_modules = ET.SubElement(group_track, 'relationship', name='modules')
+        else:
+            # Clear existing modules
+            for dest in list(rel_modules.findall('destination')):
+                rel_modules.remove(dest)
+
+        dest_module = ET.SubElement(rel_modules, 'destination')
+        dest_module.text = multi_sound_id
+
+        # Update Timeline to reference MultiSound
+        timeline = root.find(".//object[@class='Timeline']")
+        if timeline is not None:
+            rel_timeline_modules = timeline.find(".//relationship[@name='modules']")
+            if rel_timeline_modules is None:
+                rel_timeline_modules = ET.SubElement(timeline, 'relationship', name='modules')
+            else:
+                # Clear existing modules
+                for dest in list(rel_timeline_modules.findall('destination')):
+                    rel_timeline_modules.remove(dest)
+
+            dest_timeline_module = ET.SubElement(rel_timeline_modules, 'destination')
+            dest_timeline_module.text = multi_sound_id
