@@ -103,16 +103,24 @@ class FMODProject:
 
     def create_bank_folder(self, name: str, parent_id: str = None, commit: bool = True) -> str:
         """Create a new bank folder (BankFolder object)"""
+        # Get project version to ensure compatibility
+        model = self.get_serialization_model_string()
+        
         return BankManager.create(
             name, parent_id, commit, self.metadata_path,
-            self.banks, self._pending_manager
+            self.banks, self._pending_manager,
+            serialization_model=model
         )
 
     def create_bank_instance(self, name: str, parent_id: str = None, commit: bool = True) -> str:
         """Create a new individual bank (Bank object)"""
+        # Get project version to ensure compatibility
+        model = self.get_serialization_model_string()
+        
         return BankManager.create_bank(
             name, parent_id, commit, self.metadata_path,
-            self.banks, self._pending_manager
+            self.banks, self._pending_manager,
+            serialization_model=model
         )
 
     def delete_bank(self, bank_id: str):
@@ -131,9 +139,14 @@ class FMODProject:
         # If no parent specified, route to Master Bus
         if not parent_id:
             parent_id = self._get_master_bus_id()
+            
+        # Get project version to ensure compatibility
+        model = self.get_serialization_model_string()
+        
         return BusManager.create(
             name, parent_id, commit, self.metadata_path,
-            self.buses, self._pending_manager
+            self.buses, self._pending_manager,
+            serialization_model=model
         )
 
     def delete_bus(self, bus_id: str):
@@ -193,10 +206,28 @@ class FMODProject:
                                   dest_folder_id: str, bank_id: str, bus_id: str,
                                   audio_files: List[str], audio_asset_folder: str) -> str:
         """Copy an event from template (delegates to EventCreator)"""
+        # Get project version to ensure compatibility
+        model = self.get_serialization_model_string()
+        
         return EventCreator.copy_from_template(
             template_event_id, new_name, dest_folder_id, bank_id, bus_id,
             audio_files, audio_asset_folder, self.metadata_path,
-            self.project_path, self.workspace
+            self.project_path, self.workspace,
+            serialization_model=model
+        )
+
+    def create_event_from_scratch(self, new_name: str, dest_folder_id: str,
+                                 bank_id: str, bus_id: str,
+                                 audio_files: List[str], audio_asset_folder: str) -> str:
+        """Create an event from scratch (Auto-Create) without a template"""
+        # Get project version to ensure compatibility
+        model = self.get_serialization_model_string()
+        
+        return EventCreator.create_from_scratch(
+            new_name, dest_folder_id, bank_id, bus_id,
+            audio_files, audio_asset_folder, self.metadata_path,
+            self.project_path, self.workspace,
+            serialization_model=model
         )
 
     def create_audio_file(self, audio_file_path: str, asset_relative_path: str) -> str:
@@ -230,6 +261,25 @@ class FMODProject:
             return None
         except Exception:
             return None
+
+    def get_serialization_model_string(self) -> str:
+        """
+        Get the full serialization model string from project metadata.
+        
+        Returns:
+            String like "Studio.02.03.00" or default "Studio.02.02.00"
+        """
+        try:
+            workspace_file = self.metadata_path / "Workspace.xml"
+            if not workspace_file.exists():
+                return "Studio.02.02.00"
+
+            tree = ET.parse(workspace_file)
+            root = tree.getroot()
+            model = root.get('serializationModel')
+            return model if model else "Studio.02.02.00"
+        except Exception:
+            return "Studio.02.02.00"
 
     def get_executable_version(self, exe_path: str) -> Optional[str]:
         """

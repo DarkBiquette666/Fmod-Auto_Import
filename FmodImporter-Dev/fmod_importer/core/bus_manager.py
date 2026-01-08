@@ -16,7 +16,7 @@ class BusManager:
 
     @staticmethod
     def create(name: str, parent_id: str, commit: bool, metadata_path: Path,
-               buses_dict: Dict, pending_manager) -> str:
+               buses_dict: Dict, pending_manager, serialization_model: str = "Studio.02.02.00") -> str:
         """
         Create a new bus (MixerGroup).
 
@@ -27,6 +27,7 @@ class BusManager:
             metadata_path: Path to the Metadata directory
             buses_dict: Dictionary of buses to update
             pending_manager: PendingFolderManager instance
+            serialization_model: FMOD serialization model version string
 
         Returns:
             UUID of the created bus
@@ -55,7 +56,7 @@ class BusManager:
 
         if commit:
             # Create XML structure for MixerGroup
-            root = ET.Element('objects', serializationModel="Studio.02.02.00")
+            root = ET.Element('objects', serializationModel=serialization_model)
             obj = ET.SubElement(root, 'object', {'class': 'MixerGroup', 'id': bus_id})
 
             # Add name property

@@ -16,7 +16,7 @@ class BankManager:
 
     @staticmethod
     def create(name: str, parent_id: str, commit: bool, metadata_path: Path,
-               banks_dict: Dict, pending_manager) -> str:
+               banks_dict: Dict, pending_manager, serialization_model: str = "Studio.02.02.00") -> str:
         """
         Create a new bank folder (BankFolder object).
 
@@ -27,6 +27,7 @@ class BankManager:
             metadata_path: Path to the Metadata directory
             banks_dict: Dictionary of banks to update
             pending_manager: PendingFolderManager instance
+            serialization_model: FMOD serialization model version string
 
         Returns:
             UUID of the created bank folder
@@ -63,7 +64,7 @@ class BankManager:
 
         if commit:
             # Create XML
-            root = ET.Element('objects', serializationModel="Studio.02.02.00")
+            root = ET.Element('objects', serializationModel=serialization_model)
             obj = ET.SubElement(root, 'object', {'class': 'BankFolder', 'id': bank_id})
 
             # Add name property
@@ -95,7 +96,7 @@ class BankManager:
 
     @staticmethod
     def create_bank(name: str, parent_id: str, commit: bool, metadata_path: Path,
-                   banks_dict: Dict, pending_manager) -> str:
+                   banks_dict: Dict, pending_manager, serialization_model: str = "Studio.02.02.00") -> str:
         """
         Create a new individual bank (Bank object).
 
@@ -106,6 +107,7 @@ class BankManager:
             metadata_path: Path to the Metadata directory
             banks_dict: Dictionary of banks to update
             pending_manager: PendingFolderManager instance
+            serialization_model: FMOD serialization model version string
 
         Returns:
             UUID of the created bank
@@ -141,7 +143,7 @@ class BankManager:
 
         if commit:
             # Create XML
-            root = ET.Element('objects', serializationModel="Studio.02.02.00")
+            root = ET.Element('objects', serializationModel=serialization_model)
             obj = ET.SubElement(root, 'object', {'class': 'Bank', 'id': bank_id})
 
             # Add name property
