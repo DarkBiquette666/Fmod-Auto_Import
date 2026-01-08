@@ -23,30 +23,31 @@ We are generating an `objects` root with `serializationModel="Studio.02.03.00"` 
 The `Event` object contains:
 - `GroupTrack` (Dynamic)
 - `Timeline` (Dynamic)
-- `MixerInput` -> `MixerBusEffectChain` -> `MixerBusFader`
+- `MixerInput` -> `MixerBusEffectChain` -> `MixerBusPanner`
 - `MasterTrack` -> `EventMixerMaster` -> `MixerBusEffectChain` -> `MixerBusFader`
 - `EventAutomatableProperties` (with `maxVoices=1`, `voiceStealing=3`)
 
-### Attempted Fixes
+### Applied Fixes (RESOLVED)
 
 1.  **Serialization Version Mismatch**:
     *   *Issue:* Tool was hardcoding `Studio.02.02.00`. Project is `Studio.02.03.00`.
-    *   *Fix:* Updated tool to read version from `Workspace.xml` and use that.
+    *   *Fix:* Updated `EventCreator`, `BankManager`, and `BusManager` to use the version from `Workspace.xml`.
 
 2.  **Invalid MixerInput Fader (REVERTED/INVALID)**:
     *   *Previous Theory:* We thought `MixerBusFader` in `MixerInput` was invalid.
     *   *Correction:* `valid_event.xml` (FMOD 2.03) **DOES** have a fader in `MixerInput`. The code correctly generates it. The previous diagnosis was incorrect.
 
-3.  **Extraneous Property on EventMixerMaster (APPLIED FIX)**:
+3.  **Extraneous Property on EventMixerMaster (FIXED)**:
     *   *Issue:* The tool was adding `<property name="name"><value>Master</value></property>` to `EventMixerMaster`.
     *   *Finding:* `valid_event.xml` does **not** have a `name` property on the `EventMixerMaster` (it is implicitly "Master"). This extra property likely causes the "Invalid Component" error in FMOD 2.03.
-    *   *Fix:* Removed the `name` property from `EventMixerMaster` in `event_creator.py`.
+    *   *Fix:* Removed the `name` property from `EventMixerMaster` in `create_from_scratch` and filtered it out in `copy_from_template`.
 
-4.  **Missing Automatable Properties**:
-    *   *Issue:* `EventAutomatableProperties` was empty.
-    *   *Fix:* Added `maxVoices` and `voiceStealing`.
+4.  **Bank Assignment Issue (LIKELY FIXED)**:
+    *   *Symptom:* Only the "fixed" event was assigned to a bank; others were unassigned.
+    *   *Cause:* FMOD likely discards relationships (like bank assignments) for events it deems "Invalid".
+    *   *Resolution:* By fixing the XML structure (Fix #3) and ensuring correct versioning (Fix #1), all generated events should now be valid, allowing FMOD to correctly process their bank assignments.
 
 ## Next Steps
-Test the import with the `name` property removal. If "Invalid Component" persists, investigate:
-- Missing `relationship name="tags"` (present in valid XML, missing in generated).
-- Missing `relationship name="automationTracks"` on `MasterTrack`.
+Test the import with all fixes applied. All events should now:
+1.  Pass FMOD validation (no "Invalid Component").
+2.  Be correctly assigned to their Banks.

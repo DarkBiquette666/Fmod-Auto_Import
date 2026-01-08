@@ -91,6 +91,10 @@ class EventCreator:
 
             # Copy properties
             for prop in obj.findall('property'):
+                # SKIP: EventMixerMaster should not have a 'name' property in FMOD 2.03+
+                if obj.get('class') == 'EventMixerMaster' and prop.get('name') == 'name':
+                    continue
+
                 new_prop = ET.SubElement(new_obj, 'property')
                 new_prop.set('name', prop.get('name'))
                 value_elem = prop.find('value')
