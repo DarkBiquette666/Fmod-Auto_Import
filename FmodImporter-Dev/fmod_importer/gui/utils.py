@@ -10,6 +10,7 @@ from typing import List, Dict, Optional
 
 from ..matcher import AudioMatcher
 from ..naming import NamingPattern
+from .themes import ThemeManager
 
 
 class UtilsMixin:
@@ -27,6 +28,45 @@ class UtilsMixin:
             if event_name.startswith(icon):
                 return event_name[len(icon):]
         return event_name
+
+    def _clear_placeholder(self, entry: tk.Entry, placeholder: str):
+        """Clear placeholder text when entry gets focus"""
+        if entry.get() == placeholder:
+            entry.delete(0, tk.END)
+            # Use theme-aware input text color
+            entry.config(foreground=ThemeManager.get_color('input_fg'))
+
+    def _restore_placeholder(self, entry: tk.Entry, placeholder: str):
+        """Restore placeholder if entry is empty"""
+        if not entry.get():
+            entry.insert(0, placeholder)
+            # Use theme-aware placeholder color
+            entry.config(foreground=ThemeManager.get_color('gray'))
+
+    def _get_entry_value(self, entry: tk.Entry, placeholder: str) -> str:
+        """Get actual value from entry (excluding placeholder)"""
+        if not entry:
+            return ""
+        value = entry.get()
+        return '' if value == placeholder else value
+
+    def _get_combined_name(self) -> str:
+        """Get combined Prefix + Feature Name for pre-filling dialogs
+
+        Returns empty string if either field is empty or contains placeholder text.
+        Performs direct concatenation without separator.
+        """
+        # Ensure widgets exist
+        if not hasattr(self, 'prefix_entry') or not hasattr(self, 'feature_entry'):
+            return ''
+
+        prefix = self._get_entry_value(self.prefix_entry, 'e.g. Sfx')
+        feature = self._get_entry_value(self.feature_entry, 'e.g. BlueEyesWhiteDragon')
+
+        if not prefix or not feature:
+            return ''
+
+        return f"{prefix}{feature}"
 
     def _on_preview_tree_checkbox_click(self, event):
         """Handle checkbox clicks in preview tree"""

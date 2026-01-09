@@ -15,6 +15,7 @@ from typing import Optional, Dict, List
 from ..project import FMODProject
 from .utils import UtilsMixin
 from .widgets import WidgetsMixin
+from .pattern_setup import PatternSetupMixin
 from .dialogs import DialogsMixin
 from .asset_dialogs import AssetDialogsMixin
 from .drag_drop import DragDropMixin
@@ -22,11 +23,13 @@ from .analysis import AnalysisMixin
 from .import_workflow import ImportMixin
 from .settings import SettingsMixin
 from .presets import PresetsMixin
+from .themes import ThemeManager
 
 
 class FmodImporterGUI(
     UtilsMixin,
     WidgetsMixin,
+    PatternSetupMixin,
     DialogsMixin,
     AssetDialogsMixin,
     DragDropMixin,
@@ -50,6 +53,7 @@ class FmodImporterGUI(
     - AnalysisMixin: Audio file analysis workflow
     - ImportMixin: Asset import workflow
     - SettingsMixin: Settings management
+    - ThemeManager (via explicit usage): Theme support
     """
 
     def __init__(self, root: tk.Tk):
@@ -92,6 +96,10 @@ class FmodImporterGUI(
 
         # Checkbox state tracking for preview tree
         self.preview_checked_items = set()  # IDs of checked items
+
+        # Apply Theme (must be before creating widgets)
+        settings = self.load_settings()
+        ThemeManager.apply_theme(self.root, settings.get('theme', 'light'))
 
         # Create widgets (from WidgetsMixin)
         self._create_widgets()

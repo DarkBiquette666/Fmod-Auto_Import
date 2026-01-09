@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
+from .themes import ThemeManager
 
 
 class SettingsMixin:
@@ -125,7 +126,7 @@ class SettingsMixin:
         """Open settings dialog"""
         settings_window = tk.Toplevel(self.root)
         settings_window.title("Settings")
-        settings_window.geometry("600x550")
+        settings_window.geometry("600x630")
         settings_window.transient(self.root)
         settings_window.grab_set()
         self._center_dialog(settings_window)
@@ -136,9 +137,20 @@ class SettingsMixin:
         # Load current settings
         current_settings = self.load_settings()
 
+        # ==================== SECTION 0: APPEARANCE ====================
+        appearance_frame = ttk.LabelFrame(frame, text="Appearance", padding="10")
+        appearance_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
+
+        ttk.Label(appearance_frame, text="Theme:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        theme_combo = ttk.Combobox(appearance_frame, values=["light", "dark"], state="readonly", width=15)
+        theme_combo.set(current_settings.get('theme', 'light'))
+        theme_combo.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
+
+        appearance_frame.columnconfigure(1, weight=1)
+
         # ==================== SECTION 1: PATHS ====================
         paths_frame = ttk.LabelFrame(frame, text="Paths", padding="10")
-        paths_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        paths_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
 
         # Default project path
         ttk.Label(paths_frame, text="Default FMOD Project:").grid(row=0, column=0, sticky=tk.W, pady=5)
@@ -192,7 +204,7 @@ class SettingsMixin:
 
         # ==================== SECTION 2: PATTERN SETUP ====================
         pattern_setup_frame = ttk.LabelFrame(frame, text="Pattern Setup", padding="10")
-        pattern_setup_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        pattern_setup_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
 
         # Default template folder
         ttk.Label(pattern_setup_frame, text="Default Template Folder:").grid(row=0, column=0, sticky=tk.W, pady=5)
@@ -247,21 +259,21 @@ class SettingsMixin:
         asset_pattern_value = current_settings.get('default_asset_pattern', '')
         if asset_pattern_value:
             asset_pattern_entry.insert(0, asset_pattern_value)
-            asset_pattern_entry.config(foreground='black')
+            asset_pattern_entry.config(foreground=ThemeManager.get_color('input_fg'))
         else:
             asset_pattern_entry.insert(0, "(Optional)")
-            asset_pattern_entry.config(foreground='gray')
+            asset_pattern_entry.config(foreground=ThemeManager.get_color('gray'))
 
         # Placeholder handlers
         def clear_asset_pattern_placeholder(event):
-            if asset_pattern_entry.get() == "(Optional)" and asset_pattern_entry.cget('foreground') == 'gray':
+            if asset_pattern_entry.get() == "(Optional)" and asset_pattern_entry.cget('foreground') == ThemeManager.get_color('gray'):
                 asset_pattern_entry.delete(0, tk.END)
-                asset_pattern_entry.config(foreground='black')
+                asset_pattern_entry.config(foreground=ThemeManager.get_color('input_fg'))
 
         def restore_asset_pattern_placeholder(event):
             if not asset_pattern_entry.get():
                 asset_pattern_entry.insert(0, "(Optional)")
-                asset_pattern_entry.config(foreground='gray')
+                asset_pattern_entry.config(foreground=ThemeManager.get_color('gray'))
 
         asset_pattern_entry.bind('<FocusIn>', clear_asset_pattern_placeholder)
         asset_pattern_entry.bind('<FocusOut>', restore_asset_pattern_placeholder)
@@ -276,7 +288,7 @@ class SettingsMixin:
 
         # ==================== SECTION 3: IMPORT SETUP ====================
         import_setup_frame = ttk.LabelFrame(frame, text="Import Setup", padding="10")
-        import_setup_frame.grid(row=2, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 10))
+        import_setup_frame.grid(row=3, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), pady=(0, 5))
 
         # Default bank
         ttk.Label(import_setup_frame, text="Default Bank:").grid(row=0, column=0, sticky=tk.W, pady=5)
@@ -380,6 +392,7 @@ class SettingsMixin:
         # Save button
         def save_and_close():
             new_settings = {
+                'theme': theme_combo.get(),
                 'default_project_path': project_entry.get(),
                 'default_media_path': media_entry.get(),
                 'default_template_folder_id': template_folder_id_var.get(),
@@ -393,6 +406,10 @@ class SettingsMixin:
                 'default_asset_separator': asset_sep_entry.get()
             }
             if self.save_settings(new_settings):
+                # Apply theme immediately
+                from .themes import ThemeManager
+                ThemeManager.apply_theme(self.root, new_settings['theme'])
+
                 # Apply settings to current UI
                 if new_settings['default_project_path']:
                     self.project_entry.delete(0, tk.END)
@@ -438,12 +455,12 @@ class SettingsMixin:
                 if new_settings.get('default_asset_pattern') and hasattr(self, 'asset_pattern_entry'):
                     self.asset_pattern_entry.delete(0, tk.END)
                     self.asset_pattern_entry.insert(0, new_settings['default_asset_pattern'])
-                    self.asset_pattern_entry.config(foreground='black')
+                    self.asset_pattern_entry.config(foreground=ThemeManager.get_color('input_fg'))
                 elif hasattr(self, 'asset_pattern_entry'):
                     # Restore placeholder if empty
                     self.asset_pattern_entry.delete(0, tk.END)
                     self.asset_pattern_entry.insert(0, "(Optional)")
-                    self.asset_pattern_entry.config(foreground='gray')
+                    self.asset_pattern_entry.config(foreground=ThemeManager.get_color('gray'))
 
                 # Apply separator settings to current UI
                 if new_settings.get('default_event_separator') and hasattr(self, 'event_separator_entry'):
@@ -458,7 +475,7 @@ class SettingsMixin:
                 settings_window.destroy()
 
         button_frame = ttk.Frame(frame)
-        button_frame.grid(row=3, column=0, columnspan=3, pady=20)
+        button_frame.grid(row=4, column=0, columnspan=3, pady=10)
         ttk.Button(button_frame, text="Save", command=save_and_close, width=15).grid(row=0, column=0, padx=5)
         ttk.Button(button_frame, text="Cancel", command=settings_window.destroy, width=15).grid(row=0, column=1, padx=5)
 
