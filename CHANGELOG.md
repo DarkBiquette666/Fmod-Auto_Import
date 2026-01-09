@@ -227,7 +227,3 @@ When releasing a new version:
 2. Add a new `[Unreleased]` section at the top
 3. Update VERSION in `fmod_importer/__init__.py`
 4. Create a git tag for the release
-
-## Contributing
-
-See development protocol in `.claude/skills/` for contribution guidelines.
