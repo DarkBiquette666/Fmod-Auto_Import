@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-01-09
+
+### Added
+- **Dark Mode Support**: Full Dark Mode implementation with "Theme" selector in Settings. Uses dynamic color system via `ThemeManager`.
+- **Refactoring**: Extracted `PatternSetupMixin` to new module to improve maintainability.
+
+### Fixed
+- **Settings UI**: Adjusted window size and styling to ensure all controls are visible and readable in both Light and Dark modes.
+- **Stability**: Fixed crash in `widgets.py` caused by missing import.
+
 ## [0.10.6] - 2026-01-08
 
 ### Fixed
