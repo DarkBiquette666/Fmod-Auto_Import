@@ -430,8 +430,8 @@ class WidgetsMixin:
         ttk.Button(button_frame, text="Cancel", command=self.root.quit, width=15).grid(row=0, column=3, padx=5)
 
         # Version label (bottom-right)
-        version_label = tk.Label(main_frame, text=f"v{VERSION}", fg=ThemeManager.get_color('gray'))
-        version_label.grid(row=6, column=1, sticky=tk.E, pady=(5, 0))
+        self.main_version_label = tk.Label(main_frame, text=f"v{VERSION}", fg=ThemeManager.get_color('gray'))
+        self.main_version_label.grid(row=6, column=1, sticky=tk.E, pady=(5, 0))
 
         # Configure grid weights
         self.root.columnconfigure(0, weight=1)
@@ -480,3 +480,33 @@ class WidgetsMixin:
             self.version_status_label.config(text="", foreground=ThemeManager.get_color('gray'))
 
 
+    def refresh_ui_theme(self):
+        """
+        Manually refresh standard Tkinter widgets that don't auto-update.
+        Called when theme is changed in Settings.
+        """
+        # 1. Version Info Labels (Themes provides 'fg' and 'gray')
+        # We need to re-apply logic from update_version_display to decide if they should be 'fg' or 'gray'
+        # But for simplicity, we can just trigger update_version_display() which sets colors!
+        if hasattr(self, 'update_version_display'):
+            self.update_version_display()
+
+        # 2. Orphan Panels (Listboxes)
+        # These are standard Tk widgets, need manual config
+        bg = ThemeManager.get_color('input_bg')
+        fg = ThemeManager.get_color('input_fg')
+        
+        if hasattr(self, 'orphan_events_list'):
+            self.orphan_events_list.config(bg=bg, fg=fg)
+        
+        if hasattr(self, 'orphan_media_list'):
+            self.orphan_media_list.config(bg=bg, fg=fg)
+
+        # 3. Bottom Right Version Label
+        if hasattr(self, 'main_version_label'):
+            self.main_version_label.config(fg=ThemeManager.get_color('gray'), bg=ThemeManager.get_color('bg'))
+
+        # 4. Pattern Setup Widgets
+        # Delegate to PatternSetupMixin if available
+        if hasattr(self, 'refresh_pattern_theme'):
+            self.refresh_pattern_theme()

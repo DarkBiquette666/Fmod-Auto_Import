@@ -533,3 +533,41 @@ The tool will:
 LEAVE EMPTY if your files already match your event pattern.
 """
         messagebox.showinfo("Asset Pattern Help", help_text)
+
+    def refresh_pattern_theme(self):
+        """Refreshes colors for Pattern Setup widgets"""
+        
+        # Labels
+        if hasattr(self, 'note_label'):
+            self.note_label.config(foreground=ThemeManager.get_color('fg'))
+            
+        if hasattr(self, 'asset_note_label'):
+            self.asset_note_label.config(foreground=ThemeManager.get_color('gray'))
+            
+        # Entry Placeholders
+        # 1. Prefix
+        if hasattr(self, 'prefix_entry'):
+            if self.prefix_entry.get() == "e.g. Sfx":
+                self.prefix_entry.config(foreground=ThemeManager.get_color('gray'))
+            else:
+                self.prefix_entry.config(foreground=ThemeManager.get_color('input_fg'))
+                
+        # 2. Feature
+        if hasattr(self, 'feature_entry'):
+            if self.feature_entry.get() == "e.g. BlueEyesWhiteDragon":
+                 self.feature_entry.config(foreground=ThemeManager.get_color('gray'))
+            else:
+                 self.feature_entry.config(foreground=ThemeManager.get_color('input_fg'))
+         
+        # 3. Asset Pattern
+        if hasattr(self, 'asset_pattern_entry'):
+             val = self.asset_pattern_entry.get()
+             if val == "(Optional)" or val == "e.g. $prefix_$feature_$action":
+                 self.asset_pattern_entry.config(foreground=ThemeManager.get_color('gray'))
+             else:
+                 self.asset_pattern_entry.config(foreground=ThemeManager.get_color('input_fg'))
+
+        # Previews
+        # Calling update methods will re-validate and set correct colors (red or gray)
+        self._update_pattern_preview()
+        self._update_asset_pattern_preview()

@@ -146,6 +146,15 @@ class SettingsMixin:
         theme_combo.set(current_settings.get('theme', 'light'))
         theme_combo.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
 
+        def on_theme_change(event):
+            selected_theme = theme_combo.get()
+            ThemeManager.apply_theme(self.root, selected_theme)
+            if hasattr(self, 'refresh_ui_theme'):
+                self.refresh_ui_theme()
+            settings_window.configure(bg=ThemeManager.get_color('bg'))
+
+        theme_combo.bind('<<ComboboxSelected>>', on_theme_change)
+
         appearance_frame.columnconfigure(1, weight=1)
 
         # ==================== SECTION 1: PATHS ====================
@@ -476,8 +485,15 @@ class SettingsMixin:
 
         button_frame = ttk.Frame(frame)
         button_frame.grid(row=4, column=0, columnspan=3, pady=10)
+        def revert_and_close():
+            original_theme = current_settings.get('theme', 'light')
+            ThemeManager.apply_theme(self.root, original_theme)
+            if hasattr(self, 'refresh_ui_theme'):
+                self.refresh_ui_theme()
+            settings_window.destroy()
+
         ttk.Button(button_frame, text="Save", command=save_and_close, width=15).grid(row=0, column=0, padx=5)
-        ttk.Button(button_frame, text="Cancel", command=settings_window.destroy, width=15).grid(row=0, column=1, padx=5)
+        ttk.Button(button_frame, text="Cancel", command=revert_and_close, width=15).grid(row=0, column=1, padx=5)
 
         settings_window.columnconfigure(0, weight=1)
         frame.columnconfigure(1, weight=1)
