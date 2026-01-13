@@ -5,6 +5,8 @@ Handles settings management for FmodImporterGUI.
 
 import os
 import json
+import ctypes
+import platform
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -111,6 +113,24 @@ class SettingsMixin:
             'default_asset_separator': ''
         }
 
+    def _set_window_redraw(self, enabled: bool):
+        """Enable or disable window redrawing to prevent flickering (Windows only)"""
+        if platform.system() != "Windows":
+            return
+
+        try:
+            # Get HWND of the root window
+            hwnd = self.root.winfo_id()
+            # WM_SETREDRAW = 0x000B
+            wparam = 1 if enabled else 0
+            ctypes.windll.user32.SendMessageW(hwnd, 0x000B, wparam, 0)
+            
+            if enabled:
+                # Force repaint when re-enabling
+                self.root.update_idletasks()
+        except Exception:
+            pass
+
     def save_settings(self, settings: dict):
         """Save settings to JSON file"""
         settings_file = Path.home() / ".fmod_importer_settings.json"
@@ -147,11 +167,18 @@ class SettingsMixin:
         theme_combo.grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
 
         def on_theme_change(event):
-            selected_theme = theme_combo.get()
-            ThemeManager.apply_theme(self.root, selected_theme)
-            if hasattr(self, 'refresh_ui_theme'):
-                self.refresh_ui_theme()
-            settings_window.configure(bg=ThemeManager.get_color('bg'))
+            try:
+                # Suppress redraws to prevent flickering
+                self._set_window_redraw(False)
+                
+                selected_theme = theme_combo.get()
+                ThemeManager.apply_theme(self.root, selected_theme)
+                if hasattr(self, 'refresh_ui_theme'):
+                    self.refresh_ui_theme()
+                settings_window.configure(bg=ThemeManager.get_color('bg'))
+            finally:
+                # Re-enable redraws
+                self._set_window_redraw(True)
 
         theme_combo.bind('<<ComboboxSelected>>', on_theme_change)
 
@@ -486,11 +513,17 @@ class SettingsMixin:
         button_frame = ttk.Frame(frame)
         button_frame.grid(row=4, column=0, columnspan=3, pady=10)
         def revert_and_close():
-            original_theme = current_settings.get('theme', 'light')
-            ThemeManager.apply_theme(self.root, original_theme)
-            if hasattr(self, 'refresh_ui_theme'):
-                self.refresh_ui_theme()
-            settings_window.destroy()
+            try:
+                # Suppress redraws during revert
+                self._set_window_redraw(False)
+
+                original_theme = current_settings.get('theme', 'light')
+                ThemeManager.apply_theme(self.root, original_theme)
+                if hasattr(self, 'refresh_ui_theme'):
+                    self.refresh_ui_theme()
+            finally:
+                self._set_window_redraw(True)
+                settings_window.destroy()
 
         ttk.Button(button_frame, text="Save", command=save_and_close, width=15).grid(row=0, column=0, padx=5)
         ttk.Button(button_frame, text="Cancel", command=revert_and_close, width=15).grid(row=0, column=1, padx=5)
