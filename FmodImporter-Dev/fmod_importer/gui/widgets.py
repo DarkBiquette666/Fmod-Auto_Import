@@ -80,6 +80,16 @@ class WidgetsMixin:
         self.media_entry = ttk.Entry(media_frame, width=60)
         self.media_entry.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 5))
         ttk.Button(media_frame, text="Browse...", command=self.browse_media).grid(row=0, column=1, padx=5)
+        
+        # Recursive scan checkbox
+        self.recursive_var = tk.BooleanVar(value=False)
+        self.recursive_checkbox = ttk.Checkbutton(
+            media_frame, 
+            text="Recursive", 
+            variable=self.recursive_var
+        )
+        self.recursive_checkbox.grid(row=0, column=2, padx=5)
+        
         media_frame.columnconfigure(0, weight=1)
 
         # FMOD Studio Executable

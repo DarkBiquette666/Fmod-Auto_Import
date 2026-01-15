@@ -211,23 +211,44 @@ class AudioMatcher:
         return suffix_no_ext
 
     @staticmethod
-    def collect_audio_files(directory: str) -> List[Dict]:
+    def collect_audio_files(directory: str, recursive: bool = False) -> List[Dict]:
         """Collect all audio files from directory"""
         audio_extensions = {'.wav', '.mp3', '.ogg', '.flac', '.aif', '.aiff'}
         files = []
 
-        for root, _, filenames in os.walk(directory):
-            for filename in filenames:
-                ext = Path(filename).suffix.lower()
-                if ext in audio_extensions:
-                    full_path = Path(root) / filename
-                    base_name = Path(filename).stem
+        if recursive:
+            # Recursive scan using os.walk
+            for root, _, filenames in os.walk(directory):
+                for filename in filenames:
+                    ext = Path(filename).suffix.lower()
+                    if ext in audio_extensions:
+                        full_path = Path(root) / filename
+                        base_name = Path(filename).stem
 
-                    files.append({
-                        'path': str(full_path),
-                        'filename': filename,
-                        'basename': base_name
-                    })
+                        files.append({
+                            'path': str(full_path),
+                            'filename': filename,
+                            'basename': base_name
+                        })
+        else:
+            # Non-recursive scan using os.scandir (top-level only)
+            if os.path.exists(directory):
+                try:
+                    with os.scandir(directory) as entries:
+                        for entry in entries:
+                            if entry.is_file():
+                                ext = Path(entry.name).suffix.lower()
+                                if ext in audio_extensions:
+                                    full_path = Path(entry.path)
+                                    base_name = Path(entry.name).stem
+
+                                    files.append({
+                                        'path': str(full_path),
+                                        'filename': entry.name,
+                                        'basename': base_name
+                                    })
+                except OSError as e:
+                    print(f"Error scanning directory {directory}: {e}")
 
         return files
 

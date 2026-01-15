@@ -139,7 +139,8 @@ class AnalysisMixin:
                 template_events = []
 
             # Collect audio files
-            audio_files = AudioMatcher.collect_audio_files(media_path)
+            recursive = self.recursive_var.get() if hasattr(self, 'recursive_var') else False
+            audio_files = AudioMatcher.collect_audio_files(media_path, recursive=recursive)
 
             if not audio_files:
                 messagebox.showinfo("Info", "No audio files found in the selected directory")
