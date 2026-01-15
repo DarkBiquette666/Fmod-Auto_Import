@@ -1,6 +1,6 @@
 # FMOD Importer Tool - Automatic Audio Asset Importer for FMOD Studio
 
-**Version:** 0.10.0
+**Version:** 0.13.0
 **Description:** Standalone Windows/macOS application for intelligently importing audio assets into FMOD Studio projects
 
 ---
@@ -33,6 +33,7 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 - Intelligently match audio files with events
 - Automatically organize events in specific folders
 - Auto-assign banks, buses, and asset folders
+- **New: Recursive subdirectory scanning with duplicate conflict resolution**
 - Intuitive interface with visual feedback
 
 ---
@@ -72,6 +73,7 @@ FMOD Importer Tool is a GUI tool that facilitates intelligent audio file importa
 2. **Select Media Folder**
    - Click "Browse..." next to "Media Files Directory"
    - Select the folder containing your audio files (.wav, .mp3, etc.)
+   - **Recursive Option**: Check the "Recursive" box if you want to scan subdirectories. By default, only the top-level directory is scanned to prevent accidental imports.
 
 **Note:** If FMOD Studio is not installed in standard paths (`C:\Program Files\FMOD SoundSystem`), you may need to configure the FMOD executable path in Settings (click "Settings" button at bottom).
 
@@ -172,7 +174,18 @@ Use this mode when you want to create events purely based on file naming pattern
 7. Check the event list
 8. Click **"Import"**
 
-### 5. Icon Interpretation
+### 5. Conflict Resolution (New in v0.13.0)
+
+When using **Recursive Scan**, the tool might find multiple files with the same name in different subdirectories (e.g., `FolderA/shot.wav` and `FolderB/shot.wav`).
+
+**If conflicts are detected during Analysis:**
+1. A **Resolve File Conflicts** window will automatically pop up.
+2. It lists all duplicate filenames found.
+3. For each file, select the specific version (path) you want to use.
+4. Click **"Confirm Selection"** to proceed with the analysis using your chosen files.
+5. This ensures you always import the correct asset and prevents accidental overwrites.
+
+### 6. Icon Interpretation
 
 In the import event list:
 
@@ -448,5 +461,5 @@ Full license: [docs/LICENSE.txt](docs/LICENSE.txt)
 
 ---
 
-**Version:** 0.10.0
-**Last update:** January 2025
+**Version:** 0.13.0
+**Last update:** January 2026

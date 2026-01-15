@@ -23,6 +23,7 @@
 ### Step 2: Select your audio files
 - Click "Browse..." (Media Files)
 - Choose the folder with your .wav/.mp3 files
+- **Recursive Scan:** Check the "Recursive" box if your files are in subdirectories.
 
 ### Step 3: Configure destination
 - **Event Folder:** Click "Select..." → Choose where to create events
