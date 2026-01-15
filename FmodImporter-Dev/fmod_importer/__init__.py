@@ -3,7 +3,7 @@ FMOD Importer Package
 A tool for importing audio assets into FMOD Studio projects.
 """
 
-VERSION = "0.11.1"
+VERSION = "0.12.0"
 
 from .project import FMODProject
 from .naming import NamingPattern

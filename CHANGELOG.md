@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-01-15
+
+### Added
+- **Recursive Scan Toggle**: Added a "Recursive" checkbox to the Media Files section. Default is now OFF (non-recursive), preventing accidental deep scanning. Check the box to enable recursive scanning of subdirectories.
+
 ## [0.11.0] - 2026-01-09
 
 ### Added
