@@ -146,6 +146,50 @@ class AnalysisMixin:
                 messagebox.showinfo("Info", "No audio files found in the selected directory")
                 return
 
+            # Check for filename conflicts (duplicates)
+            from collections import defaultdict
+            file_map = defaultdict(list)
+            for f in audio_files:
+                file_map[f['filename']].append(f)
+            
+            # Find filenames that appear more than once
+            conflicts = {fname: [x['path'] for x in items] 
+                         for fname, items in file_map.items() 
+                         if len(items) > 1}
+            
+            if conflicts:
+                # Import here to avoid circular dependencies
+                from .conflict_solver import ConflictResolutionDialog
+                
+                # Show resolution dialog
+                dialog = ConflictResolutionDialog(self.root, conflicts, media_path)
+                
+                if dialog.result is None:
+                    # User cancelled the analysis
+                    return
+                
+                # Filter audio_files based on selection
+                resolved_paths = set(dialog.result.values())
+                
+                filtered_files = []
+                for f in audio_files:
+                    fname = f['filename']
+                    fpath = f['path']
+                    
+                    if fname not in conflicts:
+                        # Keep non-conflicting files
+                        filtered_files.append(f)
+                    elif fpath in resolved_paths:
+                        # Keep selected version of conflicting files
+                        filtered_files.append(f)
+                
+                audio_files = filtered_files
+                
+                # Check if we still have files (theoretical safety)
+                if not audio_files:
+                    messagebox.showinfo("Info", "No audio files selected after conflict resolution")
+                    return
+
             # Build expected events mapping
             # With the generic approach, we pass template names directly to the matcher
             # The matcher will use suffix matching: template.endswith(file_action)

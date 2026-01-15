@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-01-15
+
+### Added
+- **Conflict Solver**: New interactive dialog to resolve duplicate filename conflicts.
+  - Detects if multiple files with the same name exist in selected folders (e.g. in different subdirectories).
+  - Presents a resolution window allowing the user to choose which specific file to use for each conflict.
+  - Prevents ambiguous imports and accidental overwrites.
+
 ## [0.12.0] - 2026-01-15
 
 ### Added
